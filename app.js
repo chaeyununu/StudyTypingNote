@@ -997,57 +997,36 @@ const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf
 // Every stack ends in the same Korean-capable fallbacks, so if a font slice is still downloading
 // the placeholder glyph looks like its neighbours instead of a random system font.
 const KR_SANS = '"Pretendard Variable", Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
-const KR_SERIF = '"Noto Serif KR", "Nanum Myeongjo", "Apple SD Myungjo", "Batang", serif';
-const KR_MONO = '"D2Coding", "Nanum Gothic Coding", ui-monospace, monospace';
-const fontDef = (group, label, family, fallback = KR_SANS) => ({ group, label, family, stack: `"${family}", ${fallback}` });
+const KR_SERIF = '"Noto Serif KR", "Apple SD Myungjo", "Batang", serif';
+const KR_MONO = '"Nanum Gothic Coding", "D2Coding", ui-monospace, monospace';
+// `adjust` evens out fonts that are drawn small for their nominal size.
+const fontDef = (group, label, family, fallback = KR_SANS, adjust = 1) => ({ group, label, family, adjust, stack: `"${family}", ${fallback}` });
 
 const FONTS = {
-  // 고딕
-  sans: fontDef("고딕", "Pretendard 프리텐다드", "Pretendard Variable"),
-  suit: fontDef("고딕", "SUIT 수트", "SUIT Variable"),
-  wanted: fontDef("고딕", "Wanted Sans 원티드산스", "Wanted Sans Variable"),
-  spoqa: fontDef("고딕", "Spoqa Han Sans Neo 스포카", "Spoqa Han Sans Neo"),
-  notoSans: fontDef("고딕", "Noto Sans 본고딕", "Noto Sans KR"),
-  nanumGothic: fontDef("고딕", "나눔고딕", "Nanum Gothic"),
-  nanumSquareRound: fontDef("고딕", "나눔스퀘어라운드", "NanumSquareRound"),
-  plexKr: fontDef("고딕", "IBM Plex Sans KR", "IBM Plex Sans KR"),
-  gothicA1: fontDef("고딕", "Gothic A1", "Gothic A1"),
-  sunflower: fontDef("고딕", "해바라기 Sunflower", "Sunflower"),
+  // 산세리프
+  sans: fontDef("산세리프", "Pretendard 프리텐다드", "Pretendard Variable"),
+  suit: fontDef("산세리프", "SUIT 수트", "SUIT Variable"),
+  wanted: fontDef("산세리프", "Wanted Sans 원티드산스", "Wanted Sans Variable"),
+  spoqa: fontDef("산세리프", "Spoqa Han Sans Neo 스포카", "Spoqa Han Sans Neo"),
+  nanumSquareRound: fontDef("산세리프", "나눔스퀘어라운드", "NanumSquareRound"),
+  plexKr: fontDef("산세리프", "IBM Plex Sans KR", "IBM Plex Sans KR"),
   // 명조·바탕
-  serif: fontDef("명조·바탕", "Noto Serif 본명조", "Noto Serif KR", KR_SERIF),
-  maruBuri: fontDef("명조·바탕", "마루부리 MaruBuri", "MaruBuri", KR_SERIF),
-  nanumMyeongjo: fontDef("명조·바탕", "나눔명조", "Nanum Myeongjo", KR_SERIF),
   batang: fontDef("명조·바탕", "고운바탕", "Gowun Batang", KR_SERIF),
+  maruBuri: fontDef("명조·바탕", "마루부리 MaruBuri", "MaruBuri", KR_SERIF),
+  ridiBatang: fontDef("명조·바탕", "리디바탕 RIDIBatang", "RIDIBatang", KR_SERIF),
+  serif: fontDef("명조·바탕", "Noto Serif 본명조", "Noto Serif KR", KR_SERIF),
   hahmlet: fontDef("명조·바탕", "함렛 Hahmlet", "Hahmlet", KR_SERIF),
-  songMyung: fontDef("명조·바탕", "송명", "Song Myung", KR_SERIF),
   diphylleia: fontDef("명조·바탕", "디필레이아 Diphylleia", "Diphylleia", KR_SERIF),
-  // 손글씨
-  dodum: fontDef("손글씨", "고운돋움", "Gowun Dodum"),
-  hand: fontDef("손글씨", "개구 Gaegu", "Gaegu"),
-  hiMelody: fontDef("손글씨", "하이멜로디", "Hi Melody"),
-  gamja: fontDef("손글씨", "감자꽃", "Gamja Flower"),
-  poorStory: fontDef("손글씨", "푸어스토리", "Poor Story"),
-  singleDay: fontDef("손글씨", "싱글데이", "Single Day"),
-  penScript: fontDef("손글씨", "나눔펜", "Nanum Pen Script"),
-  brush: fontDef("손글씨", "나눔붓", "Nanum Brush Script"),
-  eastSea: fontDef("손글씨", "동해독도", "East Sea Dokdo"),
-  dokdo: fontDef("손글씨", "독도", "Dokdo"),
-  // 개성
-  dongle: fontDef("개성", "동글", "Dongle"),
-  jua: fontDef("개성", "주아", "Jua"),
-  cute: fontDef("개성", "귀여운 폰트", "Cute Font"),
-  yeonSung: fontDef("개성", "연성", "Yeon Sung"),
-  stylish: fontDef("개성", "스타일리시", "Stylish"),
-  kirang: fontDef("개성", "기랑해랑", "Kirang Haerang"),
-  gugi: fontDef("개성", "구기", "Gugi"),
-  doHyeon: fontDef("개성", "도현", "Do Hyeon"),
-  blackHan: fontDef("개성", "블랙한산스", "Black Han Sans"),
-  gasoek: fontDef("개성", "가속 Gasoek One", "Gasoek One"),
-  bagel: fontDef("개성", "베이글팻원 Bagel Fat One", "Bagel Fat One"),
-  gmarket: fontDef("개성", "지마켓산스", "GmarketSans"),
+  // 부드러운·손글씨
+  dodum: fontDef("부드러운·손글씨", "고운돋움", "Gowun Dodum"),
+  orbit: fontDef("부드러운·손글씨", "오르빗 Orbit", "Orbit"),
+  hand: fontDef("부드러운·손글씨", "개구 Gaegu", "Gaegu", KR_SANS, 1.12),
+  dongle: fontDef("부드러운·손글씨", "동글 Dongle", "Dongle", KR_SANS, 1.32),
+  // 디스플레이
+  gmarket: fontDef("디스플레이", "지마켓산스", "GmarketSans"),
+  bagel: fontDef("디스플레이", "베이글팻원 Bagel Fat One", "Bagel Fat One"),
   // 코드
   mono: fontDef("코드", "JetBrains Mono", "JetBrains Mono", KR_MONO),
-  nanumCoding: fontDef("코드", "나눔고딕코딩", "Nanum Gothic Coding", KR_MONO),
 };
 
 // ---- Hangul font preloading
@@ -1097,10 +1076,30 @@ function ensureFontReady(key) {
   });
 }
 
+
+// A CDN face that failed to load would silently render as the fallback, so drop it from the picker.
+function pruneMissingFonts() {
+  if (!document.fonts || !document.fonts.load || !refs.fontSelect) return;
+  Array.from(refs.fontSelect.options).forEach((opt) => {
+    const font = FONTS[opt.value];
+    if (!font) return;
+    document.fonts.load(`400 16px "${font.family}"`, "가A").then((faces) => {
+      if (faces && faces.length) return;
+      font.missing = true;
+      const group = opt.parentElement;
+      opt.remove();
+      if (group && group.tagName === "OPTGROUP" && !group.children.length) group.remove();
+      if (state.prefs.font === opt.value) setPrefs({ font: defaultPrefs.font });
+      else refs.fontSelect.value = state.prefs.font;
+    }).catch(() => {});
+  });
+  ensureFontReady(state.prefs.font);
+}
+
 // One pick sets spark style + key sound + font + ink color. Everything stays editable.
 const MOODS = {
   "cozy-paper":  { label: "Cozy Paper",  note: "Warm glint, pencil on paper", effectMode: "soft-spark", soundPack: "pencil-paper",     font: "batang", color: "#2c2420" },
-  "quiet-ink":   { label: "Quiet Ink",   note: "Soft ink drops, typewriter",  effectMode: "ink",        soundPack: "muted-typewriter", font: "serif",  color: "#1f3a8f" },
+  "quiet-ink":   { label: "Quiet Ink",   note: "Soft ink drops, typewriter",  effectMode: "ink",        soundPack: "muted-typewriter", font: "maruBuri",  color: "#1f3a8f" },
   "starlight":   { label: "Starlight",   note: "Tiny stars, glass taps",      effectMode: "star-dust",  soundPack: "opal-glass",       font: "dodum",  color: "#6a3fb0" },
   "candy-pop":   { label: "Candy Pop",   note: "Bubbly pops, silicone keys",  effectMode: "candy-pop",  soundPack: "silicone-pop",     font: "hand",   color: "#b32b2b" },
   "rainy-day":   { label: "Rainy Day",   note: "Ripples, rain on a window",   effectMode: "ripple-lens", soundPack: "rainy-window",    font: "hand",   color: "#1f3a8f" },
@@ -1194,6 +1193,7 @@ function applyPrefs() {
   const body = document.body;
   body.dataset.effect = p.effectMode;
   body.style.setProperty("--note-font", FONTS[p.font].stack);
+  body.style.setProperty("--font-adjust", String(FONTS[p.font].adjust || 1));
   ensureFontReady(p.font);
   body.style.setProperty("--note-size", `${p.fontSize}px`);
   body.style.setProperty("--note-color", p.color);
@@ -4523,7 +4523,256 @@ function onLayerPointerDown(event, entry) {
   createNoteAt(entry, clamp((event.clientX - box.left) / box.width, 0, 0.96), clamp((event.clientY - box.top) / box.height, 0, 0.98));
 }
 
+
+// ------------------------------------------------------------------ review: laser trail + focus lens
+// Both effects live on two fixed, pointer-events:none canvases above the PDF and below the toolbar. Nothing here
+// touches the note DOM or storage, so the trail is never saved and typing / notes / zoom behave exactly as before.
+const REVIEW = {
+  trailLife: 1600,                                 // ms a trail point stays visible
+  lens: { clear: 92, feather: 230, dim: 0.10, scale: 0.25 },  // px radius kept clear, feather width, outer darkness, canvas scale
+  bands: 18,
+  layers: [                                        // thin, warm, restrained: a faint halo, a soft body and a pale core
+    { w: 9.0, a: 0.045, rgb: "255,128,100", round: false },
+    { w: 4.6, a: 0.10,  rgb: "255,112,84",  round: false },
+    { w: 1.9, a: 0.62,  rgb: "255,94,68",   round: true  },
+    { w: 0.8, a: 0.90,  rgb: "255,240,232", round: true  }
+  ]
+};
+const review = {
+  on: false, hinted: false, raf: 0, lastFrame: 0, inside: false, dirty: true, lensReady: false,
+  pts: [], breakNext: true, mx: 0, my: 0, lx: 0, ly: 0,
+  lensCtx: null, trailCtx: null, dpr: 1, w: 0, h: 0, lw: 0, lh: 0, box: null,
+  stops: null, vx: [], vy: [], vt: []
+};
+
+function initReview() {
+  review.lensCtx = refs.reviewLens.getContext("2d");
+  review.trailCtx = refs.reviewTrail.getContext("2d");
+  review.stops = [];
+  for (let i = 0; i <= 10; i++) {                  // smoothstep ramp: no visible edge where the clear area ends
+    const t = i / 10;
+    review.stops.push([t, `rgba(16,18,24,${(REVIEW.lens.dim * t * t * (3 - 2 * t)).toFixed(4)})`]);
+  }
+  reviewResize();
+  let timer = 0;
+  window.addEventListener("resize", () => { window.clearTimeout(timer); timer = window.setTimeout(reviewResize, 100); });
+  const stage = refs.pdfScroll;
+  stage.addEventListener("pointermove", onReviewMove, { passive: true });
+  stage.addEventListener("pointerleave", onReviewLeave, { passive: true });
+  window.addEventListener("blur", onReviewLeave);
+  refs.reviewBtn.addEventListener("click", () => setReview(!review.on));
+}
+
+function reviewResize() {
+  review.w = window.innerWidth; review.h = window.innerHeight;
+  review.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const t = refs.reviewTrail;
+  t.width = Math.round(review.w * review.dpr); t.height = Math.round(review.h * review.dpr);
+  const sc = REVIEW.lens.scale;
+  review.lw = Math.max(2, Math.ceil(review.w * sc)); review.lh = Math.max(2, Math.ceil(review.h * sc));
+  refs.reviewLens.width = review.lw; refs.reviewLens.height = review.lh;
+  review.box = null; review.dirty = true;
+  if (review.on) scheduleReview();
+}
+
+function setReview(on) {
+  on = !!on;
+  if (on === review.on) return;
+  if (on && state.typeTool) setTypeTool(false);    // Review and the type tool are mutually exclusive
+  review.on = on;
+  refs.reviewBtn.setAttribute("aria-pressed", String(on));
+  document.body.classList.toggle("review-mode", on);
+  if (on) {
+    reviewResize();
+    if (!review.hinted) { review.hinted = true; toast("Review — 페이지 위에서 마우스를 움직여 보세요. Esc로 종료."); }
+  } else {
+    review.pts.length = 0; review.inside = false; review.lensReady = false; review.breakNext = true;
+    refs.reviewLens.classList.remove("on");
+    clearTrailCanvas();
+  }
+  updateHint();
+}
+
+function onReviewMove(event) {
+  if (!review.on || event.pointerType === "touch") return;
+  const now = performance.now();
+  const overPage = !!(event.target.closest && event.target.closest(".pdf-page"));
+  if (overPage) {
+    const list = event.getCoalescedEvents ? event.getCoalescedEvents() : null;
+    const evs = list && list.length ? list : [event];
+    for (let i = 0; i < evs.length; i++) {
+      const e = evs[i];
+      let t = e.timeStamp || now;
+      if (t > now || now - t > 120) t = now;
+      const last = review.pts[review.pts.length - 1];
+      if (last && !review.breakNext && Math.abs(last.x - e.clientX) < 0.4 && Math.abs(last.y - e.clientY) < 0.4) continue;
+      review.pts.push({ x: e.clientX, y: e.clientY, t, b: review.breakNext });
+      review.breakNext = false;
+    }
+    if (review.pts.length > 700) review.pts.splice(0, review.pts.length - 700);
+  } else {
+    review.breakNext = true;                       // never join a stroke across the desk / gaps between pages
+  }
+  review.mx = event.clientX; review.my = event.clientY;
+  if (!review.inside) { review.inside = true; review.lensReady = false; refs.reviewLens.classList.add("on"); }
+  scheduleReview();
+}
+
+function onReviewLeave() {
+  review.breakNext = true;
+  if (!review.inside) return;
+  review.inside = false;
+  refs.reviewLens.classList.remove("on");
+}
+
+function scheduleReview() {
+  if (!review.raf) review.raf = requestAnimationFrame(reviewFrame);
+}
+
+function clearTrailCanvas() {
+  const c = review.trailCtx;
+  if (!c) return;
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.clearRect(0, 0, refs.reviewTrail.width, refs.reviewTrail.height);
+  review.box = null;
+}
+
+function reviewFrame(now) {
+  review.raf = 0;
+  const dt = Math.min(64, review.lastFrame ? now - review.lastFrame : 16);
+  review.lastFrame = now;
+  let more = false;
+
+  if (review.on && review.inside) {                // lens eases toward the pointer: soft, but never laggy
+    if (!review.lensReady) { review.lx = review.mx; review.ly = review.my; review.lensReady = true; review.dirty = true; }
+    const k = 1 - Math.exp(-dt / 34);
+    const dx = review.mx - review.lx, dy = review.my - review.ly;
+    review.lx += dx * k; review.ly += dy * k;
+    const moving = Math.abs(dx) > 0.15 || Math.abs(dy) > 0.15;
+    if (moving || review.dirty) { drawLens(); review.dirty = false; }
+    if (moving) more = true;
+  }
+
+  if (review.on) {
+    drawTrail(now);
+    if (review.pts.length) more = true;
+  }
+  if (more) { review.raf = requestAnimationFrame(reviewFrame); } else review.lastFrame = 0;
+}
+
+function drawLens() {
+  const c = review.lensCtx, L = REVIEW.lens, s = L.scale;
+  c.clearRect(0, 0, review.lw, review.lh);
+  const x = review.lx * s, y = review.ly * s;
+  const g = c.createRadialGradient(x, y, L.clear * s, x, y, (L.clear + L.feather) * s);
+  for (let i = 0; i < review.stops.length; i++) g.addColorStop(review.stops[i][0], review.stops[i][1]);
+  c.fillStyle = g;
+  c.fillRect(0, 0, review.lw, review.lh);
+}
+
+// Quadratic-midpoint smoothing: always stable (no overshoot loops on fast flicks) and passes close to every sample.
+function buildStroke(pts, i0, i1, life, now) {
+  const vx = review.vx, vy = review.vy, vt = review.vt;
+  vx.length = vy.length = vt.length = 0;
+  const n = i1 - i0;
+  const P = (i) => pts[i0 + i];
+  const push = (x, y, t) => { vx.push(x); vy.push(y); vt.push(t); };
+  push(P(0).x, P(0).y, P(0).t);
+  if (n === 2) { push(P(1).x, P(1).y, P(1).t); return; }
+  for (let i = 1; i < n - 1; i++) {
+    const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1);
+    const ax = (p0.x + p1.x) / 2, ay = (p0.y + p1.y) / 2, at = (p0.t + p1.t) / 2;
+    const bx = (p1.x + p2.x) / 2, by = (p1.y + p2.y) / 2, bt = (p1.t + p2.t) / 2;
+    push(ax, ay, at);
+    const len = Math.hypot(ax - p1.x, ay - p1.y) + Math.hypot(p1.x - bx, p1.y - by);
+    const steps = Math.max(1, Math.min(18, Math.ceil(len / 4)));
+    for (let k = 1; k <= steps; k++) {
+      const u = k / steps, v = 1 - u;
+      push(v * v * ax + 2 * v * u * p1.x + u * u * bx, v * v * ay + 2 * v * u * p1.y + u * u * by, at + (bt - at) * u);
+    }
+  }
+  push(P(n - 1).x, P(n - 1).y, P(n - 1).t);
+}
+
+function drawTrail(now) {
+  const c = review.trailCtx, dpr = review.dpr;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (review.box) c.clearRect(review.box.x, review.box.y, review.box.w, review.box.h);
+  else c.clearRect(0, 0, review.w, review.h);
+  const pts = review.pts;
+  const life = reducedMotionQuery.matches ? 700 : REVIEW.trailLife;
+  let drop = 0;
+  while (drop < pts.length && now - pts[drop].t > life) drop++;
+  if (drop) pts.splice(0, drop);
+  if (!pts.length) { review.box = null; return; }
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const B = REVIEW.bands;
+  const intensity = (t) => { const a = (now - t) / life; return a >= 1 ? 0 : Math.pow(1 - Math.max(0, a), 1.6); };
+
+  let s = 0;
+  while (s < pts.length) {
+    let e = s + 1;
+    while (e < pts.length && !pts[e].b) e++;
+    if (e - s >= 2) {
+      buildStroke(pts, s, e, life, now);
+      const vx = review.vx, vy = review.vy, vt = review.vt, n = vx.length;
+      // group consecutive segments of similar age into runs; each run is ONE stroked path, so there are no beaded joints
+      const runs = [];
+      if (vx[0] < minX) minX = vx[0]; if (vx[0] > maxX) maxX = vx[0];
+      if (vy[0] < minY) minY = vy[0]; if (vy[0] > maxY) maxY = vy[0];
+      let rs = 0, rb = -1;
+      for (let i = 1; i < n; i++) {
+        const I = (intensity(vt[i - 1]) + intensity(vt[i])) / 2;
+        const band = Math.min(B - 1, Math.floor(I * B));
+        if (rb === -1) rb = band;
+        if (band !== rb) { runs.push([rs, i - 1, rb]); rs = i - 1; rb = band; }
+        if (vx[i] < minX) minX = vx[i]; if (vx[i] > maxX) maxX = vx[i];
+        if (vy[i] < minY) minY = vy[i]; if (vy[i] > maxY) maxY = vy[i];
+      }
+      runs.push([rs, n - 1, rb]);
+      c.lineJoin = "round";
+      for (let li = 0; li < REVIEW.layers.length; li++) {
+        const L = REVIEW.layers[li];
+        c.lineCap = L.round ? "round" : "butt";
+        for (let r = 0; r < runs.length; r++) {
+          const run = runs[r], I = (run[2] + 0.5) / B;
+          if (I < 0.02) continue;
+          c.globalAlpha = Math.min(1, L.a * I * 1.05);
+          c.strokeStyle = `rgb(${L.rgb})`;
+          c.lineWidth = L.w * (0.28 + 0.72 * I);
+          c.beginPath();
+          c.moveTo(vx[run[0]], vy[run[0]]);
+          for (let j = run[0] + 1; j <= run[1]; j++) c.lineTo(vx[j], vy[j]);
+          c.stroke();
+        }
+      }
+      c.globalAlpha = 1;
+    }
+    s = e;
+  }
+
+  // the pointer "dot": a tiny pale point with a soft warm bloom, fading with the trail when the mouse rests
+  const head = pts[pts.length - 1];
+  const hi = intensity(head.t);
+  if (hi > 0.02) {
+    const g = c.createRadialGradient(head.x, head.y, 0, head.x, head.y, 11);
+    g.addColorStop(0, `rgba(255,120,92,${(0.24 * hi).toFixed(3)})`);
+    g.addColorStop(1, "rgba(255,120,92,0)");
+    c.fillStyle = g;
+    c.beginPath(); c.arc(head.x, head.y, 11, 0, Math.PI * 2); c.fill();
+    c.fillStyle = `rgba(255,244,238,${(0.95 * hi).toFixed(3)})`;
+    c.beginPath(); c.arc(head.x, head.y, 1.15, 0, Math.PI * 2); c.fill();
+    minX = Math.min(minX, head.x); maxX = Math.max(maxX, head.x); minY = Math.min(minY, head.y); maxY = Math.max(maxY, head.y);
+  }
+  if (minX === Infinity) { review.box = null; return; }
+  const m = 16;
+  review.box = { x: Math.max(0, minX - m), y: Math.max(0, minY - m), w: Math.min(review.w, maxX + m) - Math.max(0, minX - m), h: Math.min(review.h, maxY + m) - Math.max(0, minY - m) };
+}
+
+
 function setTypeTool(on) {
+  if (on && typeof review !== "undefined" && review.on) setReview(false);
   state.typeTool = on;
   refs.typeToolBtn.setAttribute("aria-pressed", String(on));
   document.body.classList.toggle("type-mode", on);
@@ -4542,7 +4791,8 @@ function cacheRefs() {
     "effectEnabled", "soundEnabled", "settingsToggleBtn", "fullscreenBtn", "placeHint", "drawerOverlay",
     "settingsPanel", "closeSettingsBtn", "moodGrid", "tryNote", "intensityRange", "intensityReadout",
     "volumeRange", "volumeReadout", "fontSelect", "fontSizeRange", "fontSizeReadout", "inkColorRow",
-    "effectModeSelect", "soundPackSelect", "inkLayer", "fxCanvas", "caretGlow", "toast"
+    "effectModeSelect", "soundPackSelect", "inkLayer", "fxCanvas", "caretGlow", "toast",
+    "reviewBtn", "reviewLens", "reviewTrail"
   ].forEach((id) => { refs[id] = document.getElementById(id); });
 }
 
@@ -4616,12 +4866,13 @@ function handleGlobalKeys(event) {
   const typing = target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName));
   if (event.key === "Escape") {
     if (document.body.classList.contains("settings-open")) setSettingsOpen(false);
-    else if (!typing && state.typeTool) setTypeTool(false);
+    else if (!typing && (state.typeTool || review.on)) { setTypeTool(false); setReview(false); }
     return;
   }
   if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
   if (!state.doc) return;
   if (event.key === "t" || event.key === "T") { event.preventDefault(); setTypeTool(!state.typeTool); }
+  else if (event.key === "r" || event.key === "R") { event.preventDefault(); setReview(!review.on); }
   else if (event.key === "+" || event.key === "=") stepZoom(1);
   else if (event.key === "-") stepZoom(-1);
 }
@@ -4635,7 +4886,10 @@ function init() {
   buildMoodGrid();
   initFxCanvas();
   bindEvents();
+  initReview();
   applyPrefs();
+  if (document.readyState === "complete") pruneMissingFonts();
+  else window.addEventListener("load", pruneMissingFonts, { once: true });
 }
 
 document.addEventListener("DOMContentLoaded", init);

@@ -999,34 +999,49 @@ const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf
 const KR_SANS = '"Pretendard Variable", Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const KR_SERIF = '"Noto Serif KR", "Apple SD Myungjo", "Batang", serif';
 const KR_MONO = '"Nanum Gothic Coding", "D2Coding", ui-monospace, monospace';
-// `adjust` evens out fonts that are drawn small for their nominal size.
-const fontDef = (group, label, family, fallback = KR_SANS, adjust = 1) => ({ group, label, family, adjust, stack: `"${family}", ${fallback}` });
+// css: substring of the <link> that provides the face (checked once on load); lazy faces declared in styles.css have none
+// and are verified the first time they are picked. adjust: evens out fonts drawn small for their nominal size.
+const fontDef = (group, label, family, o = {}) => ({
+  group, label, family, adjust: o.adjust || 1, css: o.css || "", stack: `"${family}", ${o.fallback || KR_SANS}`
+});
+const G = "fonts.googleapis.com";
 
 const FONTS = {
   // 산세리프
-  sans: fontDef("산세리프", "Pretendard 프리텐다드", "Pretendard Variable"),
-  suit: fontDef("산세리프", "SUIT 수트", "SUIT Variable"),
-  wanted: fontDef("산세리프", "Wanted Sans 원티드산스", "Wanted Sans Variable"),
-  spoqa: fontDef("산세리프", "Spoqa Han Sans Neo 스포카", "Spoqa Han Sans Neo"),
-  nanumSquareRound: fontDef("산세리프", "나눔스퀘어라운드", "NanumSquareRound"),
-  plexKr: fontDef("산세리프", "IBM Plex Sans KR", "IBM Plex Sans KR"),
+  sans: fontDef("산세리프", "Pretendard 프리텐다드", "Pretendard Variable", { css: "pretendardvariable" }),
+  suit: fontDef("산세리프", "SUIT 수트", "SUIT Variable", { css: "SUIT-Variable" }),
+  wanted: fontDef("산세리프", "Wanted Sans 원티드산스", "Wanted Sans Variable", { css: "WantedSansVariable" }),
+  spoqa: fontDef("산세리프", "Spoqa Han Sans Neo 스포카", "Spoqa Han Sans Neo", { css: "SpoqaHanSansNeo" }),
+  nanumSquare: fontDef("산세리프", "나눔스퀘어", "NanumSquare", { css: "nanumsquare.css" }),
+  nanumSquareRound: fontDef("산세리프", "나눔스퀘어라운드", "NanumSquareRound", { css: "nanumsquareround" }),
+  plexKr: fontDef("산세리프", "IBM Plex Sans KR", "IBM Plex Sans KR", { css: G }),
+  notoSans: fontDef("산세리프", "Noto Sans 본고딕", "Noto Sans KR", { css: G }),
   // 명조·바탕
-  batang: fontDef("명조·바탕", "고운바탕", "Gowun Batang", KR_SERIF),
-  maruBuri: fontDef("명조·바탕", "마루부리 MaruBuri", "MaruBuri", KR_SERIF),
-  ridiBatang: fontDef("명조·바탕", "리디바탕 RIDIBatang", "RIDIBatang", KR_SERIF),
-  serif: fontDef("명조·바탕", "Noto Serif 본명조", "Noto Serif KR", KR_SERIF),
-  hahmlet: fontDef("명조·바탕", "함렛 Hahmlet", "Hahmlet", KR_SERIF),
-  diphylleia: fontDef("명조·바탕", "디필레이아 Diphylleia", "Diphylleia", KR_SERIF),
-  // 부드러운·손글씨
-  dodum: fontDef("부드러운·손글씨", "고운돋움", "Gowun Dodum"),
-  orbit: fontDef("부드러운·손글씨", "오르빗 Orbit", "Orbit"),
-  hand: fontDef("부드러운·손글씨", "개구 Gaegu", "Gaegu", KR_SANS, 1.12),
-  dongle: fontDef("부드러운·손글씨", "동글 Dongle", "Dongle", KR_SANS, 1.32),
+  batang: fontDef("명조·바탕", "고운바탕", "Gowun Batang", { css: G, fallback: KR_SERIF }),
+  maruBuri: fontDef("명조·바탕", "마루부리 MaruBuri", "MaruBuri", { css: "maru-buri", fallback: KR_SERIF }),
+  ridiBatang: fontDef("명조·바탕", "리디바탕 RIDIBatang", "RIDIBatang", { css: "RIDIBatang", fallback: KR_SERIF }),
+  serif: fontDef("명조·바탕", "Noto Serif 본명조", "Noto Serif KR", { css: G, fallback: KR_SERIF }),
+  nanumMyeongjo: fontDef("명조·바탕", "나눔명조", "Nanum Myeongjo", { css: G, fallback: KR_SERIF }),
+  hahmlet: fontDef("명조·바탕", "함렛 Hahmlet", "Hahmlet", { css: G, fallback: KR_SERIF }),
+  diphylleia: fontDef("명조·바탕", "디필레이아 Diphylleia", "Diphylleia", { css: G, fallback: KR_SERIF }),
+  songMyung: fontDef("명조·바탕", "송명", "Song Myung", { css: G, fallback: KR_SERIF }),
+  // 부드러운·귀여운
+  dodum: fontDef("부드러운·귀여운", "고운돋움", "Gowun Dodum", { css: G }),
+  orbit: fontDef("부드러운·귀여운", "오르빗 Orbit", "Orbit", { css: G }),
+  dongle: fontDef("부드러운·귀여운", "동글 Dongle", "Dongle", { css: G, adjust: 1.32 }),
+  cafe24: fontDef("부드러운·귀여운", "카페24 써라운드", "Cafe24Ssurround"),
+  hiMelody: fontDef("부드러운·귀여운", "하이멜로디", "Hi Melody", { css: G, adjust: 1.1 }),
+  gamja: fontDef("부드러운·귀여운", "감자꽃", "Gamja Flower", { css: G, adjust: 1.1 }),
+  // 손글씨
+  hand: fontDef("손글씨", "개구 Gaegu", "Gaegu", { css: G, adjust: 1.12 }),
+  kyobo: fontDef("손글씨", "교보손글씨 2019", "KyoboHand"),
   // 디스플레이
-  gmarket: fontDef("디스플레이", "지마켓산스", "GmarketSans"),
-  bagel: fontDef("디스플레이", "베이글팻원 Bagel Fat One", "Bagel Fat One"),
+  gmarket: fontDef("디스플레이", "지마켓산스", "GmarketSans", { css: "GmarketSans" }),
+  bagel: fontDef("디스플레이", "베이글팻원 Bagel Fat One", "Bagel Fat One", { css: G }),
+  gasoek: fontDef("디스플레이", "가속 Gasoek One", "Gasoek One", { css: G }),
+  grandiflora: fontDef("디스플레이", "그랜디플로라 Grandiflora One", "Grandiflora One", { css: G, fallback: KR_SERIF }),
   // 코드
-  mono: fontDef("코드", "JetBrains Mono", "JetBrains Mono", KR_MONO),
+  mono: fontDef("코드", "JetBrains Mono", "JetBrains Mono", { css: G, fallback: KR_MONO }),
 };
 
 // ---- Hangul font preloading
@@ -1053,14 +1068,31 @@ function hangulSyllables() {
   return fontPreload.syllables;
 }
 
+// A face that can't be loaded would silently render as the fallback, so take it out of the picker instead.
+function dropFont(key, announce) {
+  const font = FONTS[key];
+  if (!font || font.missing || key === defaultPrefs.font) return;
+  font.missing = true;
+  const opt = refs.fontSelect && refs.fontSelect.querySelector(`option[value="${key}"]`);
+  if (opt) {
+    const group = opt.parentElement;
+    opt.remove();
+    if (group && group.tagName === "OPTGROUP" && !group.children.length) group.remove();
+  }
+  if (state.prefs.font === key) {
+    if (announce) toast(`"${font.label}" 폰트를 불러오지 못해 기본 폰트로 바꿨어요.`);
+    setPrefs({ font: defaultPrefs.font });
+  }
+}
+
 function ensureFontReady(key) {
   const font = FONTS[key];
-  if (!font || !document.fonts || !document.fonts.load || fontPreload.done.has(key)) return;
+  if (!font || font.missing || !document.fonts || !document.fonts.load || fontPreload.done.has(key)) return;
   fontPreload.done.add(key);
   const spec = `400 18px "${font.family}"`;
   const jamo = "ㄱㄲㄳㄴㄵㄶㄷㄸㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅃㅄㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
   const basics = " .,!?-~()[]0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  document.fonts.load(spec, jamo + basics).catch(() => {}).then(() => {
+  const preloadRest = () => {
     const all = hangulSyllables();
     const step = 160;
     let i = 0;
@@ -1073,26 +1105,21 @@ function ensureFontReady(key) {
       });
     };
     next();
-  });
+  };
+  document.fonts.load(spec, jamo + basics).then((faces) => {
+    if (!faces || !faces.length) dropFont(key, true);
+    else preloadRest();
+  }, () => dropFont(key, true));
 }
 
-
-// A CDN face that failed to load would silently render as the fallback, so drop it from the picker.
+// Cheap check on load: a font whose stylesheet failed to download never shows up in the picker.
 function pruneMissingFonts() {
-  if (!document.fonts || !document.fonts.load || !refs.fontSelect) return;
-  Array.from(refs.fontSelect.options).forEach((opt) => {
-    const font = FONTS[opt.value];
-    if (!font) return;
-    document.fonts.load(`400 16px "${font.family}"`, "가A").then((faces) => {
-      if (faces && faces.length) return;
-      font.missing = true;
-      const group = opt.parentElement;
-      opt.remove();
-      if (group && group.tagName === "OPTGROUP" && !group.children.length) group.remove();
-      if (state.prefs.font === opt.value) setPrefs({ font: defaultPrefs.font });
-      else refs.fontSelect.value = state.prefs.font;
-    }).catch(() => {});
+  Object.entries(FONTS).forEach(([key, font]) => {
+    if (!font.css) return;
+    const link = document.querySelector(`link[href*="${font.css}"]`);
+    if (!link || !link.sheet) dropFont(key, false);
   });
+  if (refs.fontSelect) refs.fontSelect.value = state.prefs.font;
   ensureFontReady(state.prefs.font);
 }
 
@@ -1116,7 +1143,10 @@ const defaultPrefs = {
   intensity: 0.8,
   font: "batang",
   fontSize: 18,
-  color: "#2c2420"
+  color: "#2c2420",
+  reviewColor: "coral",
+  reviewFx: "none",
+  reviewSize: "m"
 };
 
 // Names the spark/sound engines fall back to.
@@ -1160,6 +1190,9 @@ function loadPrefs() {
     prefs.volume = clamp01(Number(prefs.volume));
     prefs.intensity = clamp01(Number(prefs.intensity));
     prefs.fontSize = clamp(Number(prefs.fontSize), 12, 36);
+    if (typeof prefs.reviewColor !== "string") prefs.reviewColor = defaultPrefs.reviewColor;
+    if (prefs.reviewFx !== "none" && !EFFECT_PRESETS[prefs.reviewFx]) prefs.reviewFx = "none";
+    if (!["s", "m", "l"].includes(prefs.reviewSize)) prefs.reviewSize = "m";
     return prefs;
   } catch (error) {
     return { ...defaultPrefs };
@@ -1202,6 +1235,7 @@ function applyPrefs() {
   body.style.setProperty("--effect-aura", effect.aura);
   body.style.setProperty("--glow", `${Math.round(6 + state.settings.glowAmount * 16)}px`);
   syncControls();
+  syncReviewDock();
   soundEngine.ensurePack(p.soundPack);
 }
 
@@ -4526,33 +4560,53 @@ function onLayerPointerDown(event, entry) {
 
 // ------------------------------------------------------------------ review: laser trail + focus lens
 // Both effects live on two fixed, pointer-events:none canvases above the PDF and below the toolbar. Nothing here
-// touches the note DOM or storage, so the trail is never saved and typing / notes / zoom behave exactly as before.
+// touches the note DOM or storage (only the 3 look settings are remembered), so a trail is never saved and
+// typing / notes / zoom behave exactly as before.
 const REVIEW = {
-  trailLife: 1600,                                 // ms a trail point stays visible
+  trailLife: 1700,                                  // ms a trail point stays visible
   lens: { clear: 92, feather: 230, dim: 0.10, scale: 0.25 },  // px radius kept clear, feather width, outer darkness, canvas scale
-  bands: 18,
-  layers: [                                        // thin, warm, restrained: a faint halo, a soft body and a pale core
-    { w: 9.0, a: 0.045, rgb: "255,128,100", round: false },
-    { w: 4.6, a: 0.10,  rgb: "255,112,84",  round: false },
-    { w: 1.9, a: 0.62,  rgb: "255,94,68",   round: true  },
-    { w: 0.8, a: 0.90,  rgb: "255,240,232", round: true  }
+  colors: [
+    { id: "coral",    label: "Coral",    rgb: [255, 104, 78] },
+    { id: "rose",     label: "Rose",     rgb: [233, 84, 134] },
+    { id: "amber",    label: "Amber",    rgb: [244, 160, 32] },
+    { id: "mint",     label: "Mint",     rgb: [34, 190, 150] },
+    { id: "sky",      label: "Sky",      rgb: [60, 140, 250] },
+    { id: "violet",   label: "Violet",   rgb: [140, 100, 238] },
+    { id: "graphite", label: "Graphite", rgb: [64, 66, 78] },
+    { id: "iris",     label: "Iris (hue drifts along the line)", rgb: null },
+    { id: "auto",     label: "Auto (follows your typing FX colour)", rgb: null }
+  ],
+  sizes: { s: 0.74, m: 1, l: 1.45 },
+  // The line is stamped from soft sprites along a smooth curve: a faint halo, a body, a pale core.
+  layers: [
+    { R: 15,  stops: [[0, 0.06], [0.4, 0.035], [0.75, 0.01], [1, 0]],  stride: 3, white: 0 },
+    { R: 6.2, stops: [[0, 0.34], [0.55, 0.28], [0.85, 0.1], [1, 0]],   stride: 1, white: 0 },
+    { R: 2.9, stops: [[0, 0.8], [0.6, 0.5], [1, 0]],                   stride: 1, white: 0.42 }
   ]
 };
+const IRIS = Array.from({ length: 24 }, (_, i) => {   // 24 hue buckets (HSL s=.7 l=.6), pre-converted to rgb
+  const h = i / 24, a = 0.28;
+  const f = (n) => { const k = (n + h * 12) % 12; return Math.round(255 * (0.6 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
+  return [f(0), f(8), f(4)];
+});
 const review = {
   on: false, hinted: false, raf: 0, lastFrame: 0, inside: false, dirty: true, lensReady: false,
-  pts: [], breakNext: true, mx: 0, my: 0, lx: 0, ly: 0,
+  pts: [], breakNext: true, hasFilter: false,
+  sx: 0, sy: 0, st: 0, rx: 0, ry: 0, prx: 0, pry: 0,   // low-pass filter state + last raw pointer
+  mx: 0, my: 0, lx: 0, ly: 0, sparkAcc: 0, lastSpark: 0,
   lensCtx: null, trailCtx: null, dpr: 1, w: 0, h: 0, lw: 0, lh: 0, box: null,
-  stops: null, vx: [], vy: [], vt: []
+  stops: null, vx: [], vy: [], vt: [], sprites: new Map()
 };
 
 function initReview() {
   review.lensCtx = refs.reviewLens.getContext("2d");
   review.trailCtx = refs.reviewTrail.getContext("2d");
   review.stops = [];
-  for (let i = 0; i <= 10; i++) {                  // smoothstep ramp: no visible edge where the clear area ends
+  for (let i = 0; i <= 10; i++) {                   // smoothstep ramp: no visible edge where the clear area ends
     const t = i / 10;
     review.stops.push([t, `rgba(16,18,24,${(REVIEW.lens.dim * t * t * (3 - 2 * t)).toFixed(4)})`]);
   }
+  buildReviewDock();
   reviewResize();
   let timer = 0;
   window.addEventListener("resize", () => { window.clearTimeout(timer); timer = window.setTimeout(reviewResize, 100); });
@@ -4561,6 +4615,39 @@ function initReview() {
   stage.addEventListener("pointerleave", onReviewLeave, { passive: true });
   window.addEventListener("blur", onReviewLeave);
   refs.reviewBtn.addEventListener("click", () => setReview(!review.on));
+}
+
+// ---- look settings dock (colour / effect / thickness): visible only while REVIEW is on
+function buildReviewDock() {
+  refs.reviewColors.innerHTML = "";
+  REVIEW.colors.forEach((c) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "dock-swatch"; b.dataset.color = c.id;
+    b.title = c.label; b.setAttribute("aria-label", `${c.label} laser`);
+    if (c.rgb) b.style.setProperty("--c", `rgb(${c.rgb.join(",")})`);
+    if (c.id === "auto") b.textContent = "A";
+    refs.reviewColors.append(b);
+  });
+  refs.reviewFxSelect.innerHTML = "";
+  refs.reviewFxSelect.add(new Option("Laser only", "none"));
+  Object.entries(EFFECT_PRESETS).forEach(([key, def]) => refs.reviewFxSelect.add(new Option(`+ ${def.label}`, key)));
+  refs.reviewColors.addEventListener("click", (event) => {
+    const b = event.target.closest(".dock-swatch");
+    if (b) setPrefs({ reviewColor: b.dataset.color }, { keepMood: true });
+  });
+  refs.reviewFxSelect.addEventListener("change", () => setPrefs({ reviewFx: refs.reviewFxSelect.value }, { keepMood: true }));
+  refs.reviewSize.addEventListener("click", (event) => {
+    const b = event.target.closest("button[data-size]");
+    if (b) setPrefs({ reviewSize: b.dataset.size }, { keepMood: true });
+  });
+}
+
+function syncReviewDock() {
+  if (!refs.reviewColors || !state.prefs) return;
+  const p = state.prefs;
+  refs.reviewColors.querySelectorAll(".dock-swatch").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.color === p.reviewColor)));
+  refs.reviewFxSelect.value = p.reviewFx;
+  refs.reviewSize.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.size === p.reviewSize)));
 }
 
 function reviewResize() {
@@ -4578,21 +4665,26 @@ function reviewResize() {
 function setReview(on) {
   on = !!on;
   if (on === review.on) return;
-  if (on && state.typeTool) setTypeTool(false);    // Review and the type tool are mutually exclusive
+  if (on && state.typeTool) setTypeTool(false);     // Review and the type tool are mutually exclusive
   review.on = on;
   refs.reviewBtn.setAttribute("aria-pressed", String(on));
+  refs.reviewDock.inert = !on;
   document.body.classList.toggle("review-mode", on);
   if (on) {
     reviewResize();
     if (!review.hinted) { review.hinted = true; toast("Review — 페이지 위에서 마우스를 움직여 보세요. Esc로 종료."); }
   } else {
-    review.pts.length = 0; review.inside = false; review.lensReady = false; review.breakNext = true;
+    review.pts.length = 0; review.inside = false; review.lensReady = false; review.breakNext = true; review.hasFilter = false;
     refs.reviewLens.classList.remove("on");
     clearTrailCanvas();
   }
   updateHint();
 }
 
+// ---- pointer input -> low-pass filtered points
+// Raw mouse coordinates are integers and jitter by a pixel or two, which reads as a wobbly line once it is drawn thick.
+// A speed-adaptive exponential filter (heavier when slow, nearly transparent when fast) removes that without making the
+// head feel laggy; Catmull-Rom then turns the filtered points into a continuous curve.
 function onReviewMove(event) {
   if (!review.on || event.pointerType === "touch") return;
   const now = performance.now();
@@ -4604,22 +4696,41 @@ function onReviewMove(event) {
       const e = evs[i];
       let t = e.timeStamp || now;
       if (t > now || now - t > 120) t = now;
-      const last = review.pts[review.pts.length - 1];
-      if (last && !review.breakNext && Math.abs(last.x - e.clientX) < 0.4 && Math.abs(last.y - e.clientY) < 0.4) continue;
-      review.pts.push({ x: e.clientX, y: e.clientY, t, b: review.breakNext });
-      review.breakNext = false;
+      feedTrail(e.clientX, e.clientY, t);
     }
-    if (review.pts.length > 700) review.pts.splice(0, review.pts.length - 700);
+    if (review.pts.length > 900) review.pts.splice(0, review.pts.length - 900);
   } else {
-    review.breakNext = true;                       // never join a stroke across the desk / gaps between pages
+    review.breakNext = true; review.hasFilter = false;   // never join a stroke across the desk / gaps between pages
   }
   review.mx = event.clientX; review.my = event.clientY;
   if (!review.inside) { review.inside = true; review.lensReady = false; refs.reviewLens.classList.add("on"); }
   scheduleReview();
 }
 
+function feedTrail(x, y, t) {
+  if (!review.hasFilter || review.breakNext) {
+    review.sx = x; review.sy = y; review.st = t; review.rx = review.prx = x; review.ry = review.pry = y;
+    review.hasFilter = true; review.breakNext = false;
+    review.pts.push({ x, y, t, b: true });
+    return;
+  }
+  stepTrailFilter(x, y, t);
+}
+
+function stepTrailFilter(x, y, t) {
+  const dt = Math.min(80, Math.max(0.5, t - review.st));
+  const speed = Math.hypot(x - review.prx, y - review.pry) / dt;       // px per ms
+  const tau = 14 + 52 * Math.exp(-speed * 1.3);                         // ms: ~66 when crawling, ~15 when fast
+  const a = 1 - Math.exp(-dt / tau);
+  review.sx += (x - review.sx) * a; review.sy += (y - review.sy) * a;
+  review.st = t; review.prx = review.rx = x; review.pry = review.ry = y;
+  const last = review.pts[review.pts.length - 1];
+  const seg = Math.hypot(review.sx - last.x, review.sy - last.y);
+  if (seg >= 0.7) { review.pts.push({ x: review.sx, y: review.sy, t, b: false }); review.sparkAcc += seg; }
+}
+
 function onReviewLeave() {
-  review.breakNext = true;
+  review.breakNext = true; review.hasFilter = false;
   if (!review.inside) return;
   review.inside = false;
   refs.reviewLens.classList.remove("on");
@@ -4643,7 +4754,7 @@ function reviewFrame(now) {
   review.lastFrame = now;
   let more = false;
 
-  if (review.on && review.inside) {                // lens eases toward the pointer: soft, but never laggy
+  if (review.on && review.inside) {                 // lens eases toward the pointer: soft, but never laggy
     if (!review.lensReady) { review.lx = review.mx; review.ly = review.my; review.lensReady = true; review.dirty = true; }
     const k = 1 - Math.exp(-dt / 34);
     const dx = review.mx - review.lx, dy = review.my - review.ly;
@@ -4654,8 +4765,15 @@ function reviewFrame(now) {
   }
 
   if (review.on) {
+    // let the filtered head settle onto the pointer when the mouse slows down or stops
+    if (review.hasFilter && !review.breakNext && review.pts.length &&
+        Math.hypot(review.rx - review.sx, review.ry - review.sy) > 0.35) {
+      stepTrailFilter(review.rx, review.ry, now);
+      more = true;
+    }
     drawTrail(now);
     if (review.pts.length) more = true;
+    maybeSpawnReviewSpark(now);
   }
   if (more) { review.raf = requestAnimationFrame(reviewFrame); } else review.lastFrame = 0;
 }
@@ -4670,28 +4788,85 @@ function drawLens() {
   c.fillRect(0, 0, review.lw, review.lh);
 }
 
-// Quadratic-midpoint smoothing: always stable (no overshoot loops on fast flicks) and passes close to every sample.
-function buildStroke(pts, i0, i1, life, now) {
+// ---- colour + sprites
+function hexToRgbArray(hex) {
+  const clean = String(hex || "").replace("#", "");
+  const full = clean.length === 3 ? clean.split("").map((ch) => ch + ch).join("") : clean;
+  const n = Number.parseInt(full, 16);
+  return Number.isNaN(n) ? [255, 104, 78] : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function reviewBaseColor() {
+  const id = state.prefs.reviewColor;
+  if (id === "auto") {
+    const effect = EFFECT_PRESETS[state.prefs.effectMode] || EFFECT_PRESETS[defaultSettings.effectMode];
+    return { rgb: hexToRgbArray(effect.primary), iris: false };
+  }
+  if (id === "iris") return { rgb: IRIS[0], iris: true };
+  const found = REVIEW.colors.find((c) => c.id === id) || REVIEW.colors[0];
+  return { rgb: found.rgb, iris: false };
+}
+
+function reviewSprite(layerIndex, rgb) {
+  const key = `${layerIndex}:${rgb[0]},${rgb[1]},${rgb[2]}:${review.dpr}`;
+  let cv = review.sprites.get(key);
+  if (cv) return cv;
+  const L = REVIEW.layers[layerIndex];
+  const px = Math.max(4, Math.ceil(L.R * 2 * review.dpr));
+  cv = document.createElement("canvas");
+  cv.width = cv.height = px;
+  const c = cv.getContext("2d");
+  const r = px / 2;
+  const col = L.white ? rgb.map((v) => Math.round(v + (255 - v) * L.white)) : rgb;
+  const g = c.createRadialGradient(r, r, 0, r, r, r);
+  for (let i = 0; i < L.stops.length; i++) g.addColorStop(L.stops[i][0], `rgba(${col[0]},${col[1]},${col[2]},${L.stops[i][1]})`);
+  c.fillStyle = g;
+  c.fillRect(0, 0, px, px);
+  if (review.sprites.size > 160) review.sprites.clear();
+  review.sprites.set(key, cv);
+  return cv;
+}
+
+// ---- smooth curve: centripetal Catmull-Rom through the filtered points, sampled every `spacing` px
+function buildPath(pts, i0, i1, spacing) {
   const vx = review.vx, vy = review.vy, vt = review.vt;
   vx.length = vy.length = vt.length = 0;
   const n = i1 - i0;
-  const P = (i) => pts[i0 + i];
-  const push = (x, y, t) => { vx.push(x); vy.push(y); vt.push(t); };
-  push(P(0).x, P(0).y, P(0).t);
-  if (n === 2) { push(P(1).x, P(1).y, P(1).t); return; }
-  for (let i = 1; i < n - 1; i++) {
-    const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1);
-    const ax = (p0.x + p1.x) / 2, ay = (p0.y + p1.y) / 2, at = (p0.t + p1.t) / 2;
-    const bx = (p1.x + p2.x) / 2, by = (p1.y + p2.y) / 2, bt = (p1.t + p2.t) / 2;
-    push(ax, ay, at);
-    const len = Math.hypot(ax - p1.x, ay - p1.y) + Math.hypot(p1.x - bx, p1.y - by);
-    const steps = Math.max(1, Math.min(18, Math.ceil(len / 4)));
-    for (let k = 1; k <= steps; k++) {
-      const u = k / steps, v = 1 - u;
-      push(v * v * ax + 2 * v * u * p1.x + u * u * bx, v * v * ay + 2 * v * u * p1.y + u * u * by, at + (bt - at) * u);
+  // two passes of a [1 2 1]/4 kernel over the points (ends pinned) irons out whatever jitter the filter left
+  let sp = [];
+  for (let k = 0; k < n; k++) sp.push({ x: pts[i0 + k].x, y: pts[i0 + k].y, t: pts[i0 + k].t });
+  for (let pass = 0; pass < 2 && n > 3; pass++) {
+    const nx = sp.map((p) => ({ x: p.x, y: p.y, t: p.t }));
+    for (let k = 1; k < n - 1; k++) {
+      nx[k].x = sp[k - 1].x * 0.25 + sp[k].x * 0.5 + sp[k + 1].x * 0.25;
+      nx[k].y = sp[k - 1].y * 0.25 + sp[k].y * 0.5 + sp[k + 1].y * 0.25;
+    }
+    sp = nx;
+  }
+  const at = (k) => sp[k];
+  for (let k = 0; k < n - 1; k++) {
+    const p1 = at(k), p2 = at(k + 1);
+    const p0 = k > 0 ? at(k - 1) : { x: 2 * p1.x - p2.x, y: 2 * p1.y - p2.y };
+    const p3 = k < n - 2 ? at(k + 2) : { x: 2 * p2.x - p1.x, y: 2 * p2.y - p1.y };
+    const d12 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const steps = Math.max(1, Math.min(300, Math.ceil(d12 / spacing)));
+    if (k === 0) { vx.push(p1.x); vy.push(p1.y); vt.push(p1.t); }
+    const t0 = 0;
+    const t1 = t0 + Math.sqrt(Math.max(1e-3, Math.hypot(p1.x - p0.x, p1.y - p0.y)));
+    const t2 = t1 + Math.sqrt(Math.max(1e-3, d12));
+    const t3 = t2 + Math.sqrt(Math.max(1e-3, Math.hypot(p3.x - p2.x, p3.y - p2.y)));
+    for (let s = 1; s <= steps; s++) {
+      const f = s / steps, t = t1 + (t2 - t1) * f;
+      const a1x = (p0.x * (t1 - t) + p1.x * (t - t0)) / (t1 - t0), a1y = (p0.y * (t1 - t) + p1.y * (t - t0)) / (t1 - t0);
+      const a2x = (p1.x * (t2 - t) + p2.x * (t - t1)) / (t2 - t1), a2y = (p1.y * (t2 - t) + p2.y * (t - t1)) / (t2 - t1);
+      const a3x = (p2.x * (t3 - t) + p3.x * (t - t2)) / (t3 - t2), a3y = (p2.y * (t3 - t) + p3.y * (t - t2)) / (t3 - t2);
+      const b1x = (a1x * (t2 - t) + a2x * (t - t0)) / (t2 - t0), b1y = (a1y * (t2 - t) + a2y * (t - t0)) / (t2 - t0);
+      const b2x = (a2x * (t3 - t) + a3x * (t - t1)) / (t3 - t1), b2y = (a2y * (t3 - t) + a3y * (t - t1)) / (t3 - t1);
+      vx.push((b1x * (t2 - t) + b2x * (t - t1)) / (t2 - t1));
+      vy.push((b1y * (t2 - t) + b2y * (t - t1)) / (t2 - t1));
+      vt.push(p1.t + (p2.t - p1.t) * f);
     }
   }
-  push(P(n - 1).x, P(n - 1).y, P(n - 1).t);
 }
 
 function drawTrail(now) {
@@ -4706,70 +4881,94 @@ function drawTrail(now) {
   if (drop) pts.splice(0, drop);
   if (!pts.length) { review.box = null; return; }
 
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const B = REVIEW.bands;
-  const intensity = (t) => { const a = (now - t) / life; return a >= 1 ? 0 : Math.pow(1 - Math.max(0, a), 1.6); };
+  const base = reviewBaseColor();
+  const sizeMul = REVIEW.sizes[state.prefs.reviewSize] || 1;
+  const intensity = (t) => { const a = (now - t) / life; return a >= 1 ? 0 : Math.pow(1 - Math.max(0, a), 1.5); };
+  const colorAt = (t) => base.iris ? IRIS[Math.floor(((t * 0.09) % 360) / 15) % 24] : base.rgb;
 
+  let totalLen = 0;
+  for (let i = 1; i < pts.length; i++) if (!pts[i].b) totalLen += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  const spacing = Math.max(1.4, totalLen / 1800);                        // keeps very long, fast strokes affordable
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   let s = 0;
   while (s < pts.length) {
     let e = s + 1;
     while (e < pts.length && !pts[e].b) e++;
     if (e - s >= 2) {
-      buildStroke(pts, s, e, life, now);
+      buildPath(pts, s, e, spacing);
       const vx = review.vx, vy = review.vy, vt = review.vt, n = vx.length;
-      // group consecutive segments of similar age into runs; each run is ONE stroked path, so there are no beaded joints
-      const runs = [];
-      if (vx[0] < minX) minX = vx[0]; if (vx[0] > maxX) maxX = vx[0];
-      if (vy[0] < minY) minY = vy[0]; if (vy[0] > maxY) maxY = vy[0];
-      let rs = 0, rb = -1;
-      for (let i = 1; i < n; i++) {
-        const I = (intensity(vt[i - 1]) + intensity(vt[i])) / 2;
-        const band = Math.min(B - 1, Math.floor(I * B));
-        if (rb === -1) rb = band;
-        if (band !== rb) { runs.push([rs, i - 1, rb]); rs = i - 1; rb = band; }
-        if (vx[i] < minX) minX = vx[i]; if (vx[i] > maxX) maxX = vx[i];
-        if (vy[i] < minY) minY = vy[i]; if (vy[i] > maxY) maxY = vy[i];
-      }
-      runs.push([rs, n - 1, rb]);
-      c.lineJoin = "round";
       for (let li = 0; li < REVIEW.layers.length; li++) {
-        const L = REVIEW.layers[li];
-        c.lineCap = L.round ? "round" : "butt";
-        for (let r = 0; r < runs.length; r++) {
-          const run = runs[r], I = (run[2] + 0.5) / B;
-          if (I < 0.02) continue;
-          c.globalAlpha = Math.min(1, L.a * I * 1.05);
-          c.strokeStyle = `rgb(${L.rgb})`;
-          c.lineWidth = L.w * (0.28 + 0.72 * I);
-          c.beginPath();
-          c.moveTo(vx[run[0]], vy[run[0]]);
-          for (let j = run[0] + 1; j <= run[1]; j++) c.lineTo(vx[j], vy[j]);
-          c.stroke();
+        const L = REVIEW.layers[li], R = L.R * sizeMul;
+        for (let i = 0; i < n; i += L.stride) {
+          const I = intensity(vt[i]);
+          if (I < 0.015) continue;
+          const r = R * (0.38 + 0.62 * Math.pow(I, 0.6));                 // tail tapers to a hair
+          c.globalAlpha = Math.min(1, Math.pow(I, 0.8));
+          c.drawImage(reviewSprite(li, colorAt(vt[i])), vx[i] - r, vy[i] - r, r * 2, r * 2);
         }
       }
       c.globalAlpha = 1;
+      for (let i = 0; i < n; i += 4) {
+        if (vx[i] < minX) minX = vx[i]; if (vx[i] > maxX) maxX = vx[i];
+        if (vy[i] < minY) minY = vy[i]; if (vy[i] > maxY) maxY = vy[i];
+      }
+      if (vx[n - 1] < minX) minX = vx[n - 1]; if (vx[n - 1] > maxX) maxX = vx[n - 1];
+      if (vy[n - 1] < minY) minY = vy[n - 1]; if (vy[n - 1] > maxY) maxY = vy[n - 1];
     }
     s = e;
   }
 
-  // the pointer "dot": a tiny pale point with a soft warm bloom, fading with the trail when the mouse rests
+  // pointer dot: a slightly larger pale point at the head that fades with the line when the mouse rests
   const head = pts[pts.length - 1];
   const hi = intensity(head.t);
   if (hi > 0.02) {
-    const g = c.createRadialGradient(head.x, head.y, 0, head.x, head.y, 11);
-    g.addColorStop(0, `rgba(255,120,92,${(0.24 * hi).toFixed(3)})`);
-    g.addColorStop(1, "rgba(255,120,92,0)");
-    c.fillStyle = g;
-    c.beginPath(); c.arc(head.x, head.y, 11, 0, Math.PI * 2); c.fill();
-    c.fillStyle = `rgba(255,244,238,${(0.95 * hi).toFixed(3)})`;
-    c.beginPath(); c.arc(head.x, head.y, 1.15, 0, Math.PI * 2); c.fill();
+    const r = REVIEW.layers[2].R * sizeMul * 1.5;
+    c.globalAlpha = Math.min(1, hi);
+    c.drawImage(reviewSprite(1, colorAt(head.t)), head.x - r * 2, head.y - r * 2, r * 4, r * 4);
+    c.drawImage(reviewSprite(2, colorAt(head.t)), head.x - r, head.y - r, r * 2, r * 2);
+    c.globalAlpha = 1;
     minX = Math.min(minX, head.x); maxX = Math.max(maxX, head.x); minY = Math.min(minY, head.y); maxY = Math.max(maxY, head.y);
   }
   if (minX === Infinity) { review.box = null; return; }
-  const m = 16;
-  review.box = { x: Math.max(0, minX - m), y: Math.max(0, minY - m), w: Math.min(review.w, maxX + m) - Math.max(0, minX - m), h: Math.min(review.h, maxY + m) - Math.max(0, minY - m) };
+  const m = 28 * sizeMul;
+  const x0 = Math.max(0, minX - m), y0 = Math.max(0, minY - m);
+  review.box = { x: x0, y: y0, w: Math.min(review.w, maxX + m) - x0, h: Math.min(review.h, maxY + m) - y0 };
 }
 
+// ---- sparks: the app's own FX presets, emitted along the line while the pointer travels
+function maybeSpawnReviewSpark(now) {
+  const mode = state.prefs.reviewFx;
+  if (!mode || mode === "none" || !EFFECT_PRESETS[mode]) { review.sparkAcc = 0; return; }
+  if (reducedMotionQuery.matches || !review.pts.length) return;
+  if (review.sparkAcc < 30 || now - review.lastSpark < 65) return;
+  review.sparkAcc = 0; review.lastSpark = now;
+  const head = review.pts[review.pts.length - 1];
+  spawnReviewSpark(mode, head.x, head.y);
+}
+
+function spawnReviewSpark(mode, x, y) {
+  if (!fx.ctx) return;
+  const s = state.settings;
+  const startedAt = performance.now();
+  spawnEffectBurst(mode, {
+    x, y, glyphWidth: 12, glyphHeight: 18, settings: s, isSpecial: Math.random() < 0.12, keyType: "normal",
+    effectLevel: s.effectIntensity, speedScale: 1.18 - s.effectSpeed * 0.46, scale: 0.62, streak: 0
+  });
+  const id = state.prefs.reviewColor;
+  if (id === "auto") return;                          // keep the preset's own palette
+  // tint what was just emitted to the chosen laser colour (iris: hue of the moment)
+  const rgb = id === "iris" ? IRIS[Math.floor(((startedAt * 0.09) % 360) / 15) % 24] : reviewBaseColor().rgb;
+  const main = `#${rgb.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+  const light = `#${rgb.map((v) => Math.round(v + (255 - v) * 0.6).toString(16).padStart(2, "0")).join("")}`;
+  for (let i = fx.particles.length - 1; i >= 0; i--) {
+    const p = fx.particles[i];
+    if (p.start < startedAt - 1) break;
+    if (typeof p.colorA === "string" && p.colorA[0] === "#") p.colorA = light;
+    if (typeof p.colorB === "string" && p.colorB[0] === "#") p.colorB = main;
+    if (typeof p.color === "string" && p.color[0] === "#") p.color = main;
+  }
+}
 
 function setTypeTool(on) {
   if (on && typeof review !== "undefined" && review.on) setReview(false);
@@ -4792,7 +4991,7 @@ function cacheRefs() {
     "settingsPanel", "closeSettingsBtn", "moodGrid", "tryNote", "intensityRange", "intensityReadout",
     "volumeRange", "volumeReadout", "fontSelect", "fontSizeRange", "fontSizeReadout", "inkColorRow",
     "effectModeSelect", "soundPackSelect", "inkLayer", "fxCanvas", "caretGlow", "toast",
-    "reviewBtn", "reviewLens", "reviewTrail"
+    "reviewBtn", "reviewLens", "reviewTrail", "reviewDock", "reviewColors", "reviewFxSelect", "reviewSize"
   ].forEach((id) => { refs[id] = document.getElementById(id); });
 }
 

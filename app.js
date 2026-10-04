@@ -4574,7 +4574,7 @@ const REVIEW = {
     { id: "violet",   label: "Violet",   rgb: [140, 100, 238] },
     { id: "graphite", label: "Graphite", rgb: [64, 66, 78] },
     { id: "iris",     label: "Iris (hue drifts along the line)", rgb: null },
-    { id: "auto",     label: "Auto (follows your typing FX colour)", rgb: null }
+    { id: "auto",     label: "Auto (the effect's own colours)", rgb: null }
   ],
   sizes: { s: 0.74, m: 1, l: 1.45 },
   // The line is stamped from soft sprites along a smooth curve: a faint halo, a body, a pale core.
@@ -4595,7 +4595,8 @@ const review = {
   sx: 0, sy: 0, st: 0, rx: 0, ry: 0, prx: 0, pry: 0,   // low-pass filter state + last raw pointer
   mx: 0, my: 0, lx: 0, ly: 0, sparkAcc: 0, lastSpark: 0,
   lensCtx: null, trailCtx: null, dpr: 1, w: 0, h: 0, lw: 0, lh: 0, box: null,
-  stops: null, vx: [], vy: [], vt: [], sprites: new Map()
+  stops: null, vx: [], vy: [], vt: [], sprites: new Map(),
+  parts: [], emitT: 0, emitAcc: 0, gap: 24, lastMoveT: 0, restFired: true, pal: null, bb: null, now: 0, life: 1700, styles: new Map()
 };
 
 // If index.html / styles.css are older than app.js (a very common deploy mix-up), build the missing pieces here so
@@ -4713,7 +4714,7 @@ function setReview(on) {
     reviewResize();
     if (!review.hinted) { review.hinted = true; toast("Review — 페이지 위에서 마우스를 움직여 보세요. Esc로 종료."); }
   } else {
-    review.pts.length = 0; review.inside = false; review.lensReady = false; review.breakNext = true; review.hasFilter = false;
+    review.pts.length = 0; review.parts.length = 0; review.emitAcc = 0; review.inside = false; review.lensReady = false; review.breakNext = true; review.hasFilter = false;
     refs.reviewLens.classList.remove("on");
     clearTrailCanvas();
   }
@@ -4741,6 +4742,7 @@ function onReviewMove(event) {
   } else {
     review.breakNext = true; review.hasFilter = false;   // never join a stroke across the desk / gaps between pages
   }
+  if (overPage) { review.lastMoveT = now; review.restFired = false; }
   review.mx = event.clientX; review.my = event.clientY;
   if (!review.inside) { review.inside = true; review.lensReady = false; refs.reviewLens.classList.add("on"); }
   scheduleReview();
@@ -4765,7 +4767,7 @@ function stepTrailFilter(x, y, t) {
   review.st = t; review.prx = review.rx = x; review.pry = review.ry = y;
   const last = review.pts[review.pts.length - 1];
   const seg = Math.hypot(review.sx - last.x, review.sy - last.y);
-  if (seg >= 0.7) { review.pts.push({ x: review.sx, y: review.sy, t, b: false }); review.sparkAcc += seg; }
+  if (seg >= 0.7) { review.pts.push({ x: review.sx, y: review.sy, t, b: false }); }
 }
 
 function onReviewLeave() {
@@ -4810,9 +4812,10 @@ function reviewFrame(now) {
       stepTrailFilter(review.rx, review.ry, now);
       more = true;
     }
+    review.pal = reviewPalette();
+    emitAlongLine(now);
     drawTrail(now);
-    if (review.pts.length) more = true;
-    maybeSpawnReviewSpark(now);
+    if (review.pts.length || review.parts.length) more = true;
   }
   if (more) { review.raf = requestAnimationFrame(reviewFrame); } else review.lastFrame = 0;
 }
@@ -4835,19 +4838,30 @@ function hexToRgbArray(hex) {
   return Number.isNaN(n) ? [255, 104, 78] : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+function autoPreset() {
+  return EFFECT_PRESETS[state.prefs.reviewFx] || EFFECT_PRESETS[state.prefs.effectMode] || EFFECT_PRESETS[defaultSettings.effectMode];
+}
+
 function reviewBaseColor() {
   const id = state.prefs.reviewColor;
-  if (id === "auto") {
-    const effect = EFFECT_PRESETS[state.prefs.effectMode] || EFFECT_PRESETS[defaultSettings.effectMode];
-    return { rgb: hexToRgbArray(effect.primary), iris: false };
-  }
+  if (id === "auto") return { rgb: hexToRgbArray(autoPreset().primary), iris: false };
   if (id === "iris") return { rgb: IRIS[0], iris: true };
   const found = REVIEW.colors.find((c) => c.id === id) || REVIEW.colors[0];
   return { rgb: found.rgb, iris: false };
 }
 
-function reviewSprite(layerIndex, rgb) {
-  const key = `${layerIndex}:${rgb[0]},${rgb[1]},${rgb[2]}:${review.dpr}`;
+// one palette per frame, shared by the line and everything the effect sheds
+function reviewPalette() {
+  const id = state.prefs.reviewColor;
+  const base = reviewBaseColor();
+  if (id === "auto") { const e = autoPreset(); return { auto: true, iris: false, base: base.rgb, p1: hexToRgbArray(e.primary), p2: hexToRgbArray(e.secondary) }; }
+  return { auto: false, iris: base.iris, base: base.rgb };
+}
+
+function reviewSprite(layerIndex, rgb, gain = 1) {
+  const q = (v) => (v & 0xf8) | 4;                   // quantise so soft random tints share sprites
+  const r0 = q(rgb[0]), g0 = q(rgb[1]), b0 = q(rgb[2]);
+  const key = `${layerIndex}:${r0},${g0},${b0}:${gain.toFixed(2)}:${review.dpr}`;
   let cv = review.sprites.get(key);
   if (cv) return cv;
   const L = REVIEW.layers[layerIndex];
@@ -4856,12 +4870,12 @@ function reviewSprite(layerIndex, rgb) {
   cv.width = cv.height = px;
   const c = cv.getContext("2d");
   const r = px / 2;
-  const col = L.white ? rgb.map((v) => Math.round(v + (255 - v) * L.white)) : rgb;
+  const col = L.white ? [r0, g0, b0].map((v) => Math.round(v + (255 - v) * L.white)) : [r0, g0, b0];
   const g = c.createRadialGradient(r, r, 0, r, r, r);
-  for (let i = 0; i < L.stops.length; i++) g.addColorStop(L.stops[i][0], `rgba(${col[0]},${col[1]},${col[2]},${L.stops[i][1]})`);
+  for (let i = 0; i < L.stops.length; i++) g.addColorStop(L.stops[i][0], `rgba(${col[0]},${col[1]},${col[2]},${Math.min(1, L.stops[i][1] * gain).toFixed(3)})`);
   c.fillStyle = g;
   c.fillRect(0, 0, px, px);
-  if (review.sprites.size > 160) review.sprites.clear();
+  if (review.sprites.size > 400) review.sprites.clear();
   review.sprites.set(key, cv);
   return cv;
 }
@@ -4908,6 +4922,325 @@ function buildPath(pts, i0, i1, spacing) {
   }
 }
 
+// ==== Beam-born FX =============================================================================================
+// The old approach fired the app's typing bursts at the pointer, so they looked pasted on. Now every review effect is
+// part of the beam itself: it is drawn on the same canvas with the same colour, is born ON the line at the moment the
+// line passes, is tied to the line's age (twinkles fade as their stretch of beam fades), and gets a small flourish when
+// the pointer comes to rest. Each of the 24 presets keeps its own character through one of a few "vocabularies".
+const RV_ARCH = {
+  glint: {   // calm light: four-point twinkles set into the beam, a few motes
+    shimmer: { shape: "star4", every: 42, prob: 0.72, size: [7, 13], life: 900 },
+    shed: { gap: 20, shape: "dot", size: [2, 4.2], speed: [18, 56], dir: "normal", lift: -10, life: [480, 860] },
+    rest: { count: 6, shape: "star4", size: [3.5, 6.5], speed: [26, 62], life: [520, 860] },
+    line: { halo: 1.25, core: 1.1 }
+  },
+  dust: {    // matte: soft drifting particles, a quiet line
+    shimmer: null,
+    shed: { gap: 16, shape: "smoke", size: [5, 11], speed: [6, 18], dir: "normal", lift: -22, life: [760, 1250], alpha: 0.24 },
+    rest: { count: 5, shape: "smoke", size: [6, 12], speed: [10, 26], life: [800, 1200], alpha: 0.26 },
+    line: { halo: 0.8, core: 0.9 }
+  },
+  ink: {     // drops that gather and fall
+    shimmer: { shape: "drop", every: 90, prob: 0.35, size: [2, 3.6], life: 520 },
+    shed: { gap: 22, shape: "drop", size: [1.8, 3.6], speed: [8, 26], dir: "down", grav: 240, life: [520, 920] },
+    rest: { count: 4, shape: "drop", size: [2.2, 4], speed: [14, 40], grav: 240, life: [560, 900] },
+    line: { halo: 0.45, core: 1 }
+  },
+  petal: {   // petals that tumble away from the beam
+    shimmer: null,
+    shed: { gap: 30, shape: "petal", size: [4, 7.5], speed: [10, 30], dir: "normal", lift: -8, grav: 70, spin: 3.2, life: [850, 1350] },
+    rest: { count: 6, shape: "petal", size: [4, 7], speed: [20, 50], grav: 70, spin: 3, life: [900, 1300] },
+    line: { halo: 0.9, core: 0.95 }
+  },
+  bubble: {  // rings that bloom on the beam and bubbles that rise
+    shimmer: { shape: "ring", every: 70, prob: 0.5, size: [4, 9], life: 820 },
+    shed: { gap: 28, shape: "ring", size: [3, 7], speed: [6, 20], dir: "up", grav: -50, life: [620, 1100] },
+    rest: { count: 4, shape: "ring", size: [4, 8], speed: [10, 30], grav: -50, life: [700, 1100] },
+    line: { halo: 1, core: 1 }
+  },
+  pixel: {   // snapping squares
+    shimmer: { shape: "square", every: 60, prob: 0.55, size: [3, 5], life: 560 },
+    shed: { gap: 24, shape: "square", size: [2.5, 4.5], speed: [10, 38], dir: "normal", grav: 90, life: [420, 760], snap: 3 },
+    rest: { count: 7, shape: "square", size: [2.5, 4.5], speed: [20, 60], grav: 90, life: [460, 760], snap: 3 },
+    line: { halo: 0.7, core: 1.05 }
+  },
+  glow: {    // warm orbs drifting up
+    shimmer: { shape: "dot", every: 60, prob: 0.5, size: [3, 6], life: 900 },
+    shed: { gap: 22, shape: "ember", size: [2.4, 5], speed: [8, 26], dir: "up", lift: -70, life: [850, 1450], flicker: true },
+    rest: { count: 6, shape: "ember", size: [2.6, 5], speed: [14, 36], lift: -70, life: [900, 1400], flicker: true },
+    line: { halo: 1.6, core: 1.1 }
+  },
+  electric: { // crisp streaks and ticks, a hot core
+    shimmer: { shape: "tick", every: 40, prob: 0.6, size: [6, 11], life: 560 },
+    shed: { gap: 16, shape: "streak", size: [5, 10], speed: [50, 130], dir: "normal", life: [320, 580] },
+    rest: { count: 7, shape: "streak", size: [5, 10], speed: [70, 150], life: [340, 580] },
+    line: { halo: 1.7, core: 1.25 }
+  }
+};
+const RV_FX = {
+  "soft-spark": ["glint"],
+  "star-dust": ["glint", { shimmer: { every: 38, prob: 0.7, size: [4, 9] }, shed: { gap: 18, shape: "star4", size: [2, 4.2] } }],
+  "crystal-glass": ["glint", { shimmer: { shape: "shard", size: [4, 8] }, shed: { shape: "shard", size: [2.5, 5] }, rest: { shape: "shard" } }],
+  "constellation": ["glint", { shimmer: { every: 55, prob: 0.75, size: [6, 10], life: 1400, link: true }, shed: null }],
+  "moon-pearl": ["glint", { shimmer: { shape: "pearl", size: [3, 6] }, shed: { shape: "pearl", size: [2, 3.6] }, rest: { shape: "pearl" }, line: { halo: 1.1 } }],
+  "paper-fiber": ["dust", { shed: { shape: "fiber", size: [3.5, 6.5], alpha: 0.6, spin: 1.5 }, rest: { shape: "fiber", alpha: 0.6 } }],
+  "velvet-smoke": ["dust", { shed: { size: [8, 15], alpha: 0.18, life: [900, 1500] }, line: { halo: 0.6 } }],
+  "aurora-veil": ["dust", { hue: true, shed: { size: [6, 13] }, line: { halo: 1.3 } }],
+  "ink": ["ink"],
+  "petal-bloom": ["petal"],
+  "candy-pop": ["bubble", { shimmer: { shape: "dot", size: [3, 6] }, shed: { shape: "dot", size: [2.5, 5], speed: [20, 60], dir: "out", grav: 140, life: [420, 720] }, rest: { shape: "dot", grav: 140 }, line: { halo: 1.1 } }],
+  "bubble": ["bubble"],
+  "ripple-lens": ["bubble", { shimmer: { every: 58, size: [6, 13], life: 920 }, shed: null }],
+  "pixel": ["pixel"],
+  "keycap-pop": ["pixel", { shimmer: { shape: "keycap" }, shed: { shape: "keycap", size: [3, 5] }, rest: { shape: "keycap" } }],
+  "magnetic-flip": ["pixel", { shimmer: { shape: "flip" }, shed: { shape: "flip" }, rest: { shape: "flip" } }],
+  "mosaic-shift": ["pixel", { hue: true, shimmer: { every: 40, prob: 0.7, size: [3.5, 6] }, shed: { gap: 16, size: [3, 5] } }],
+  "firefly-glow": ["glow"],
+  "ember-glow": ["glow", { shed: { lift: -90, size: [2, 4] }, line: { halo: 1.4 } }],
+  "electric": ["electric", { shimmer: { every: 36 } }],
+  "cyber-pink": ["electric"],
+  "neon-rain": ["electric", { shimmer: null, shed: { dir: "down", grav: 520, speed: [10, 40], size: [5, 10], life: [360, 640] }, rest: { dir: "down", grav: 520 } }],
+  "laser-etch": ["electric", { shimmer: { every: 34, prob: 0.8, size: [4, 7] }, shed: null, line: { halo: 0.8, core: 1.35 } }],
+  "plasma-thread": ["electric", { shed: { size: [7, 13], speed: [30, 80], life: [300, 520] }, line: { halo: 1.9 } }]
+};
+
+function reviewStyle(mode) {
+  if (!mode || mode === "none") return null;
+  if (review.styles.has(mode)) return review.styles.get(mode);
+  const def = RV_FX[mode] || RV_FX["soft-spark"];
+  const out = {};
+  const base = RV_ARCH[def[0]], over = def[1] || {};
+  Object.keys(base).forEach((k) => { out[k] = base[k] && typeof base[k] === "object" ? { ...base[k] } : base[k]; });
+  Object.keys(over).forEach((k) => {
+    if (over[k] === null) out[k] = null;
+    else if (typeof over[k] === "object" && !Array.isArray(over[k]) && out[k]) out[k] = { ...out[k], ...over[k] };
+    else out[k] = over[k];
+  });
+  review.styles.set(mode, out);
+  return out;
+}
+
+const RV_ENV = { a: 0, s: 1 };
+function rvEnvelope(u) {                           // pop in, hold, ease out
+  RV_ENV.a = u < 0.1 ? u / 0.1 : Math.pow(Math.max(0, 1 - (u - 0.1) / 0.9), 1.25);
+  RV_ENV.s = u < 0.16 ? 0.3 + 0.9 * (u / 0.16) : 1.2 - 0.5 * ((u - 0.16) / 0.84);
+  return RV_ENV;
+}
+function rvHash(n) { const h = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return h - Math.floor(h); }
+function rvMix(a, b, t) { return [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)]; }
+function rvIntensity(t) { const a = (review.now - t) / review.life; return a >= 1 ? 0 : Math.pow(1 - Math.max(0, a), 1.5); }
+function rvAdd(x, y, r) {
+  const b = review.bb;
+  if (x - r < b.x0) b.x0 = x - r; if (x + r > b.x1) b.x1 = x + r;
+  if (y - r < b.y0) b.y0 = y - r; if (y + r > b.y1) b.y1 = y + r;
+}
+
+// colour of one particle: the beam's own colour (or the effect's palette in Auto), sometimes a touch lighter
+function rvColor(st, t, seed) {
+  const pal = review.pal;
+  let c;
+  if (pal.auto) c = rvHash(seed) > 0.45 ? pal.p1 : pal.p2;
+  else if (pal.iris) c = IRIS[Math.floor(((t * 0.09) % 360) / 15) % 24];
+  else c = pal.base;
+  if (st.hue) c = rvMix(c, IRIS[Math.floor(rvHash(seed + 3) * 24)], 0.4);
+  if (!pal.auto && rvHash(seed + 9) > 0.55) c = rvMix(c, [255, 255, 255], 0.3);
+  return c;
+}
+
+// every glyph is drawn translated to its centre so shapes stay simple
+function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
+  if (a <= 0.01 || r <= 0.25) return;
+  const solid = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+  c.save();
+  c.translate(x, y);
+  switch (shape) {
+    case "star4": {
+      c.globalAlpha = a * 0.34;
+      c.drawImage(reviewSprite(1, rgb), -r * 1.5, -r * 1.5, r * 3, r * 3);
+      c.rotate(rot); c.globalAlpha = a; c.fillStyle = solid;
+      c.beginPath(); c.moveTo(0, -r); c.quadraticCurveTo(0, 0, r, 0); c.quadraticCurveTo(0, 0, 0, r);
+      c.quadraticCurveTo(0, 0, -r, 0); c.quadraticCurveTo(0, 0, 0, -r); c.fill();
+      c.globalAlpha = a * 0.9; c.fillStyle = "#fff"; c.beginPath(); c.arc(0, 0, Math.max(0.5, r * 0.2), 0, 6.283); c.fill();
+      break;
+    }
+    case "dot": case "smoke": case "ember": {
+      const k = shape === "smoke" ? 3.2 : shape === "ember" ? 3.2 : 3;
+      c.globalAlpha = a * (shape === "ember" ? 0.75 : 1);
+      c.drawImage(reviewSprite(1, rgb), -r * k / 2, -r * k / 2, r * k, r * k);
+      if (shape !== "smoke") {
+        c.globalAlpha = a * 0.85; c.fillStyle = shape === "ember" ? `rgb(255,${Math.min(255, rgb[1] + 90)},${Math.min(255, rgb[2] + 110)})` : "#fff";
+        c.beginPath(); c.arc(0, 0, Math.max(0.5, r * 0.36), 0, 6.283); c.fill();
+      }
+      break;
+    }
+    case "pearl": {
+      c.globalAlpha = a; c.drawImage(reviewSprite(1, rgb), -r * 1.5, -r * 1.5, r * 3, r * 3);
+      c.strokeStyle = solid; c.lineWidth = 0.9; c.globalAlpha = a * 0.55; c.beginPath(); c.arc(0, 0, r * 1.25, 0, 6.283); c.stroke();
+      c.globalAlpha = a * 0.9; c.fillStyle = "#fff"; c.beginPath(); c.arc(-r * 0.25, -r * 0.25, Math.max(0.4, r * 0.3), 0, 6.283); c.fill();
+      break;
+    }
+    case "drop": {
+      c.globalAlpha = a * 0.88; c.fillStyle = solid; c.beginPath(); c.arc(0, 0, r, 0, 6.283); c.fill();
+      c.globalAlpha = a * 0.7; c.fillStyle = "#fff"; c.beginPath(); c.arc(-r * 0.3, -r * 0.3, Math.max(0.4, r * 0.28), 0, 6.283); c.fill();
+      break;
+    }
+    case "ring": {
+      c.globalAlpha = a * 0.9; c.strokeStyle = solid; c.lineWidth = 1.15;
+      c.beginPath(); c.arc(0, 0, r * (0.55 + 0.95 * prog), 0, 6.283); c.stroke();
+      c.globalAlpha = a * 0.3; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, r * (0.55 + 0.95 * prog), 0, 6.283); c.stroke();
+      break;
+    }
+    case "square": case "keycap": case "flip": {
+      const w = shape === "flip" ? Math.max(0.12, Math.abs(Math.cos(prog * 7 + seed))) : 1;
+      c.globalAlpha = a; c.fillStyle = solid;
+      if (shape === "keycap" && c.roundRect) { c.beginPath(); c.roundRect(-r, -r, r * 2, r * 2, r * 0.38); c.fill(); }
+      else c.fillRect(-r * w, -r, r * 2 * w, r * 2);
+      if (shape !== "square") { c.globalAlpha = a * 0.55; c.fillStyle = "#fff"; c.fillRect(-r * w * 0.7, -r * 0.8, r * 1.4 * w, Math.max(0.6, r * 0.28)); }
+      break;
+    }
+    case "petal": {
+      c.rotate(rot); c.globalAlpha = a * 0.92; c.fillStyle = solid;
+      c.beginPath(); c.ellipse(0, 0, r * 1.15, r * 0.6, 0, 0, 6.283); c.fill();
+      c.globalAlpha = a * 0.4; c.strokeStyle = "#fff"; c.lineWidth = 0.7; c.beginPath(); c.moveTo(-r * 0.9, 0); c.lineTo(r * 0.9, 0); c.stroke();
+      break;
+    }
+    case "streak": {
+      c.rotate(rot); c.lineCap = "round"; c.strokeStyle = solid; c.globalAlpha = a * 0.9; c.lineWidth = Math.max(1.1, r * 0.26);
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(-r * 2, 0); c.stroke();
+      c.strokeStyle = "#fff"; c.globalAlpha = a * 0.55; c.lineWidth = 0.7; c.beginPath(); c.moveTo(0, 0); c.lineTo(-r * 1.2, 0); c.stroke();
+      break;
+    }
+    case "tick": {
+      c.rotate(rot); c.lineCap = "round"; c.strokeStyle = solid; c.globalAlpha = a * 0.85; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(0, -r * 0.55); c.lineTo(0, r * 0.55); c.stroke();
+      c.strokeStyle = "#fff"; c.globalAlpha = a * 0.6; c.lineWidth = 0.7; c.beginPath(); c.moveTo(0, -r * 0.4); c.lineTo(0, r * 0.4); c.stroke();
+      break;
+    }
+    case "shard": {
+      c.rotate(rot); c.fillStyle = solid; c.globalAlpha = a * 0.55;
+      c.beginPath(); c.moveTo(0, -r * 1.2); c.lineTo(r * 0.6, 0); c.lineTo(0, r * 1.2); c.lineTo(-r * 0.6, 0); c.closePath(); c.fill();
+      c.globalAlpha = a * 0.75; c.strokeStyle = "#fff"; c.lineWidth = 0.8; c.stroke();
+      break;
+    }
+    case "fiber": {
+      c.rotate(rot); c.lineCap = "round"; c.strokeStyle = solid; c.globalAlpha = a; c.lineWidth = 1.1;
+      c.beginPath(); c.moveTo(-r, 0); c.quadraticCurveTo(0, -r * 0.8, r, 0); c.stroke();
+      break;
+    }
+  }
+  c.restore();
+}
+
+// ---- along-the-line twinkles: stateless. Time is cut into short cells; a cell may place a glyph on the beam at the
+// spot the pointer was passing at that moment, and the glyph lives and fades with that stretch of line.
+function drawShimmer(c, st, now, vx, vy, vt, n, sz) {
+  const sp = st.shimmer;
+  if (!sp || n < 2) return;
+  const t0 = vt[0], t1 = vt[n - 1];
+  const k0 = Math.floor((now - sp.life) / sp.every), k1 = Math.floor(now / sp.every);
+  let prev = null;
+  for (let k = k0; k <= k1; k++) {
+    if (rvHash(k) > sp.prob) continue;
+    const tc = (k + rvHash(k + 977)) * sp.every;
+    if (tc < t0 || tc > t1) continue;
+    const age = now - tc;
+    if (age < 0 || age > sp.life) continue;
+    let lo = 0, hi = n - 1;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (vt[mid] <= tc) lo = mid; else hi = mid; }
+    const f = vt[hi] > vt[lo] ? (tc - vt[lo]) / (vt[hi] - vt[lo]) : 0;
+    const dx = vx[hi] - vx[lo], dy = vy[hi] - vy[lo], dl = Math.hypot(dx, dy) || 1;
+    const nx = -dy / dl, ny = dx / dl, off = (rvHash(k + 31) - 0.5) * 5 * sz;
+    const x = vx[lo] + dx * f + nx * off, y = vy[lo] + dy * f + ny * off;
+    const u = age / sp.life, env = rvEnvelope(u);
+    const a = env.a * (0.25 + 0.75 * rvIntensity(tc));
+    const r = (sp.size[0] + (sp.size[1] - sp.size[0]) * rvHash(k + 57)) * sz * env.s;
+    const rot = sp.shape === "tick" ? Math.atan2(ny, nx) + Math.PI / 2 : rvHash(k + 5) * 1.57 + age * 0.0012;
+    const col = rvColor(st, tc, k);
+    if (sp.link && prev && Math.hypot(prev.x - x, prev.y - y) < 170) {      // constellation: hairlines between neighbours
+      c.globalAlpha = 0.5 * Math.min(prev.a, a); c.strokeStyle = `rgb(${col[0]},${col[1]},${col[2]})`; c.lineWidth = 0.8;
+      c.beginPath(); c.moveTo(prev.x, prev.y); c.lineTo(x, y); c.stroke();
+    }
+    drawGlyph(c, sp.shape, x, y, r, rot, col, a, u, k);
+    rvAdd(x, y, r * 3.2);
+    prev = { x, y, a };
+  }
+  c.globalAlpha = 1;
+}
+
+// ---- shed particles: born on the beam as it passes (distance based), drift away, fade
+function spawnReviewParticle(spec, st, x, y, t, travelAng, tvx, tvy, burst) {
+  const R = Math.random;
+  let ang;
+  if (burst || spec.dir === "out") ang = R() * 6.283;
+  else if (spec.dir === "up") ang = -1.5708 + (R() - 0.5) * 1.4;
+  else if (spec.dir === "down") ang = 1.5708 + (R() - 0.5) * 1.1;
+  else ang = travelAng + (R() < 0.5 ? 1 : -1) * 1.5708 + (R() - 0.5) * 1.0;
+  const sp = (spec.speed[0] + (spec.speed[1] - spec.speed[0]) * R()) * (burst ? 1.3 : 1);
+  if (review.parts.length >= 170) review.parts.splice(0, review.parts.length - 169);
+  const seed = R() * 1000;
+  review.parts.push({
+    x, y, t0: t, life: (spec.life[0] + (spec.life[1] - spec.life[0]) * R()) * (burst ? 0.92 : 1),
+    vx: Math.cos(ang) * sp + tvx * 0.12, vy: Math.sin(ang) * sp + tvy * 0.12, ay: (spec.grav || 0) + (spec.lift || 0),
+    size: spec.size[0] + (spec.size[1] - spec.size[0]) * R(), shape: spec.shape, rot: R() * 6.283, spin: (spec.spin || 0) * (R() - 0.5) * 2,
+    seed, alpha: spec.alpha || 1, flicker: !!spec.flicker, snap: spec.snap || 0, rgb: rvColor(st, t, seed)
+  });
+}
+
+function emitAlongLine(now) {
+  const pts = review.pts;
+  const st = reviewStyle(state.prefs.reviewFx);
+  if (!pts.length) return;
+  const lastT = pts[pts.length - 1].t;
+  if (!st || reducedMotionQuery.matches) { review.emitT = lastT; return; }
+  if (st.shed) {
+    let i0 = pts.length;
+    while (i0 > 0 && pts[i0 - 1].t > review.emitT) i0--;
+    let spawned = 0;
+    for (let i = Math.max(i0, 1); i < pts.length && spawned < 8; i++) {
+      const p = pts[i], q = pts[i - 1];
+      if (p.b) { review.emitAcc = 0; continue; }
+      const len = Math.hypot(p.x - q.x, p.y - q.y);
+      if (len < 0.01) continue;
+      const dx = (p.x - q.x) / len, dy = (p.y - q.y) / len, dtm = Math.max(1, p.t - q.t);
+      review.emitAcc += len;
+      while (review.emitAcc >= review.gap && spawned < 8) {
+        const d = Math.min(len, Math.max(0, len - (review.emitAcc - review.gap)));
+        review.emitAcc -= review.gap;
+        review.gap = st.shed.gap * (0.7 + Math.random() * 0.6);
+        const t = q.t + (p.t - q.t) * (d / len);
+        spawnReviewParticle(st.shed, st, q.x + dx * d, q.y + dy * d, Math.min(t, now), Math.atan2(dy, dx), dx * len / dtm * 1000, dy * len / dtm * 1000, false);
+        spawned++;
+      }
+    }
+  }
+  review.emitT = lastT;
+  // when the pointer comes to rest, the effect gives one small flourish at the head: it marks the spot being pointed at
+  if (st.rest && !review.restFired && review.hasFilter && pts.length > 3 && now - review.lastMoveT > 150) {
+    review.restFired = true;
+    const head = pts[pts.length - 1];
+    for (let i = 0; i < st.rest.count; i++) spawnReviewParticle(st.rest, st, head.x, head.y, now, 0, 0, 0, true);
+  }
+}
+
+function drawReviewParticles(c, st, now, sz) {
+  const parts = review.parts;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i], ageMs = now - p.t0;
+    if (ageMs >= p.life) { parts.splice(i, 1); continue; }
+    if (ageMs < 0) continue;
+    const u = ageMs / p.life, s = ageMs / 1000, e = Math.exp(-2.4 * s), f = (1 - e) / 2.4;
+    let x = p.x + p.vx * f, y = p.y + p.vy * f + 0.5 * p.ay * s * s;
+    if (p.snap) { x = Math.round(x / p.snap) * p.snap; y = Math.round(y / p.snap) * p.snap; }
+    const env = rvEnvelope(u);
+    let a = env.a * p.alpha;
+    if (p.flicker) a *= 0.75 + 0.25 * Math.sin(ageMs * 0.03 + p.seed);
+    const r = p.size * sz * env.s;
+    const rot = p.shape === "streak" ? Math.atan2(p.vy * e + p.ay * s, p.vx * e) : p.rot + p.spin * s;
+    drawGlyph(c, p.shape, x, y, r, rot, p.rgb, a, u, p.seed);
+    rvAdd(x, y, r * 3.2 + (p.shape === "streak" ? r * 2 : 0));
+  }
+}
+
 function drawTrail(now) {
   const c = review.trailCtx, dpr = review.dpr;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -4918,18 +5251,23 @@ function drawTrail(now) {
   let drop = 0;
   while (drop < pts.length && now - pts[drop].t > life) drop++;
   if (drop) pts.splice(0, drop);
-  if (!pts.length) { review.box = null; return; }
+  const st = reviewStyle(state.prefs.reviewFx);
+  if (!st) review.parts.length = 0;
+  if (!pts.length && !review.parts.length) { review.box = null; return; }
 
-  const base = reviewBaseColor();
+  review.now = now; review.life = life;
+  review.bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  const pal = review.pal || reviewPalette();
   const sizeMul = REVIEW.sizes[state.prefs.reviewSize] || 1;
-  const intensity = (t) => { const a = (now - t) / life; return a >= 1 ? 0 : Math.pow(1 - Math.max(0, a), 1.5); };
-  const colorAt = (t) => base.iris ? IRIS[Math.floor(((t * 0.09) % 360) / 15) % 24] : base.rgb;
+  const sz = Math.pow(sizeMul, 0.6) * 1.45;                                // glyphs grow gently with line thickness
+  const gain = st ? st.line : { halo: 1, core: 1 };
+  const lineGain = [gain.halo || 1, 1, gain.core || 1];
+  const colorAt = (t) => pal.iris ? IRIS[Math.floor(((t * 0.09) % 360) / 15) % 24] : pal.base;
 
   let totalLen = 0;
   for (let i = 1; i < pts.length; i++) if (!pts[i].b) totalLen += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
   const spacing = Math.max(1.4, totalLen / 1800);                        // keeps very long, fast strokes affordable
 
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   let s = 0;
   while (s < pts.length) {
     let e = s + 1;
@@ -4940,73 +5278,41 @@ function drawTrail(now) {
       for (let li = 0; li < REVIEW.layers.length; li++) {
         const L = REVIEW.layers[li], R = L.R * sizeMul;
         for (let i = 0; i < n; i += L.stride) {
-          const I = intensity(vt[i]);
+          const I = rvIntensity(vt[i]);
           if (I < 0.015) continue;
           const r = R * (0.38 + 0.62 * Math.pow(I, 0.6));                 // tail tapers to a hair
           c.globalAlpha = Math.min(1, Math.pow(I, 0.8));
-          c.drawImage(reviewSprite(li, colorAt(vt[i])), vx[i] - r, vy[i] - r, r * 2, r * 2);
+          c.drawImage(reviewSprite(li, colorAt(vt[i]), lineGain[li]), vx[i] - r, vy[i] - r, r * 2, r * 2);
         }
       }
       c.globalAlpha = 1;
-      for (let i = 0; i < n; i += 4) {
-        if (vx[i] < minX) minX = vx[i]; if (vx[i] > maxX) maxX = vx[i];
-        if (vy[i] < minY) minY = vy[i]; if (vy[i] > maxY) maxY = vy[i];
-      }
-      if (vx[n - 1] < minX) minX = vx[n - 1]; if (vx[n - 1] > maxX) maxX = vx[n - 1];
-      if (vy[n - 1] < minY) minY = vy[n - 1]; if (vy[n - 1] > maxY) maxY = vy[n - 1];
+      for (let i = 0; i < n; i += 4) rvAdd(vx[i], vy[i], 28 * sizeMul);
+      rvAdd(vx[n - 1], vy[n - 1], 28 * sizeMul);
+      if (st) drawShimmer(c, st, now, vx, vy, vt, n, sz);
     }
     s = e;
   }
 
   // pointer dot: a slightly larger pale point at the head that fades with the line when the mouse rests
-  const head = pts[pts.length - 1];
-  const hi = intensity(head.t);
-  if (hi > 0.02) {
-    const r = REVIEW.layers[2].R * sizeMul * 1.5;
-    c.globalAlpha = Math.min(1, hi);
-    c.drawImage(reviewSprite(1, colorAt(head.t)), head.x - r * 2, head.y - r * 2, r * 4, r * 4);
-    c.drawImage(reviewSprite(2, colorAt(head.t)), head.x - r, head.y - r, r * 2, r * 2);
-    c.globalAlpha = 1;
-    minX = Math.min(minX, head.x); maxX = Math.max(maxX, head.x); minY = Math.min(minY, head.y); maxY = Math.max(maxY, head.y);
+  if (pts.length) {
+    const head = pts[pts.length - 1];
+    const hi = rvIntensity(head.t);
+    if (hi > 0.02) {
+      const r = REVIEW.layers[2].R * sizeMul * 1.5;
+      c.globalAlpha = Math.min(1, hi);
+      c.drawImage(reviewSprite(1, colorAt(head.t)), head.x - r * 2, head.y - r * 2, r * 4, r * 4);
+      c.drawImage(reviewSprite(2, colorAt(head.t), lineGain[2]), head.x - r, head.y - r, r * 2, r * 2);
+      c.globalAlpha = 1;
+      rvAdd(head.x, head.y, r * 2.5);
+    }
   }
-  if (minX === Infinity) { review.box = null; return; }
-  const m = 28 * sizeMul;
-  const x0 = Math.max(0, minX - m), y0 = Math.max(0, minY - m);
-  review.box = { x: x0, y: y0, w: Math.min(review.w, maxX + m) - x0, h: Math.min(review.h, maxY + m) - y0 };
-}
+  if (st) drawReviewParticles(c, st, now, sz);
+  c.globalAlpha = 1;
 
-// ---- sparks: the app's own FX presets, emitted along the line while the pointer travels
-function maybeSpawnReviewSpark(now) {
-  const mode = state.prefs.reviewFx;
-  if (!mode || mode === "none" || !EFFECT_PRESETS[mode]) { review.sparkAcc = 0; return; }
-  if (reducedMotionQuery.matches || !review.pts.length) return;
-  if (review.sparkAcc < 30 || now - review.lastSpark < 65) return;
-  review.sparkAcc = 0; review.lastSpark = now;
-  const head = review.pts[review.pts.length - 1];
-  spawnReviewSpark(mode, head.x, head.y);
-}
-
-function spawnReviewSpark(mode, x, y) {
-  if (!fx.ctx) return;
-  const s = state.settings;
-  const startedAt = performance.now();
-  spawnEffectBurst(mode, {
-    x, y, glyphWidth: 12, glyphHeight: 18, settings: s, isSpecial: Math.random() < 0.12, keyType: "normal",
-    effectLevel: s.effectIntensity, speedScale: 1.18 - s.effectSpeed * 0.46, scale: 0.62, streak: 0
-  });
-  const id = state.prefs.reviewColor;
-  if (id === "auto") return;                          // keep the preset's own palette
-  // tint what was just emitted to the chosen laser colour (iris: hue of the moment)
-  const rgb = id === "iris" ? IRIS[Math.floor(((startedAt * 0.09) % 360) / 15) % 24] : reviewBaseColor().rgb;
-  const main = `#${rgb.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
-  const light = `#${rgb.map((v) => Math.round(v + (255 - v) * 0.6).toString(16).padStart(2, "0")).join("")}`;
-  for (let i = fx.particles.length - 1; i >= 0; i--) {
-    const p = fx.particles[i];
-    if (p.start < startedAt - 1) break;
-    if (typeof p.colorA === "string" && p.colorA[0] === "#") p.colorA = light;
-    if (typeof p.colorB === "string" && p.colorB[0] === "#") p.colorB = main;
-    if (typeof p.color === "string" && p.color[0] === "#") p.color = main;
-  }
+  const b = review.bb;
+  if (b.x0 === Infinity) { review.box = null; return; }
+  const x0 = Math.max(0, b.x0 - 4), y0 = Math.max(0, b.y0 - 4);
+  review.box = { x: x0, y: y0, w: Math.min(review.w, b.x1 + 4) - x0, h: Math.min(review.h, b.y1 + 4) - y0 };
 }
 
 function setTypeTool(on) {

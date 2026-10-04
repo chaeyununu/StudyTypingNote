@@ -1,132 +1,13 @@
 "use strict";
+/* Ink Over PDF — type on top of a PDF with sound and tiny sparks.
+ * Layout of this file:
+ *   1. Effect + sound data (spark styles, key sound packs)
+ *   2. Settings model (Moods + a handful of basics)
+ *   3. Typing feedback (spark engine, sound engine)
+ *   4. PDF viewer + notes
+ */
 
-const STORAGE_KEY = "study-nest-notes-v1";
-
-const DEFAULT_LABELS = [
-  "TOEFL",
-  "Reading",
-  "Writing",
-  "Vocabulary",
-  "Ideas",
-  "Research",
-  "Review"
-];
-
-const THEMES = {
-  "milk-cream": "Milk Cream",
-  "peach-cloud": "Peach Cloud",
-  "lavender-study": "Lavender Study",
-  "mint-calm": "Mint Calm",
-  "classic-ivory": "Classic Ivory"
-};
-
-const FONTS = {
-  rounded: {
-    label: "Soft Sans",
-    stack: "\"Pretendard Variable\", Pretendard, \"Apple SD Gothic Neo\", \"Malgun Gothic\", \"Noto Sans KR\", \"Segoe UI\", Arial, sans-serif"
-  },
-  serif: {
-    label: "Paper Serif",
-    stack: "\"Fraunces\", \"Noto Serif KR\", Georgia, Batang, \"Apple SD Gothic Neo\", serif"
-  },
-  clean: {
-    label: "Clean Study",
-    stack: "\"Pretendard Variable\", Pretendard, Aptos, \"Segoe UI\", \"Apple SD Gothic Neo\", \"Noto Sans KR\", Arial, sans-serif"
-  },
-  mono: {
-    label: "Quiet Mono",
-    stack: "\"Cascadia Code\", D2Coding, Consolas, \"Malgun Gothic\", monospace"
-  },
-  notoSansKr: {
-    label: "Noto Sans KR",
-    stack: "\"Noto Sans KR\", \"Noto Sans\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", \"Segoe UI\", sans-serif"
-  },
-  gowunDodum: {
-    label: "Gowun Dodum",
-    stack: "\"Gowun Dodum\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", sans-serif"
-  },
-  gowunBatang: {
-    label: "Gowun Batang",
-    stack: "\"Gowun Batang\", \"Noto Serif KR\", Batang, \"Apple SD Gothic Neo\", serif"
-  },
-  nanumMyeongjo: {
-    label: "Nanum Myeongjo",
-    stack: "\"Nanum Myeongjo\", \"Noto Serif KR\", Batang, \"Apple SD Gothic Neo\", serif"
-  },
-  compact: {
-    label: "Compact Plex",
-    stack: "\"IBM Plex Sans KR\", \"IBM Plex Sans\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", \"Segoe UI\", sans-serif"
-  },
-  codeMono: {
-    label: "Code Mono",
-    stack: "\"JetBrains Mono\", \"D2Coding\", Consolas, \"Malgun Gothic\", monospace"
-  },
-  geometricSans: {
-    label: "Geometric Sans",
-    stack: "\"Poppins\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", \"Noto Sans KR\", sans-serif"
-  },
-  roundedSoft: {
-    label: "Rounded Soft",
-    stack: "\"Quicksand\", \"Gowun Dodum\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", sans-serif"
-  },
-  gothicA1: {
-    label: "Gothic A1",
-    stack: "\"Gothic A1\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", \"Segoe UI\", sans-serif"
-  },
-  songMyung: {
-    label: "Song Myung",
-    stack: "\"Song Myung\", \"Noto Serif KR\", Batang, \"Apple SD Gothic Neo\", serif"
-  }
-};
-
-const FEEL_PRESETS = {
-  crisp: {
-    label: "Crisp",
-    description: "Fast, precise, almost dry. The caret snaps with very little bloom.",
-    duration: 86,
-    size: 8.5,
-    opacity: 0.12,
-    scale: 0.97,
-    caretSmooth: 6
-  },
-  soft: {
-    label: "Soft",
-    description: "Gentle bloom, rounded motion, and a calmer luxurious caret.",
-    duration: 520,
-    size: 27.2,
-    opacity: 0.2,
-    scale: 2.98,
-    caretSmooth: 150
-  },
-  bouncy: {
-    label: "Bouncy",
-    description: "A small tactile rebound, playful but not cartoonish.",
-    duration: 360,
-    size: 20.4,
-    opacity: 0.28,
-    scale: 1.93,
-    caretSmooth: 52
-  },
-  ink: {
-    label: "Ink",
-    description: "The mark settles like pigment touching paper, slower and analog.",
-    duration: 720,
-    size: 30.6,
-    opacity: 0.19,
-    scale: 3.46,
-    caretSmooth: 105
-  },
-  flow: {
-    label: "Flow",
-    description: "Long, continuous caret motion for uninterrupted study writing.",
-    duration: 680,
-    size: 34,
-    opacity: 0.16,
-    scale: 3.69,
-    caretSmooth: 260
-  }
-};
-
+// ---------------------------------------------------------------- 1. data
 const EFFECT_PRESETS = {
   "soft-spark": {
     label: "Soft Spark",
@@ -538,551 +419,6 @@ const EFFECT_PRESETS = {
   }
 };
 
-const EFFECT_MIGRATION = {
-  "cozy-dust": "soft-spark",
-  "star-sprinkle": "star-dust",
-  "ink-pulse": "ink",
-  "electric-pop": "electric",
-  "soft-bounce": "candy-pop"
-};
-
-// Brief per-keystroke color flash on the freshly committed glyph only. The
-// wrapper is temporary (unwrapped right after the animation, stripped before
-// save), so this never touches the note's actual stored text color.
-const GLYPH_FLASH_PRESETS = {
-  "cyber-pink": { colors: ["#ff62c7", "#6fe8ff"], life: 130, easing: "steps(3, end)" },
-  electric: { colors: ["#fffef2", "#ffe45f"], life: 110, easing: "ease-out" },
-  "candy-pop": { colors: ["#ff9fc2", "#ffcf70"], life: 160, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" },
-  ink: { colors: ["#3f2f22"], life: 170, easing: "ease-out" },
-  "crystal-glass": { colors: ["#ffffff", "#95d9ff"], life: 150, easing: "ease-out" }
-};
-
-// Modes where the pressed/tactile feel (squash-and-settle) should read more
-// clearly, per the "typing feels physically pressed" request.
-const PRESSURE_MODES = new Set(["candy-pop", "keycap-pop", "ink", "bubble"]);
-
-const PERSONALITY_PRESETS = {
-  "cream-writer": {
-    label: "Cream Writer",
-    description: "Warm milky paper, soft caret bloom, unhurried serif lines.",
-    typingFeel: "soft",
-    effectMode: "soft-spark",
-    font: "serif",
-    theme: "milk-cream",
-    typingAnimation: 0.58,
-    feedbackStrength: 0.5,
-    effectIntensity: 0.8,
-    glowAmount: 0.7,
-    particleAmount: 0.6
-  },
-  "cyber-note": {
-    label: "Cyber Note",
-    description: "Fast neon feedback and a crisp mono cadence for late-night sprints.",
-    typingFeel: "crisp",
-    effectMode: "cyber-pink",
-    font: "codeMono",
-    theme: "lavender-study",
-    typingAnimation: 0.62,
-    feedbackStrength: 0.68,
-    effectIntensity: 0.95,
-    glowAmount: 0.95,
-    particleAmount: 0.85,
-    shakeAmount: 0.4
-  },
-  "tiny-researcher": {
-    label: "Tiny Researcher",
-    description: "Small, compact type and a quiet pixel-precise click for dense notes.",
-    typingFeel: "crisp",
-    effectMode: "pixel",
-    font: "compact",
-    theme: "classic-ivory",
-    fontSize: 16,
-    typingAnimation: 0.34,
-    feedbackStrength: 0.4,
-    effectIntensity: 0.55,
-    glowAmount: 0.35,
-    particleAmount: 0.4
-  },
-  "candy-diary": {
-    label: "Candy Diary",
-    description: "Bouncy, cushioned pops in a playful rounded hand.",
-    typingFeel: "bouncy",
-    effectMode: "candy-pop",
-    font: "roundedSoft",
-    theme: "peach-cloud",
-    typingAnimation: 0.72,
-    feedbackStrength: 0.72,
-    effectIntensity: 0.95,
-    glowAmount: 0.8,
-    particleAmount: 0.9
-  },
-  "ink-scholar": {
-    label: "Ink Scholar",
-    description: "Slow analog pigment settling into a quiet serif page.",
-    typingFeel: "ink",
-    effectMode: "ink",
-    font: "gowunBatang",
-    theme: "classic-ivory",
-    typingAnimation: 0.5,
-    feedbackStrength: 0.62,
-    effectIntensity: 0.7,
-    glowAmount: 0.3,
-    particleAmount: 0.4
-  }
-};
-
-const GLYPH_EFFECT_PROFILES = {
-  "soft-spark": {
-    duration: 260,
-    impact: 0.55,
-    echoDuration: 120,
-    echo: 0.22,
-    motion: 1.05,
-    split: 0.45,
-    scale: 0.9,
-    rotate: 0.6,
-    glow: 0.95,
-    flash: 0.72,
-    alpha: 0.76,
-    blur: 0.08,
-    hot: "#fff7e8",
-    accent: "#ffd8ad",
-    alt: "#d98f71"
-  },
-  "cyber-pink": {
-    duration: 150,
-    impact: 0.85,
-    echoDuration: 70,
-    echo: 0.3,
-    motion: 0.35,
-    split: 2.65,
-    scale: 0.24,
-    rotate: 0.1,
-    glow: 1.05,
-    flash: 0.7,
-    alpha: 0.72,
-    blur: 0,
-    hot: "#fff3fb",
-    accent: "#ff62c7",
-    alt: "#6fe8ff"
-  },
-  "candy-pop": {
-    duration: 330,
-    impact: 0.9,
-    echoDuration: 80,
-    echo: 0.06,
-    motion: 0.62,
-    split: 0.28,
-    scale: 1.7,
-    rotate: 0.2,
-    glow: 0.72,
-    flash: 0.78,
-    alpha: 0.7,
-    blur: 0.04,
-    hot: "#fff4fb",
-    accent: "#f39ab8",
-    alt: "#ffcf70"
-  },
-  electric: {
-    duration: 165,
-    impact: 2.6,
-    echoDuration: 90,
-    echo: 0.18,
-    motion: 3.2,
-    split: 0.78,
-    scale: 0.38,
-    rotate: 2.2,
-    glow: 1.9,
-    flash: 1,
-    alpha: 0.96,
-    blur: 0.02,
-    hot: "#fffef2",
-    accent: "#ffe45f",
-    alt: "#906fff"
-  },
-  "star-dust": {
-    duration: 430,
-    impact: 0.4,
-    echoDuration: 150,
-    echo: 0.32,
-    motion: 0.34,
-    split: 0.28,
-    scale: 1.35,
-    rotate: 0.18,
-    glow: 1.65,
-    flash: 0.95,
-    alpha: 0.78,
-    blur: 0.1,
-    hot: "#fff9dc",
-    accent: "#ffe3a4",
-    alt: "#b8a0ee"
-  },
-  ink: {
-    duration: 390,
-    impact: 0.45,
-    echoDuration: 110,
-    echo: 0.12,
-    motion: 0.3,
-    split: 0.1,
-    scale: 0.3,
-    rotate: 0.35,
-    glow: 0.08,
-    flash: 0.38,
-    alpha: 0.58,
-    blur: 1.2,
-    hot: "#563f31",
-    accent: "#7e6650",
-    alt: "#c1ab8d"
-  },
-  bubble: {
-    duration: 360,
-    impact: 0.5,
-    echoDuration: 100,
-    echo: 0.14,
-    motion: 0.5,
-    split: 0.18,
-    scale: 1,
-    rotate: 0.12,
-    glow: 0.74,
-    flash: 0.65,
-    alpha: 0.66,
-    blur: 0.06,
-    hot: "#edfffb",
-    accent: "#7ec7c1",
-    alt: "#f8b7ce"
-  },
-  pixel: {
-    duration: 155,
-    impact: 1.1,
-    echoDuration: 70,
-    echo: 0.18,
-    motion: 1.15,
-    split: 1.65,
-    scale: 0.22,
-    rotate: 0,
-    glow: 0.45,
-    flash: 0.8,
-    alpha: 0.82,
-    blur: 0,
-    hot: "#eaf8ff",
-    accent: "#5fb7ff",
-    alt: "#ff84cf"
-  },
-  "crystal-glass": {
-    duration: 360,
-    impact: 0.22,
-    echoDuration: 130,
-    echo: 0.2,
-    motion: 0.18,
-    split: 0.72,
-    scale: 0.86,
-    rotate: 0.12,
-    glow: 1.5,
-    flash: 0.9,
-    alpha: 0.72,
-    blur: 0.02,
-    hot: "#ffffff",
-    accent: "#95d9ff",
-    alt: "#f0d7ff"
-  },
-  constellation: {
-    duration: 430,
-    impact: 0.4,
-    echoDuration: 160,
-    echo: 0.3,
-    motion: 0.26,
-    split: 0.22,
-    scale: 0.82,
-    rotate: 0.1,
-    glow: 1.22,
-    flash: 0.78,
-    alpha: 0.66,
-    blur: 0.04,
-    hot: "#eef0ff",
-    accent: "#7f8ee8",
-    alt: "#fff0a4"
-  },
-  "paper-fiber": {
-    duration: 240,
-    impact: 0.4,
-    echoDuration: 75,
-    echo: 0.14,
-    motion: 0.36,
-    split: 0.08,
-    scale: 0.12,
-    rotate: 0.28,
-    glow: 0.04,
-    flash: 0.28,
-    alpha: 0.44,
-    blur: 0.18,
-    hot: "#6d563e",
-    accent: "#a98b68",
-    alt: "#ecd8b6"
-  },
-  "moon-pearl": {
-    duration: 420,
-    impact: 0.4,
-    echoDuration: 140,
-    echo: 0.24,
-    motion: 0.26,
-    split: 0.42,
-    scale: 0.96,
-    rotate: 0.08,
-    glow: 1.35,
-    flash: 0.88,
-    alpha: 0.7,
-    blur: 0.08,
-    hot: "#fffef2",
-    accent: "#b8bddf",
-    alt: "#fff7ce"
-  },
-  "aurora-veil": {
-    duration: 430,
-    impact: 0.34,
-    echoDuration: 145,
-    echo: 0.22,
-    motion: 0.28,
-    split: 0.64,
-    scale: 0.72,
-    rotate: 0.12,
-    glow: 1.36,
-    flash: 0.82,
-    alpha: 0.68,
-    blur: 0.04,
-    hot: "#f4fffb",
-    accent: "#6edeea",
-    alt: "#c7a8ff"
-  },
-  "firefly-glow": {
-    duration: 360,
-    impact: 0.72,
-    echoDuration: 120,
-    echo: 0.22,
-    motion: 0.72,
-    split: 0.56,
-    scale: 0.72,
-    rotate: 0.42,
-    glow: 1.15,
-    flash: 0.76,
-    alpha: 0.68,
-    blur: 0.03,
-    hot: "#ecfff7",
-    accent: "#55e6b5",
-    alt: "#8ea1ff"
-  },
-  "petal-bloom": {
-    duration: 300,
-    impact: 0.86,
-    echoDuration: 100,
-    echo: 0.14,
-    motion: 0.95,
-    split: 0.48,
-    scale: 0.88,
-    rotate: 0.7,
-    glow: 0.7,
-    flash: 0.78,
-    alpha: 0.7,
-    blur: 0.02,
-    hot: "#f7f9ff",
-    accent: "#8aa7ff",
-    alt: "#ffc36f"
-  },
-  "neon-rain": {
-    duration: 185,
-    impact: 0.9,
-    echoDuration: 80,
-    echo: 0.25,
-    motion: 1.15,
-    split: 1.05,
-    scale: 0.24,
-    rotate: 0.08,
-    glow: 1.28,
-    flash: 0.86,
-    alpha: 0.78,
-    blur: 0,
-    hot: "#f2fdff",
-    accent: "#54e5ff",
-    alt: "#ff72d2"
-  },
-  "velvet-smoke": {
-    duration: 520,
-    impact: 0.26,
-    echoDuration: 170,
-    echo: 0.16,
-    motion: 0.36,
-    split: 0.18,
-    scale: 0.62,
-    rotate: 0.22,
-    glow: 0.22,
-    flash: 0.34,
-    alpha: 0.48,
-    blur: 1.55,
-    hot: "#5f5363",
-    accent: "#8d8092",
-    alt: "#d7c7da"
-  },
-  "ember-glow": {
-    duration: 240,
-    impact: 1.05,
-    echoDuration: 90,
-    echo: 0.14,
-    motion: 1.35,
-    split: 0.46,
-    scale: 0.48,
-    rotate: 0.72,
-    glow: 1.3,
-    flash: 0.9,
-    alpha: 0.78,
-    blur: 0.02,
-    hot: "#fff5db",
-    accent: "#ff9b5c",
-    alt: "#7de7ff"
-  },
-  "laser-etch": {
-    duration: 170,
-    impact: 1.1,
-    echoDuration: 78,
-    echo: 0.18,
-    motion: 1.42,
-    split: 0.9,
-    scale: 0.28,
-    rotate: 0.8,
-    glow: 1.4,
-    flash: 0.95,
-    alpha: 0.82,
-    blur: 0,
-    hot: "#fff8e2",
-    accent: "#ff5a57",
-    alt: "#ffe46b"
-  },
-  "keycap-pop": {
-    duration: 280,
-    impact: 0.95,
-    echoDuration: 92,
-    echo: 0.12,
-    motion: 1,
-    split: 0.16,
-    scale: 1.2,
-    rotate: 0.08,
-    glow: 0.42,
-    flash: 0.7,
-    alpha: 0.65,
-    blur: 0.02,
-    hot: "#f8fff9",
-    accent: "#7fb3a6",
-    alt: "#ffb86f"
-  },
-  "magnetic-flip": {
-    duration: 240,
-    impact: 1,
-    echoDuration: 96,
-    echo: 0.2,
-    motion: 1.6,
-    split: 1.1,
-    scale: 0.4,
-    rotate: 1.2,
-    glow: 1,
-    flash: 0.8,
-    alpha: 0.72,
-    blur: 0.01,
-    hot: "#fff7fa",
-    accent: "#e85d75",
-    alt: "#3dd6c6"
-  },
-  "mosaic-shift": {
-    duration: 220,
-    impact: 0.95,
-    echoDuration: 84,
-    echo: 0.2,
-    motion: 1.1,
-    split: 1.2,
-    scale: 0.3,
-    rotate: 0.45,
-    glow: 0.75,
-    flash: 0.78,
-    alpha: 0.78,
-    blur: 0,
-    hot: "#f4fbff",
-    accent: "#4fa3ff",
-    alt: "#ffca5f"
-  },
-  "ripple-lens": {
-    duration: 420,
-    impact: 0.5,
-    echoDuration: 132,
-    echo: 0.2,
-    motion: 0.45,
-    split: 0.3,
-    scale: 0.9,
-    rotate: 0.1,
-    glow: 0.8,
-    flash: 0.5,
-    alpha: 0.58,
-    blur: 0.08,
-    hot: "#f7ffff",
-    accent: "#75d0da",
-    alt: "#f4d3ff"
-  },
-  "plasma-thread": {
-    duration: 230,
-    impact: 1.15,
-    echoDuration: 88,
-    echo: 0.18,
-    motion: 1.25,
-    split: 0.85,
-    scale: 0.35,
-    rotate: 0.65,
-    glow: 1.5,
-    flash: 0.9,
-    alpha: 0.82,
-    blur: 0.02,
-    hot: "#f3fdff",
-    accent: "#39d3ff",
-    alt: "#ff7f9f"
-  }
-};
-
-const GLYPH_JOLT_PRESETS = {
-  "soft-spark": { x: -0.55, y: 0.85, rotate: 0.7, scale: 1.028, strength: 0.72, life: 150, recoil: [-0.32, -0.2], kick: [0.1, 0.06], settle: [-0.02, -0.03] },
-  "cyber-pink": { x: 2.4, y: -0.35, rotate: 0.2, scale: 1.006, strength: 1.05, life: 110, recoil: [-0.55, 0.15], kick: [0.28, -0.08], settle: [-0.08, 0] },
-  "candy-pop": { x: -0.25, y: 1.35, rotate: -0.45, scale: 1.075, strength: 0.85, life: 180, recoil: [-0.15, -0.72], kick: [0.06, 0.22], settle: [0, -0.04] },
-  electric: { x: 2.2, y: -1.15, rotate: 1.1, scale: 1.018, strength: 1.25, life: 105, recoil: [-0.72, 0.65], kick: [0.42, -0.25], settle: [-0.12, 0.06] },
-  "star-dust": { x: -0.3, y: -1.05, rotate: 0.35, scale: 1.03, strength: 0.7, life: 210, recoil: [-0.18, 0.22], kick: [0.06, -0.1], settle: [0, -0.04] },
-  ink: { x: -0.35, y: 1.55, rotate: -0.35, scale: 1.042, strength: 0.78, life: 175, recoil: [0.05, -0.36], kick: [-0.03, 0.1], settle: [0, 0.03] },
-  bubble: { x: 0.15, y: 1.1, rotate: 0.22, scale: 1.055, strength: 0.72, life: 205, recoil: [-0.08, -0.65], kick: [0, 0.28], settle: [0, -0.04] },
-  pixel: { x: 1.6, y: -0.75, rotate: 0, scale: 1.006, strength: 1, life: 115, recoil: [-1, 0.65], kick: [0.55, -0.28], settle: [-0.18, 0.08] },
-  "crystal-glass": { x: -0.42, y: 0.22, rotate: 0.28, scale: 1.022, strength: 0.55, life: 145, recoil: [-0.12, -0.1], kick: [0.05, 0.03], settle: [0, 0] },
-  constellation: { x: -0.5, y: -0.7, rotate: -0.2, scale: 1.018, strength: 0.65, life: 190, recoil: [0.12, 0.24], kick: [-0.04, -0.1], settle: [0, -0.02] },
-  "paper-fiber": { x: 1.15, y: 0.35, rotate: -0.45, scale: 1.01, strength: 0.64, life: 135, recoil: [-0.55, -0.2], kick: [0.22, 0.08], settle: [-0.08, 0.02] },
-  "moon-pearl": { x: -0.3, y: -0.45, rotate: 0.18, scale: 1.032, strength: 0.62, life: 210, recoil: [0.1, 0.24], kick: [-0.04, -0.1], settle: [0, -0.03] },
-  "aurora-veil": { x: -0.85, y: -0.15, rotate: -0.18, scale: 1.026, strength: 0.72, life: 220, recoil: [0.22, -0.16], kick: [-0.12, 0.05], settle: [0.04, 0] },
-  "firefly-glow": { x: 0.55, y: -0.3, rotate: 0.85, scale: 1.03, strength: 0.82, life: 210, recoil: [-0.34, 0.22], kick: [0.16, -0.18], settle: [0.02, -0.02] },
-  "petal-bloom": { x: -0.9, y: 0.5, rotate: -1.15, scale: 1.045, strength: 0.88, life: 165, recoil: [0.38, -0.42], kick: [-0.16, 0.18], settle: [0.05, -0.02] },
-  "neon-rain": { x: 0.25, y: 1.55, rotate: 0.12, scale: 1.008, strength: 1, life: 120, recoil: [-0.12, -0.85], kick: [0.2, 0.44], settle: [-0.06, 0.12] },
-  "velvet-smoke": { x: -0.42, y: 0.72, rotate: -0.18, scale: 1.024, strength: 0.55, life: 240, recoil: [0.08, -0.18], kick: [-0.04, 0.08], settle: [-0.02, -0.02] },
-  "ember-glow": { x: 1.35, y: -0.95, rotate: 0.88, scale: 1.03, strength: 0.95, life: 135, recoil: [-0.48, 0.38], kick: [0.2, -0.16], settle: [-0.05, 0.04] },
-  "laser-etch": { x: 1.65, y: -0.36, rotate: -0.95, scale: 1.012, strength: 1.08, life: 112, recoil: [-0.5, 0.24], kick: [0.28, -0.1], settle: [-0.08, 0.02] },
-  "keycap-pop": { x: 0, y: 1.35, rotate: 0.04, scale: 1.075, strength: 0.92, life: 178, recoil: [0, -0.62], kick: [0, 0.2], settle: [0, -0.04] },
-  "magnetic-flip": { x: 1.45, y: 0.04, rotate: 1.28, scale: 1.016, strength: 0.98, life: 138, recoil: [-0.72, 0], kick: [0.36, 0], settle: [-0.08, 0] },
-  "mosaic-shift": { x: -1.05, y: 0.45, rotate: -0.38, scale: 1.018, strength: 0.92, life: 128, recoil: [-0.46, -0.35], kick: [0.32, 0.2], settle: [-0.1, 0.06] },
-  "ripple-lens": { x: -0.28, y: 0.5, rotate: 0.1, scale: 1.045, strength: 0.58, life: 225, recoil: [0.08, -0.36], kick: [-0.02, 0.16], settle: [0, -0.03] },
-  "plasma-thread": { x: 1.25, y: -0.45, rotate: 0.62, scale: 1.014, strength: 1.08, life: 122, recoil: [-0.62, 0.44], kick: [0.35, -0.2], settle: [-0.08, 0.04] }
-};
-
-const EFFECT_LOCALITY_PRESETS = {
-  "aurora-veil": { originX: 0.52, originY: 0.53, particleBase: 4, spreadScale: 0.42, liftScale: 0.42, xScale: 0.92, yScale: 0.56, coreStarScale: 0.55 },
-  "firefly-glow": { originX: 0.5, originY: 0.52, particleBase: 4, spreadScale: 0.42, liftScale: 0.35, xScale: 0.82, yScale: 0.5, coreStarScale: 0.5 },
-  "petal-bloom": { originX: 0.5, originY: 0.54, particleBase: 4, spreadScale: 0.38, liftScale: 0.36, xScale: 0.82, yScale: 0.54, coreStarScale: 0.5 },
-  "neon-rain": { originX: 0.52, originY: 0.5, particleBase: 2, spreadScale: 0.18, liftScale: 0.08, xScale: 0.35, yScale: 0.52, coreStarScale: 0.36, maxDomParticles: 10 },
-  "velvet-smoke": { originX: 0.5, originY: 0.54, particleBase: 3, spreadScale: 0.34, liftScale: 0.35, xScale: 0.72, yScale: 0.56, coreStarScale: 0.42, maxDomParticles: 10 },
-  "ember-glow": { originX: 0.54, originY: 0.5, particleBase: 3, spreadScale: 0.34, liftScale: 0.3, xScale: 0.88, yScale: 0.48, coreStarScale: 0.48 },
-  "laser-etch": { originX: 0.52, originY: 0.5, particleBase: 2, spreadScale: 0.32, liftScale: 0.08, xScale: 0.9, yScale: 0.38, coreStarScale: 0.42, maxDomParticles: 10 },
-  "keycap-pop": { originX: 0.5, originY: 0.56, particleBase: 3, spreadScale: 0.34, liftScale: 0.2, xScale: 0.72, yScale: 0.5, coreStarScale: 0.44, maxDomParticles: 9 },
-  "magnetic-flip": { originX: 0.5, originY: 0.52, particleBase: 3, spreadScale: 0.4, liftScale: 0.12, xScale: 0.95, yScale: 0.34, coreStarScale: 0.42, maxDomParticles: 11 },
-  "mosaic-shift": { originX: 0.5, originY: 0.53, particleBase: 3, spreadScale: 0.34, liftScale: 0.18, xScale: 0.78, yScale: 0.5, coreStarScale: 0.4, maxDomParticles: 12 },
-  "ripple-lens": { originX: 0.5, originY: 0.54, particleBase: 3, spreadScale: 0.32, liftScale: 0.25, xScale: 0.68, yScale: 0.5, coreStarScale: 0.38, maxDomParticles: 9 },
-  "plasma-thread": { originX: 0.52, originY: 0.5, particleBase: 3, spreadScale: 0.38, liftScale: 0.18, xScale: 0.95, yScale: 0.42, coreStarScale: 0.42, maxDomParticles: 11 }
-};
 
 const SOUND_PACKS = {
   "deep-thock": {
@@ -1651,1165 +987,287 @@ const KEY_SHAPES = {
   backspace: { freq: 1.07, duration: 0.78, body: 0.78, transient: 0.88, gain: 0.86, decay: 0.72 }
 };
 
-const SOUND_PACK_MIGRATION = {
-  "soft-tok": "pebble-tok",
-  "creamy-tap": "creamy-keys",
-  "gentle-typewriter": "paper-type",
-  "light-mechanical": "deep-thock",
-  "cozy-pebble": "soft-wood"
+
+
+// ------------------------------------------------------------ 2. settings
+const PREF_KEY = "ink-over-pdf-prefs-v2";
+const NOTES_PREFIX = "ink-over-pdf-notes-v1:";
+const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const FONTS = {
+  sans: { group: "고딕", label: "Pretendard 프리텐다드", stack: '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  notoSans: { group: "고딕", label: "Noto Sans 본고딕", stack: '"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  nanumGothic: { group: "고딕", label: "나눔고딕", stack: '"Nanum Gothic", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  plexKr: { group: "고딕", label: "IBM Plex Sans KR", stack: '"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  gothicA1: { group: "고딕", label: "Gothic A1", stack: '"Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  sunflower: { group: "고딕", label: "해바라기 Sunflower", stack: '"Sunflower", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  serif: { group: "명조·바탕", label: "Noto Serif 본명조", stack: '"Noto Serif KR", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
+  nanumMyeongjo: { group: "명조·바탕", label: "나눔명조", stack: '"Nanum Myeongjo", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
+  batang: { group: "명조·바탕", label: "고운바탕", stack: '"Gowun Batang", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
+  hahmlet: { group: "명조·바탕", label: "함렛 Hahmlet", stack: '"Hahmlet", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
+  songMyung: { group: "명조·바탕", label: "송명", stack: '"Song Myung", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
+  dodum: { group: "손글씨", label: "고운돋움", stack: '"Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  hand: { group: "손글씨", label: "개구 Gaegu", stack: '"Gaegu", "Nanum Pen Script", cursive' },
+  hiMelody: { group: "손글씨", label: "하이멜로디", stack: '"Hi Melody", cursive' },
+  gamja: { group: "손글씨", label: "감자꽃", stack: '"Gamja Flower", cursive' },
+  poorStory: { group: "손글씨", label: "푸어스토리", stack: '"Poor Story", cursive' },
+  singleDay: { group: "손글씨", label: "싱글데이", stack: '"Single Day", cursive' },
+  penScript: { group: "손글씨", label: "나눔펜", stack: '"Nanum Pen Script", cursive' },
+  brush: { group: "손글씨", label: "나눔붓", stack: '"Nanum Brush Script", cursive' },
+  eastSea: { group: "손글씨", label: "동해독도", stack: '"East Sea Dokdo", cursive' },
+  dokdo: { group: "손글씨", label: "독도", stack: '"Dokdo", cursive' },
+  dongle: { group: "개성", label: "동글", stack: '"Dongle", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  jua: { group: "개성", label: "주아", stack: '"Jua", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  cute: { group: "개성", label: "귀여운 폰트", stack: '"Cute Font", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  yeonSung: { group: "개성", label: "연성", stack: '"Yeon Sung", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  stylish: { group: "개성", label: "스타일리시", stack: '"Stylish", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  kirang: { group: "개성", label: "기랑해랑", stack: '"Kirang Haerang", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  gugi: { group: "개성", label: "구기", stack: '"Gugi", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  doHyeon: { group: "개성", label: "도현", stack: '"Do Hyeon", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  blackHan: { group: "개성", label: "블랙한산스", stack: '"Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
+  mono: { group: "코드", label: "JetBrains Mono", stack: '"JetBrains Mono", "D2Coding", ui-monospace, monospace' },
+  nanumCoding: { group: "코드", label: "나눔고딕코딩", stack: '"Nanum Gothic Coding", "D2Coding", ui-monospace, monospace' },
 };
 
-const FEEL_MIGRATION = {
-  "crisp-instant": "crisp",
-  "soft-smooth": "soft",
-  "snappy-focus": "bouncy",
-  "dreamy-flow": "flow",
-  "paper-ink": "ink"
+// One pick sets spark style + key sound + font + ink color. Everything stays editable.
+const MOODS = {
+  "cozy-paper":  { label: "Cozy Paper",  note: "Warm glint, pencil on paper", effectMode: "soft-spark", soundPack: "pencil-paper",     font: "batang", color: "#2c2420" },
+  "quiet-ink":   { label: "Quiet Ink",   note: "Soft ink drops, typewriter",  effectMode: "ink",        soundPack: "muted-typewriter", font: "serif",  color: "#1f3a8f" },
+  "starlight":   { label: "Starlight",   note: "Tiny stars, glass taps",      effectMode: "star-dust",  soundPack: "opal-glass",       font: "dodum",  color: "#6a3fb0" },
+  "candy-pop":   { label: "Candy Pop",   note: "Bubbly pops, silicone keys",  effectMode: "candy-pop",  soundPack: "silicone-pop",     font: "hand",   color: "#b32b2b" },
+  "rainy-day":   { label: "Rainy Day",   note: "Ripples, rain on a window",   effectMode: "ripple-lens", soundPack: "rainy-window",    font: "hand",   color: "#1f3a8f" },
+  "night-code":  { label: "Night Code",  note: "Neon sparks, deep thock",     effectMode: "cyber-pink", soundPack: "deep-thock",       font: "mono",   color: "#6a3fb0" }
 };
 
-const defaultSettings = {
-  soundEnabled: true,
-  soundPack: "deep-thock",
-  volume: 0.38,
-  variation: 0.45,
-  soundDepth: 0.68,
-  typingFeel: "soft",
-  typingAnimation: 0.54,
-  caretSmoothness: 0.62,
-  feedbackStrength: 0.56,
+const defaultPrefs = {
+  mood: "cozy-paper",
   effectEnabled: true,
   effectMode: "soft-spark",
-  effectIntensity: 0.92,
-  glyphMotion: 0.9,
-  particleAmount: 0.86,
-  glowAmount: 0.88,
-  specialFrequency: 0.36,
-  shakeAmount: 0.32,
-  effectSpeed: 0.5,
-  theme: "milk-cream",
-  font: "rounded",
+  soundEnabled: true,
+  soundPack: "pencil-paper",
+  volume: 0.38,
+  intensity: 0.8,
+  font: "batang",
   fontSize: 18,
-  lineHeight: 172,
-  editorWidth: 760,
-  paperStyle: "lined",
-  reduceMotion: false
+  color: "#2c2420"
 };
 
+// Names the spark/sound engines fall back to.
+const defaultSettings = { soundPack: "deep-thock", effectMode: "soft-spark" };
+
 const refs = {};
-let state = loadState();
-let saveTimer = 0;
-let typingPulseTimer = 0;
-let moodPulseTimer = 0;
-let caretHideTimer = 0;
-let timerInterval = 0;
-let isHydrating = false;
-let manualToolbarOpen = false;
+const state = {
+  prefs: loadPrefs(),
+  settings: {},          // engine-facing values derived from prefs
+  doc: null, pages: [], notes: [], noteKey: "", fileName: "",
+  fit: 1, zoom: 1, typeTool: false, activeNote: null, currentPage: 1
+};
+const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
+const reducedMotionQuery = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+
 let lastTactileAt = 0;
-let compositionActive = false;
 let typingStreak = 0;
 let lastStreakAt = 0;
 let lastStreakRewardAt = 0;
 let typingSpeedFactor = 0;
 let recentKeyIntervals = [];
-let graphemeSegmenter = null;
-
+let caretHideTimer = 0;
+let toastTimer = 0;
+let saveTimer = 0;
 const STREAK_REWARD_STEP = 24;
 
-const TRANSIENT_GLYPH_SELECTOR = ".typing-real-glyph";
+function clamp(value, min, max) {
+  const safe = Number.isFinite(value) ? value : min;
+  return Math.min(max, Math.max(min, safe));
+}
+function clamp01(value) { return clamp(value, 0, 1); }
 
-document.addEventListener("DOMContentLoaded", init);
-
-function init() {
-  cacheRefs();
-  initFxCanvas();
-  populateStaticControls();
-  bindEvents();
-  normalizeState();
-  applySettings();
-  renderAll();
-  startTimerLoop();
+function loadPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PREF_KEY) || "{}");
+    const prefs = { ...defaultPrefs, ...saved };
+    if (!MOODS[prefs.mood]) prefs.mood = "";
+    if (!EFFECT_PRESETS[prefs.effectMode]) prefs.effectMode = defaultPrefs.effectMode;
+    if (!SOUND_PACKS[prefs.soundPack]) prefs.soundPack = defaultPrefs.soundPack;
+    if (!FONTS[prefs.font]) prefs.font = defaultPrefs.font;
+    prefs.volume = clamp01(Number(prefs.volume));
+    prefs.intensity = clamp01(Number(prefs.intensity));
+    prefs.fontSize = clamp(Number(prefs.fontSize), 12, 36);
+    return prefs;
+  } catch (error) {
+    return { ...defaultPrefs };
+  }
 }
 
-function cacheRefs() {
-  refs.libraryToggleBtn = document.getElementById("libraryToggleBtn");
-  refs.closeLibraryBtn = document.getElementById("closeLibraryBtn");
-  refs.formatToggleBtn = document.getElementById("formatToggleBtn");
-  refs.timerToggleBtn = document.getElementById("timerToggleBtn");
-  refs.settingsToggleBtn = document.getElementById("settingsToggleBtn");
-  refs.closeSettingsBtn = document.getElementById("closeSettingsBtn");
-  refs.drawerOverlay = document.getElementById("drawerOverlay");
-  refs.newNoteBtn = document.getElementById("newNoteBtn");
-  refs.searchInput = document.getElementById("searchInput");
-  refs.quickFilters = document.querySelector(".quick-filters");
-  refs.labelFilterList = document.getElementById("labelFilterList");
-  refs.noteList = document.getElementById("noteList");
-  refs.noteCount = document.getElementById("noteCount");
-  refs.activeNoteCaption = document.getElementById("activeNoteCaption");
-  refs.titleInput = document.getElementById("titleInput");
-  refs.favoriteBtn = document.getElementById("favoriteBtn");
-  refs.deleteNoteBtn = document.getElementById("deleteNoteBtn");
-  refs.labelSelect = document.getElementById("labelSelect");
-  refs.folderInput = document.getElementById("folderInput");
-  refs.folderList = document.getElementById("folderList");
-  refs.saveStatus = document.getElementById("saveStatus");
-  refs.toolbar = document.getElementById("formatToolbar");
-  refs.editor = document.getElementById("editor");
-  refs.inkLayer = document.getElementById("inkLayer");
-  refs.caretGlow = document.getElementById("caretGlow");
-  refs.fxCanvas = document.getElementById("fxCanvas");
-  refs.wordCount = document.getElementById("wordCount");
-  refs.charCount = document.getElementById("charCount");
-  refs.updatedAt = document.getElementById("updatedAt");
-  refs.exportBtn = document.getElementById("exportBtn");
-  refs.focusBtn = document.getElementById("focusBtn");
-  refs.fullscreenBtn = document.getElementById("fullscreenBtn");
-  refs.settingsPanel = document.getElementById("settingsPanel");
-  refs.timerPanel = document.getElementById("timerPanel");
-  refs.soundEnabled = document.getElementById("soundEnabled");
-  refs.soundPackSelect = document.getElementById("soundPackSelect");
-  refs.volumeRange = document.getElementById("volumeRange");
-  refs.volumeReadout = document.getElementById("volumeReadout");
-  refs.soundVariationRange = document.getElementById("soundVariationRange");
-  refs.soundVariationReadout = document.getElementById("soundVariationReadout");
-  refs.soundDepthRange = document.getElementById("soundDepthRange");
-  refs.soundDepthReadout = document.getElementById("soundDepthReadout");
-  refs.typingFeelSelect = document.getElementById("typingFeelSelect");
-  refs.feelDescription = document.getElementById("feelDescription");
-  refs.typingAnimationRange = document.getElementById("typingAnimationRange");
-  refs.typingAnimationReadout = document.getElementById("typingAnimationReadout");
-  refs.caretSmoothRange = document.getElementById("caretSmoothRange");
-  refs.caretSmoothReadout = document.getElementById("caretSmoothReadout");
-  refs.feedbackStrengthRange = document.getElementById("feedbackStrengthRange");
-  refs.feedbackStrengthReadout = document.getElementById("feedbackStrengthReadout");
-  refs.effectEnabled = document.getElementById("effectEnabled");
-  refs.effectModeSelect = document.getElementById("effectModeSelect");
-  refs.effectDescription = document.getElementById("effectDescription");
-  refs.effectIntensityRange = document.getElementById("effectIntensityRange");
-  refs.effectIntensityReadout = document.getElementById("effectIntensityReadout");
-  refs.glyphMotionRange = document.getElementById("glyphMotionRange");
-  refs.glyphMotionReadout = document.getElementById("glyphMotionReadout");
-  refs.particleAmountRange = document.getElementById("particleAmountRange");
-  refs.particleAmountReadout = document.getElementById("particleAmountReadout");
-  refs.glowAmountRange = document.getElementById("glowAmountRange");
-  refs.glowAmountReadout = document.getElementById("glowAmountReadout");
-  refs.specialFrequencyRange = document.getElementById("specialFrequencyRange");
-  refs.specialFrequencyReadout = document.getElementById("specialFrequencyReadout");
-  refs.shakeAmountRange = document.getElementById("shakeAmountRange");
-  refs.shakeAmountReadout = document.getElementById("shakeAmountReadout");
-  refs.effectSpeedRange = document.getElementById("effectSpeedRange");
-  refs.effectSpeedReadout = document.getElementById("effectSpeedReadout");
-  refs.themeSelect = document.getElementById("themeSelect");
-  refs.fontSelect = document.getElementById("fontSelect");
-  refs.paperStyleSelect = document.getElementById("paperStyleSelect");
-  refs.fontSizeRange = document.getElementById("fontSizeRange");
-  refs.fontSizeReadout = document.getElementById("fontSizeReadout");
-  refs.lineHeightRange = document.getElementById("lineHeightRange");
-  refs.lineHeightReadout = document.getElementById("lineHeightReadout");
-  refs.editorWidthRange = document.getElementById("editorWidthRange");
-  refs.editorWidthReadout = document.getElementById("editorWidthReadout");
-  refs.reduceMotion = document.getElementById("reduceMotion");
-  refs.personalitySelect = document.getElementById("personalitySelect");
-  refs.timerFace = document.getElementById("timerFace");
-  refs.timerMode = document.getElementById("timerMode");
-  refs.timerStartPause = document.getElementById("timerStartPause");
-  refs.timerReset = document.getElementById("timerReset");
-  refs.toast = document.getElementById("toast");
+function savePrefs() {
+  try { localStorage.setItem(PREF_KEY, JSON.stringify(state.prefs)); } catch (error) { /* storage may be blocked */ }
 }
 
-function populateStaticControls() {
-  fillSelect(refs.soundPackSelect, SOUND_PACKS, "label");
-  fillSelect(refs.typingFeelSelect, FEEL_PRESETS, "label");
-  fillSelect(refs.effectModeSelect, EFFECT_PRESETS, "label");
-  fillSelect(refs.themeSelect, THEMES);
-  fillSelect(refs.fontSelect, FONTS, "label");
-  populatePersonalitySelect();
+// One "effect strength" slider drives every legacy knob the spark engine reads.
+function deriveSettings() {
+  const p = state.prefs;
+  const k = p.intensity;
+  const reduced = reducedMotionQuery.matches;
+  state.settings = {
+    soundEnabled: p.soundEnabled, soundPack: p.soundPack, volume: p.volume,
+    variation: 0.45, soundDepth: 0.68,
+    effectEnabled: p.effectEnabled && !reduced, effectMode: p.effectMode,
+    effectIntensity: clamp(0.35 + k * 0.65, 0.05, 1),
+    glyphMotion: k, particleAmount: k * 0.95, glowAmount: k * 0.95,
+    specialFrequency: 0.36, shakeAmount: 0.3 * k, effectSpeed: 0.5,
+    reduceMotion: reduced
+  };
 }
 
-function populatePersonalitySelect() {
-  if (!refs.personalitySelect) return;
-  refs.personalitySelect.innerHTML = "";
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = "Choose a mood…";
-  refs.personalitySelect.append(placeholder);
-  Object.entries(PERSONALITY_PRESETS).forEach(([value, data]) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = data.label;
-    refs.personalitySelect.append(option);
-  });
+function applyPrefs() {
+  deriveSettings();
+  const p = state.prefs;
+  const effect = EFFECT_PRESETS[p.effectMode];
+  const body = document.body;
+  body.dataset.effect = p.effectMode;
+  body.style.setProperty("--note-font", FONTS[p.font].stack);
+  body.style.setProperty("--note-size", `${p.fontSize}px`);
+  body.style.setProperty("--note-color", p.color);
+  body.style.setProperty("--effect-primary", effect.primary);
+  body.style.setProperty("--effect-secondary", effect.secondary);
+  body.style.setProperty("--effect-aura", effect.aura);
+  body.style.setProperty("--glow", `${Math.round(6 + state.settings.glowAmount * 16)}px`);
+  syncControls();
+  soundEngine.ensurePack(p.soundPack);
 }
 
-function fillSelect(select, source, labelKey) {
+function setPrefs(patch, options = {}) {
+  Object.assign(state.prefs, patch);
+  if (!options.keepMood && !("mood" in patch)) state.prefs.mood = matchingMood();
+  applyPrefs();
+  savePrefs();
+  if (options.relayout) layoutNotes();
+}
+
+// Highlights a Mood only while the current values still match it exactly.
+function matchingMood() {
+  const p = state.prefs;
+  const hit = Object.entries(MOODS).find(([, m]) =>
+    m.effectMode === p.effectMode && m.soundPack === p.soundPack && m.font === p.font && m.color === p.color);
+  return hit ? hit[0] : "";
+}
+
+function applyMood(id) {
+  const mood = MOODS[id];
+  if (!mood) return;
+  setPrefs({ mood: id, effectMode: mood.effectMode, soundPack: mood.soundPack, font: mood.font, color: mood.color });
+  // Let the new sound speak for itself right away.
+  soundEngine.play("normal");
+  const rect = refs.tryNote.getBoundingClientRect();
+  if (rect.width && state.settings.effectEnabled) {
+    spawnEffectBurst(state.settings.effectMode, {
+      x: rect.left + 28, y: rect.top + rect.height / 2, glyphWidth: 10, glyphHeight: 18,
+      settings: state.settings, isSpecial: true, keyType: "normal", effectLevel: state.settings.effectIntensity,
+      speedScale: 1, scale: 1, streak: 0
+    });
+  }
+}
+
+function fillSelect(select, source, labelOf) {
   select.innerHTML = "";
   Object.entries(source).forEach(([value, data]) => {
     const option = document.createElement("option");
     option.value = value;
-    option.textContent = labelKey ? data[labelKey] : data;
+    option.textContent = labelOf(data);
     select.append(option);
   });
 }
 
-function bindEvents() {
-  refs.libraryToggleBtn.addEventListener("click", () => setLibraryOpen(true));
-  refs.closeLibraryBtn.addEventListener("click", () => setLibraryOpen(false));
-  refs.settingsToggleBtn.addEventListener("click", () => setSettingsOpen(true));
-  refs.closeSettingsBtn.addEventListener("click", () => setSettingsOpen(false));
-  refs.timerToggleBtn.addEventListener("click", toggleTimerPanel);
-  refs.drawerOverlay.addEventListener("click", closeOverlays);
-  refs.formatToggleBtn.addEventListener("click", toggleFormatToolbar);
-
-  refs.newNoteBtn.addEventListener("click", createNote);
-  refs.searchInput.addEventListener("input", () => {
-    state.query = refs.searchInput.value.trim();
-    renderNotes();
-  });
-  refs.quickFilters.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-filter]");
-    if (!button) return;
-    state.filter = button.dataset.filter;
-    state.labelFilter = "";
-    renderFilters();
-    renderNotes();
-  });
-  refs.labelFilterList.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-label]");
-    if (!button) return;
-    state.filter = "label";
-    state.labelFilter = button.dataset.label;
-    renderFilters();
-    renderNotes();
-  });
-  refs.noteList.addEventListener("click", (event) => {
-    const card = event.target.closest("[data-note-id]");
-    if (!card) return;
-    setActiveNote(card.dataset.noteId);
-    setLibraryOpen(false);
-  });
-  refs.titleInput.addEventListener("input", updateTitle);
-  refs.labelSelect.addEventListener("change", updateLabel);
-  refs.folderInput.addEventListener("input", updateFolder);
-  refs.favoriteBtn.addEventListener("click", toggleFavorite);
-  refs.deleteNoteBtn.addEventListener("click", deleteActiveNote);
-
-  refs.toolbar.addEventListener("mousedown", (event) => event.preventDefault());
-  refs.toolbar.addEventListener("click", runToolbarCommand);
-  refs.editor.addEventListener("input", handleEditorInput);
-  refs.editor.addEventListener("beforeinput", handleBeforeInputFallback);
-  refs.editor.addEventListener("compositionstart", handleCompositionStart);
-  refs.editor.addEventListener("compositionupdate", handleCompositionUpdate);
-  refs.editor.addEventListener("compositionend", handleCompositionEnd);
-  refs.editor.addEventListener("paste", pastePlainText);
-  refs.editor.addEventListener("change", updateEditorContent);
-  refs.editor.addEventListener("click", (event) => {
-    if (event.target.matches("input[type='checkbox']")) {
-      updateEditorContent();
+// Fonts grouped by feel (고딕 / 명조·바탕 / 손글씨 / 개성 / 코드); each option previews in its own typeface.
+function fillFontSelect() {
+  refs.fontSelect.innerHTML = "";
+  const groups = {};
+  Object.entries(FONTS).forEach(([key, font]) => {
+    if (!groups[font.group]) {
+      groups[font.group] = document.createElement("optgroup");
+      groups[font.group].label = font.group;
+      refs.fontSelect.append(groups[font.group]);
     }
-  });
-
-  refs.exportBtn.addEventListener("click", exportActiveNote);
-  refs.focusBtn.addEventListener("click", toggleFocusMode);
-  refs.fullscreenBtn.addEventListener("click", toggleFullscreen);
-  refs.soundEnabled.addEventListener("change", updateSettingsFromControls);
-  refs.soundPackSelect.addEventListener("change", updateSettingsFromControls);
-  refs.volumeRange.addEventListener("input", updateSettingsFromControls);
-  refs.soundVariationRange.addEventListener("input", updateSettingsFromControls);
-  refs.soundDepthRange.addEventListener("input", updateSettingsFromControls);
-  refs.typingFeelSelect.addEventListener("change", updateSettingsFromControls);
-  refs.typingAnimationRange.addEventListener("input", updateSettingsFromControls);
-  refs.caretSmoothRange.addEventListener("input", updateSettingsFromControls);
-  refs.feedbackStrengthRange.addEventListener("input", updateSettingsFromControls);
-  refs.effectEnabled.addEventListener("change", updateSettingsFromControls);
-  refs.effectModeSelect.addEventListener("change", updateSettingsFromControls);
-  refs.effectIntensityRange.addEventListener("input", updateSettingsFromControls);
-  refs.glyphMotionRange.addEventListener("input", updateSettingsFromControls);
-  refs.particleAmountRange.addEventListener("input", updateSettingsFromControls);
-  refs.glowAmountRange.addEventListener("input", updateSettingsFromControls);
-  refs.specialFrequencyRange.addEventListener("input", updateSettingsFromControls);
-  refs.shakeAmountRange.addEventListener("input", updateSettingsFromControls);
-  refs.effectSpeedRange.addEventListener("input", updateSettingsFromControls);
-  refs.themeSelect.addEventListener("change", updateSettingsFromControls);
-  refs.fontSelect.addEventListener("change", updateSettingsFromControls);
-  refs.paperStyleSelect.addEventListener("change", updateSettingsFromControls);
-  refs.fontSizeRange.addEventListener("input", updateSettingsFromControls);
-  refs.lineHeightRange.addEventListener("input", updateSettingsFromControls);
-  refs.editorWidthRange.addEventListener("input", updateSettingsFromControls);
-  refs.reduceMotion.addEventListener("change", updateSettingsFromControls);
-  refs.personalitySelect?.addEventListener("change", applyPersonalityPreset);
-
-  document.querySelectorAll("[data-timer-mode]").forEach((button) => {
-    button.addEventListener("click", () => setTimerMode(button.dataset.timerMode));
-  });
-  refs.timerStartPause.addEventListener("click", toggleTimer);
-  refs.timerReset.addEventListener("click", resetTimer);
-
-  document.addEventListener("keydown", handleTypingKey, true);
-  document.addEventListener("selectionchange", updateToolbarForSelection);
-  document.addEventListener("keydown", handleGlobalKeys);
-  document.addEventListener("pointerdown", () => soundEngine.unlock(), { once: true });
-}
-
-function normalizeState() {
-  state.settings = migrateSettings(state.settings || {});
-  state.notes = Array.isArray(state.notes) && state.notes.length ? state.notes : seedNotes();
-  state.notes = state.notes.map((note) => ({
-    id: note.id || createId(),
-    title: note.title || "Untitled note",
-    label: note.label || "Ideas",
-    folder: note.folder || "General",
-    favorite: Boolean(note.favorite),
-    createdAt: Number(note.createdAt || Date.now()),
-    updatedAt: Number(note.updatedAt || Date.now()),
-    content: note.content || "<p><br></p>"
-  }));
-  state.activeId = state.activeId || state.notes[0].id;
-  state.filter = state.filter || "all";
-  state.labelFilter = state.labelFilter || "";
-  state.query = state.query || "";
-  state.timer = {
-    mode: "study",
-    running: false,
-    secondsLeft: 25 * 60,
-    ...(state.timer || {})
-  };
-  if (!state.notes.some((note) => note.id === state.activeId)) {
-    state.activeId = state.notes[0].id;
-  }
-  saveStateNow();
-}
-
-function migrateSettings(settings) {
-  const migrated = { ...defaultSettings, ...settings };
-  migrated.soundPack = SOUND_PACK_MIGRATION[migrated.soundPack] || migrated.soundPack;
-  migrated.typingFeel = FEEL_MIGRATION[migrated.typingFeel] || migrated.typingFeel;
-  migrated.effectMode = EFFECT_MIGRATION[migrated.effectMode] || migrated.effectMode;
-  if (!SOUND_PACKS[migrated.soundPack]) migrated.soundPack = defaultSettings.soundPack;
-  if (!FEEL_PRESETS[migrated.typingFeel]) migrated.typingFeel = defaultSettings.typingFeel;
-  if (!EFFECT_PRESETS[migrated.effectMode]) migrated.effectMode = defaultSettings.effectMode;
-  if (!THEMES[migrated.theme]) migrated.theme = defaultSettings.theme;
-  if (!FONTS[migrated.font]) migrated.font = defaultSettings.font;
-  migrated.volume = clamp01(Number(migrated.volume));
-  migrated.variation = clamp01(Number(migrated.variation));
-  migrated.soundDepth = clamp01(Number(migrated.soundDepth));
-  migrated.typingAnimation = clamp01(Number(migrated.typingAnimation));
-  migrated.caretSmoothness = clamp01(Number(migrated.caretSmoothness));
-  migrated.feedbackStrength = clamp01(Number(migrated.feedbackStrength));
-  migrated.effectIntensity = clamp01(Number(migrated.effectIntensity));
-  migrated.glyphMotion = clamp01(Number(migrated.glyphMotion ?? migrated.textReaction ?? defaultSettings.glyphMotion));
-  migrated.particleAmount = clamp01(Number(migrated.particleAmount));
-  migrated.glowAmount = clamp01(Number(migrated.glowAmount));
-  migrated.specialFrequency = clamp01(Number(migrated.specialFrequency ?? defaultSettings.specialFrequency));
-  migrated.shakeAmount = clamp01(Number(migrated.shakeAmount));
-  migrated.effectSpeed = clamp01(Number(migrated.effectSpeed ?? defaultSettings.effectSpeed));
-  migrated.fontSize = clamp(Number(migrated.fontSize), 15, 24);
-  migrated.lineHeight = clamp(Number(migrated.lineHeight), 145, 215);
-  migrated.editorWidth = clamp(Number(migrated.editorWidth), 560, 900);
-  migrated.paperStyle = migrated.paperStyle === "plain" ? "plain" : "lined";
-  migrated.soundEnabled = Boolean(migrated.soundEnabled);
-  migrated.effectEnabled = Boolean(migrated.effectEnabled);
-  migrated.reduceMotion = Boolean(migrated.reduceMotion);
-  return migrated;
-}
-
-function loadState() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return freshState();
-    return JSON.parse(stored);
-  } catch (error) {
-    console.warn("Could not load notes", error);
-    return freshState();
-  }
-}
-
-function freshState() {
-  return {
-    notes: seedNotes(),
-    activeId: "",
-    filter: "all",
-    labelFilter: "",
-    query: "",
-    settings: { ...defaultSettings },
-    timer: { mode: "study", running: false, secondsLeft: 25 * 60 }
-  };
-}
-
-function seedNotes() {
-  const now = Date.now();
-  return [
-    {
-      id: createId(),
-      title: "TOEFL reading patterns",
-      label: "TOEFL",
-      folder: "Exam prep",
-      favorite: true,
-      createdAt: now - 1000 * 60 * 60 * 7,
-      updatedAt: now - 1000 * 60 * 18,
-      content:
-        "<h1>TOEFL Reading Patterns</h1><p>Track recurring question types, signal words, and paragraph roles here.</p><h2>Patterns</h2><ul><li>Contrast: however, yet, in contrast</li><li>Cause: therefore, as a result, because</li><li>Example: for instance, such as, namely</li></ul><blockquote>Read for structure first, details second.</blockquote>"
-    },
-    {
-      id: createId(),
-      title: "Vocabulary garden",
-      label: "Vocabulary",
-      folder: "Daily review",
-      favorite: false,
-      createdAt: now - 1000 * 60 * 60 * 22,
-      updatedAt: now - 1000 * 60 * 60 * 2,
-      content:
-        "<h1>Vocabulary Garden</h1><p><span style=\"background-color: #d8f4df;\">Cluster words by feeling and usage</span> so review feels lighter.</p><ul><li>Meticulous: careful, precise</li><li>Coherent: logical, connected</li><li>Subtle: delicate, not obvious</li></ul>"
-    },
-    {
-      id: createId(),
-      title: "Essay idea bank",
-      label: "Writing",
-      folder: "Ideas",
-      favorite: false,
-      createdAt: now - 1000 * 60 * 60 * 50,
-      updatedAt: now - 1000 * 60 * 60 * 8,
-      content:
-        "<h1>Essay Idea Bank</h1><p>Collect flexible examples that can support many prompts.</p><label class=\"check-line\"><input type=\"checkbox\"><span>Add education example</span></label><label class=\"check-line\"><input type=\"checkbox\"><span>Add technology example</span></label><hr><p>Keep examples specific, short, and reusable.</p>"
-    }
-  ];
-}
-
-function saveStateNow() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (error) {
-    console.warn("Could not save notes", error);
-  }
-}
-
-function scheduleSave() {
-  refs.saveStatus.textContent = "Saving";
-  refs.saveStatus.classList.add("saving");
-  window.clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(() => {
-    saveStateNow();
-    refs.saveStatus.textContent = "Saved";
-    refs.saveStatus.classList.remove("saving");
-  }, 230);
-}
-
-function renderAll() {
-  renderLabelFilters();
-  renderFilters();
-  renderLabelOptions();
-  renderFolderOptions();
-  renderNotes();
-  renderActiveNote();
-  renderSettingsControls();
-  renderTimer();
-}
-
-function renderFilters() {
-  document.querySelectorAll("[data-filter]").forEach((button) => {
-    button.classList.toggle("active", state.filter === button.dataset.filter);
-  });
-  document.querySelectorAll("[data-label]").forEach((button) => {
-    button.classList.toggle("active", state.filter === "label" && state.labelFilter === button.dataset.label);
-  });
-}
-
-function renderLabelOptions() {
-  const labels = getLabels();
-  refs.labelSelect.innerHTML = "";
-  labels.forEach((label) => {
     const option = document.createElement("option");
-    option.value = label;
-    option.textContent = label;
-    refs.labelSelect.append(option);
+    option.value = key;
+    option.textContent = font.label;
+    option.style.fontFamily = font.stack;
+    groups[font.group].append(option);
   });
 }
 
-function renderFolderOptions() {
-  const folders = uniqueValues(state.notes.map((note) => note.folder || "General"));
-  refs.folderList.innerHTML = "";
-  folders.forEach((folder) => {
-    const option = document.createElement("option");
-    option.value = folder;
-    refs.folderList.append(option);
-  });
-}
-
-function renderNotes() {
-  const notes = getVisibleNotes();
-  refs.noteCount.textContent = String(notes.length);
-  refs.noteList.innerHTML = "";
-
-  if (!notes.length) {
-    const empty = document.createElement("div");
-    empty.className = "note-card";
-    empty.innerHTML = "<div class=\"note-card-title\">No notes found</div><p>Try another search or create a fresh page.</p>";
-    refs.noteList.append(empty);
-    return;
-  }
-
-  notes.forEach((note) => {
+function buildMoodGrid() {
+  refs.moodGrid.innerHTML = "";
+  Object.entries(MOODS).forEach(([id, mood]) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `note-card${note.id === state.activeId ? " active" : ""}`;
-    button.dataset.noteId = note.id;
-    const preview = plainText(note.content).trim() || "Blank page";
-    button.innerHTML = `
-      <div class="note-card-title">
-        <span>${escapeHtml(note.title || "Untitled note")}</span>
-        ${note.favorite ? "<span class=\"pin-dot\" aria-hidden=\"true\"></span>" : ""}
-      </div>
-      <p>${escapeHtml(preview)}</p>
-      <div class="note-card-meta">
-        <span class="note-card-label">${escapeHtml(note.label || "Ideas")}</span>
-        <span>${relativeTime(note.updatedAt)}</span>
-      </div>
-    `;
-    refs.noteList.append(button);
+    button.className = "mood";
+    button.dataset.mood = id;
+    button.style.setProperty("--dot", EFFECT_PRESETS[mood.effectMode].primary);
+    const name = document.createElement("strong");
+    name.textContent = mood.label;
+    const note = document.createElement("small");
+    note.textContent = mood.note;
+    button.append(name, note);
+    button.addEventListener("click", () => applyMood(id));
+    refs.moodGrid.append(button);
   });
 }
 
-function renderActiveNote() {
-  const note = getActiveNote();
-  if (!note) return;
-  isHydrating = true;
-  refs.titleInput.value = note.title || "";
-  refs.labelSelect.value = note.label || DEFAULT_LABELS[0];
-  refs.folderInput.value = note.folder || "General";
-  refs.editor.innerHTML = note.content || "";
-  refs.favoriteBtn.setAttribute("aria-pressed", String(Boolean(note.favorite)));
-  refs.favoriteBtn.textContent = note.favorite ? "Pinned" : "Pin";
-  refs.activeNoteCaption.textContent = note.favorite ? "Pinned" : "Editing";
-  renderCounts();
-  refs.updatedAt.textContent = `Updated ${relativeTime(note.updatedAt)}`;
-  refs.saveStatus.textContent = "Saved";
-  refs.saveStatus.classList.remove("saving");
-  isHydrating = false;
-}
-
-function renderSettingsControls() {
-  const settings = state.settings;
-  refs.searchInput.value = state.query;
-  refs.soundEnabled.checked = settings.soundEnabled;
-  refs.soundPackSelect.value = settings.soundPack;
-  refs.volumeRange.value = String(Math.round(settings.volume * 100));
-  refs.volumeReadout.textContent = `${Math.round(settings.volume * 100)}%`;
-  refs.soundVariationRange.value = String(Math.round(settings.variation * 100));
-  refs.soundVariationReadout.textContent = `${Math.round(settings.variation * 100)}%`;
-  refs.soundDepthRange.value = String(Math.round(settings.soundDepth * 100));
-  refs.soundDepthReadout.textContent = `${Math.round(settings.soundDepth * 100)}%`;
-  refs.typingFeelSelect.value = settings.typingFeel;
-  refs.feelDescription.textContent = FEEL_PRESETS[settings.typingFeel].description;
-  refs.typingAnimationRange.value = String(Math.round(settings.typingAnimation * 100));
-  refs.typingAnimationReadout.textContent = `${Math.round(settings.typingAnimation * 100)}%`;
-  refs.caretSmoothRange.value = String(Math.round(settings.caretSmoothness * 100));
-  refs.caretSmoothReadout.textContent = `${Math.round(settings.caretSmoothness * 100)}%`;
-  refs.feedbackStrengthRange.value = String(Math.round(settings.feedbackStrength * 100));
-  refs.feedbackStrengthReadout.textContent = `${Math.round(settings.feedbackStrength * 100)}%`;
-  refs.effectEnabled.checked = settings.effectEnabled;
-  refs.effectModeSelect.value = settings.effectMode;
-  refs.effectDescription.textContent = EFFECT_PRESETS[settings.effectMode].description;
-  refs.effectIntensityRange.value = String(Math.round(settings.effectIntensity * 100));
-  refs.effectIntensityReadout.textContent = `${Math.round(settings.effectIntensity * 100)}%`;
-  refs.glyphMotionRange.value = String(Math.round(settings.glyphMotion * 100));
-  refs.glyphMotionReadout.textContent = `${Math.round(settings.glyphMotion * 100)}%`;
-  refs.particleAmountRange.value = String(Math.round(settings.particleAmount * 100));
-  refs.particleAmountReadout.textContent = `${Math.round(settings.particleAmount * 100)}%`;
-  refs.glowAmountRange.value = String(Math.round(settings.glowAmount * 100));
-  refs.glowAmountReadout.textContent = `${Math.round(settings.glowAmount * 100)}%`;
-  refs.specialFrequencyRange.value = String(Math.round(settings.specialFrequency * 100));
-  refs.specialFrequencyReadout.textContent = `${Math.round(settings.specialFrequency * 100)}%`;
-  refs.shakeAmountRange.value = String(Math.round(settings.shakeAmount * 100));
-  refs.shakeAmountReadout.textContent = `${Math.round(settings.shakeAmount * 100)}%`;
-  refs.effectSpeedRange.value = String(Math.round(settings.effectSpeed * 100));
-  refs.effectSpeedReadout.textContent = `${Math.round(settings.effectSpeed * 100)}%`;
-  refs.themeSelect.value = settings.theme;
-  refs.fontSelect.value = settings.font;
-  refs.paperStyleSelect.value = settings.paperStyle;
-  refs.fontSizeRange.value = String(settings.fontSize);
-  refs.fontSizeReadout.textContent = `${settings.fontSize} px`;
-  refs.lineHeightRange.value = String(settings.lineHeight);
-  refs.lineHeightReadout.textContent = `${settings.lineHeight}%`;
-  refs.editorWidthRange.value = String(settings.editorWidth);
-  refs.editorWidthReadout.textContent = `${settings.editorWidth}px`;
-  refs.reduceMotion.checked = settings.reduceMotion;
-}
-
-function renderTimer() {
-  const isStudy = state.timer.mode === "study";
-  refs.timerMode.textContent = isStudy ? "Study" : "Break";
-  refs.timerFace.textContent = formatClock(state.timer.secondsLeft);
-  refs.timerStartPause.textContent = state.timer.running ? "Pause" : "Start";
-  document.querySelectorAll("[data-timer-mode]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.timerMode === state.timer.mode);
+function syncControls() {
+  const p = state.prefs;
+  refs.effectEnabled.checked = p.effectEnabled;
+  refs.soundEnabled.checked = p.soundEnabled;
+  refs.intensityRange.value = String(Math.round(p.intensity * 100));
+  refs.intensityReadout.textContent = `${Math.round(p.intensity * 100)}%`;
+  refs.volumeRange.value = String(Math.round(p.volume * 100));
+  refs.volumeReadout.textContent = `${Math.round(p.volume * 100)}%`;
+  refs.fontSelect.value = p.font;
+  refs.fontSizeRange.value = String(p.fontSize);
+  refs.fontSizeReadout.textContent = `${p.fontSize} px`;
+  refs.effectModeSelect.value = p.effectMode;
+  refs.soundPackSelect.value = p.soundPack;
+  refs.inkColorRow.querySelectorAll(".swatch").forEach((swatch) => {
+    swatch.setAttribute("aria-pressed", String(swatch.dataset.color === p.color));
+  });
+  refs.moodGrid.querySelectorAll(".mood").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.mood === p.mood));
   });
 }
 
-function renderCounts() {
-  const text = plainText(serializeEditorContent());
-  const words = countWords(text);
-  refs.wordCount.textContent = `${words} ${words === 1 ? "word" : "words"}`;
-  refs.charCount.textContent = `${text.length} ${text.length === 1 ? "char" : "chars"}`;
+function setSettingsOpen(open) {
+  document.body.classList.toggle("settings-open", open);
+  refs.settingsPanel.inert = !open;
+  refs.settingsToggleBtn.setAttribute("aria-expanded", String(open));
+  if (open) refs.closeSettingsBtn.focus({ preventScroll: true });
+  else if (document.activeElement && refs.settingsPanel.contains(document.activeElement)) refs.settingsToggleBtn.focus({ preventScroll: true });
 }
 
-function renderLabelFilters() {
-  const labels = getLabels();
-  refs.labelFilterList.innerHTML = "";
-  labels.forEach((label) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "label-pill";
-    button.dataset.label = label;
-    button.textContent = label;
-    refs.labelFilterList.append(button);
-  });
-}
+// ------------------------------------------------------ 3. typing feedback
+// Typing feedback (sound on keydown for low latency, sparks on input so the
+// caret is already at its final position — this also covers Korean IME).
 
-function getVisibleNotes() {
-  const query = state.query.toLowerCase();
-  let notes = [...state.notes];
-  if (state.filter === "favorites") {
-    notes = notes.filter((note) => note.favorite);
-  }
-  if (state.filter === "recent") {
-    notes = notes.slice().sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6);
-  }
-  if (state.filter === "label" && state.labelFilter) {
-    notes = notes.filter((note) => note.label === state.labelFilter);
-  }
-  if (query) {
-    notes = notes.filter((note) => {
-      const haystack = `${note.title} ${note.label} ${note.folder} ${plainText(note.content)}`.toLowerCase();
-      return haystack.includes(query);
-    });
-  }
-  return notes.sort((a, b) => Number(b.favorite) - Number(a.favorite) || b.updatedAt - a.updatedAt);
-}
+function typingRoot() { return state.activeNote; }
 
-function getLabels() {
-  return uniqueValues([...DEFAULT_LABELS, ...state.notes.map((note) => note.label || "Ideas")]);
-}
-
-function uniqueValues(values) {
-  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
-}
-
-function setActiveNote(id) {
-  if (id === state.activeId) return;
-  state.activeId = id;
-  saveStateNow();
-  renderNotes();
-  renderActiveNote();
-  requestAnimationFrame(() => refs.editor.focus());
-}
-
-function createNote() {
-  const now = Date.now();
-  const note = {
-    id: createId(),
-    title: "Untitled note",
-    label: "Ideas",
-    folder: "General",
-    favorite: false,
-    createdAt: now,
-    updatedAt: now,
-    content: "<p><br></p>"
-  };
-  state.notes.unshift(note);
-  state.activeId = note.id;
-  state.filter = "all";
-  state.labelFilter = "";
-  saveStateNow();
-  renderAll();
-  refs.titleInput.focus();
-  refs.titleInput.select();
-}
-
-function updateTitle() {
-  if (isHydrating) return;
-  const note = getActiveNote();
-  note.title = refs.titleInput.value.trimStart();
-  touch(note);
-  scheduleSave();
-  renderNotes();
-}
-
-function updateLabel() {
-  if (isHydrating) return;
-  const note = getActiveNote();
-  note.label = refs.labelSelect.value;
-  touch(note);
-  scheduleSave();
-  renderLabelFilters();
-  renderFilters();
-  renderNotes();
-}
-
-function updateFolder() {
-  if (isHydrating) return;
-  const note = getActiveNote();
-  note.folder = refs.folderInput.value.trim() || "General";
-  touch(note);
-  scheduleSave();
-  renderFolderOptions();
-  renderNotes();
-}
-
-function handleEditorInput(event) {
-  updateEditorContent();
-  maybeTriggerInputVisual(event);
-}
-
-function updateEditorContent() {
-  if (isHydrating) return;
-  const note = getActiveNote();
-  syncCheckboxAttributes();
-  note.content = serializeEditorContent();
-  touch(note);
-  scheduleSave();
-  renderCounts();
-  renderNotes();
-}
-
-function serializeEditorContent() {
-  const clone = refs.editor.cloneNode(true);
-  stripTransientGlyphs(clone);
-  return clone.innerHTML;
-}
-
-function stripTransientGlyphs(root) {
-  root.querySelectorAll(TRANSIENT_GLYPH_SELECTOR).forEach((glyph) => {
-    while (glyph.firstChild) {
-      glyph.parentNode.insertBefore(glyph.firstChild, glyph);
-    }
-    glyph.remove();
-  });
-  return root;
-}
-
-function toggleFavorite() {
-  const note = getActiveNote();
-  note.favorite = !note.favorite;
-  touch(note);
-  saveStateNow();
-  renderActiveNote();
-  renderNotes();
-}
-
-function deleteActiveNote() {
-  const note = getActiveNote();
-  if (!note) return;
-  const ok = window.confirm(`Delete "${note.title || "Untitled note"}"?`);
-  if (!ok) return;
-  state.notes = state.notes.filter((item) => item.id !== note.id);
-  if (!state.notes.length) {
-    state.notes = seedNotes().slice(0, 1);
-  }
-  state.activeId = state.notes[0].id;
-  saveStateNow();
-  renderAll();
-  showToast("Note deleted");
-}
-
-function touch(note) {
-  note.updatedAt = Date.now();
-  refs.updatedAt.textContent = `Updated ${relativeTime(note.updatedAt)}`;
-}
-
-function getActiveNote() {
-  return state.notes.find((note) => note.id === state.activeId) || state.notes[0];
-}
-
-function runToolbarCommand(event) {
-  const button = event.target.closest("[data-command]");
-  if (!button) return;
-  flushCommittedGlyphAnimations({ preserveSelection: true });
-  refs.editor.focus();
-  document.execCommand("styleWithCSS", false, true);
-  const command = button.dataset.command;
-  const value = button.dataset.value;
-
-  if (command === "format") {
-    document.execCommand("formatBlock", false, value);
-  } else if (command === "bold") {
-    document.execCommand("bold", false);
-  } else if (command === "italic") {
-    document.execCommand("italic", false);
-  } else if (command === "underline") {
-    document.execCommand("underline", false);
-  } else if (command === "ul") {
-    document.execCommand("insertUnorderedList", false);
-  } else if (command === "ol") {
-    document.execCommand("insertOrderedList", false);
-  } else if (command === "quote") {
-    document.execCommand("formatBlock", false, "BLOCKQUOTE");
-  } else if (command === "divider") {
-    document.execCommand("insertHorizontalRule", false);
-  } else if (command === "checkbox") {
-    document.execCommand(
-      "insertHTML",
-      false,
-      "<label class=\"check-line\"><input type=\"checkbox\"><span>Checklist item</span></label><p><br></p>"
-    );
-  } else if (command === "highlight") {
-    document.execCommand("hiliteColor", false, button.dataset.color);
-  }
-
-  updateEditorContent();
-  updateToolbarForSelection();
-}
-
-function pastePlainText(event) {
-  event.preventDefault();
-  flushCommittedGlyphAnimations({ preserveSelection: true });
-  const text = event.clipboardData.getData("text/plain");
-  document.execCommand("insertText", false, text);
-}
-
-function syncCheckboxAttributes() {
-  refs.editor.querySelectorAll("input[type='checkbox']").forEach((input) => {
-    input.toggleAttribute("checked", input.checked);
-  });
-}
-
-function updateSettingsFromControls() {
-  state.settings.soundEnabled = refs.soundEnabled.checked;
-  state.settings.soundPack = refs.soundPackSelect.value;
-  state.settings.volume = Number(refs.volumeRange.value) / 100;
-  state.settings.variation = Number(refs.soundVariationRange.value) / 100;
-  state.settings.soundDepth = Number(refs.soundDepthRange.value) / 100;
-  state.settings.typingFeel = refs.typingFeelSelect.value;
-  state.settings.typingAnimation = Number(refs.typingAnimationRange.value) / 100;
-  state.settings.caretSmoothness = Number(refs.caretSmoothRange.value) / 100;
-  state.settings.feedbackStrength = Number(refs.feedbackStrengthRange.value) / 100;
-  state.settings.effectEnabled = refs.effectEnabled.checked;
-  state.settings.effectMode = refs.effectModeSelect.value;
-  state.settings.effectIntensity = Number(refs.effectIntensityRange.value) / 100;
-  state.settings.glyphMotion = Number(refs.glyphMotionRange.value) / 100;
-  state.settings.particleAmount = Number(refs.particleAmountRange.value) / 100;
-  state.settings.glowAmount = Number(refs.glowAmountRange.value) / 100;
-  state.settings.specialFrequency = Number(refs.specialFrequencyRange.value) / 100;
-  state.settings.shakeAmount = Number(refs.shakeAmountRange.value) / 100;
-  state.settings.effectSpeed = Number(refs.effectSpeedRange.value) / 100;
-  state.settings.theme = refs.themeSelect.value;
-  state.settings.font = refs.fontSelect.value;
-  state.settings.paperStyle = refs.paperStyleSelect.value;
-  state.settings.fontSize = Number(refs.fontSizeRange.value);
-  state.settings.lineHeight = Number(refs.lineHeightRange.value);
-  state.settings.editorWidth = Number(refs.editorWidthRange.value);
-  state.settings.reduceMotion = refs.reduceMotion.checked;
-  state.settings = migrateSettings(state.settings);
-  applySettings();
-  renderSettingsControls();
-  saveStateNow();
-  soundEngine.ensurePack(state.settings.soundPack);
-}
-
-function applyPersonalityPreset() {
-  const key = refs.personalitySelect.value;
-  const preset = PERSONALITY_PRESETS[key];
-  refs.personalitySelect.value = "";
-  if (!preset) return;
-  Object.entries(preset).forEach(([field, value]) => {
-    if (field === "label" || field === "description") return;
-    state.settings[field] = value;
-  });
-  // A preset only bundles a starting point — every field it touched stays a
-  // normal, independently editable setting afterward.
-  state.settings = migrateSettings(state.settings);
-  applySettings();
-  renderSettingsControls();
-  saveStateNow();
-  soundEngine.ensurePack(state.settings.soundPack);
-  showToast(`${preset.label} applied`);
-}
-
-function applySettings() {
-  const settings = state.settings;
-  const feel = FEEL_PRESETS[settings.typingFeel];
-  const effect = EFFECT_PRESETS[settings.effectMode];
-  const animation = settings.reduceMotion ? 0 : settings.typingAnimation;
-  const feedback = settings.reduceMotion ? 0 : settings.feedbackStrength;
-  const smooth = settings.reduceMotion ? 0 : settings.caretSmoothness;
-  const effectLevel = settings.reduceMotion || !settings.effectEnabled ? 0 : settings.effectIntensity;
-  const glow = settings.reduceMotion ? 0 : settings.glowAmount;
-  const glyphMotion = settings.reduceMotion || !settings.effectEnabled ? 0 : settings.glyphMotion;
-  const shake = settings.reduceMotion ? 0 : settings.shakeAmount;
-  const speedScale = 1.18 - settings.effectSpeed * 0.46;
-  const duration = Math.round(feel.duration * (0.42 + animation * 1.12));
-  const size = feel.size * (0.72 + feedback * 0.72) * (0.86 + glyphMotion * 0.36);
-  const opacity = feel.opacity * (0.46 + feedback * 1.08) * (0.72 + effectLevel * 0.48);
-  const scale = feel.scale * (0.68 + animation * 0.56);
-  const caretMs = Math.round(feel.caretSmooth * (0.22 + smooth * 1.16));
-
-  document.body.dataset.theme = settings.theme;
-  document.body.dataset.feel = settings.typingFeel;
-  document.body.dataset.effect = settings.effectMode;
-  document.body.dataset.paper = settings.paperStyle;
-  document.body.classList.toggle("reduce-motion", settings.reduceMotion);
-  document.body.style.setProperty("--editor-font", FONTS[settings.font].stack);
-  document.body.style.setProperty("--editor-font-size", `${settings.fontSize}px`);
-  document.body.style.setProperty("--editor-line-height", String(settings.lineHeight / 100));
-  document.body.style.setProperty("--editor-line-step", `${settings.fontSize * (settings.lineHeight / 100)}px`);
-  document.body.style.setProperty("--editor-width", `${settings.editorWidth}px`);
-  document.body.style.setProperty("--feedback-duration", `${duration}ms`);
-  document.body.style.setProperty("--feedback-size", `${size.toFixed(2)}px`);
-  document.body.style.setProperty("--feedback-offset", `${(-size / 2).toFixed(2)}px`);
-  document.body.style.setProperty("--feedback-wide-size", `${(size * 1.7).toFixed(2)}px`);
-  document.body.style.setProperty("--feedback-opacity", opacity.toFixed(3));
-  document.body.style.setProperty("--feedback-scale", scale.toFixed(2));
-  document.body.style.setProperty("--caret-smooth-ms", `${caretMs}ms`);
-  document.body.style.setProperty("--caret-active-opacity", Math.min(0.72, opacity * (1.25 + glow)).toFixed(3));
-  document.body.style.setProperty("--effect-intensity", effectLevel.toFixed(3));
-  document.body.style.setProperty("--glyph-motion", glyphMotion.toFixed(3));
-  document.body.style.setProperty("--effect-particles", settings.particleAmount.toFixed(3));
-  document.body.style.setProperty("--effect-glow", glow.toFixed(3));
-  document.body.style.setProperty("--effect-glow-size", `${Math.round(8 + glow * 22)}px`);
-  document.body.style.setProperty("--effect-shake", shake.toFixed(3));
-  document.body.style.setProperty("--effect-speed-scale", speedScale.toFixed(3));
-  document.body.style.setProperty("--effect-primary", effect.primary);
-  document.body.style.setProperty("--effect-secondary", effect.secondary);
-  document.body.style.setProperty("--effect-aura", effect.aura);
-  document.body.style.setProperty("--mood-opacity", (effectLevel * glow * 0.18).toFixed(3));
-  refs.feelDescription.textContent = feel.description;
-  refs.effectDescription.textContent = effect.description;
-  soundEngine.updateMaster();
-}
-
-function handleTypingKey(event) {
-  const target = event.target;
-  const isEditorTarget = target === refs.editor || refs.editor.contains(target);
-  const isTitleTarget = target === refs.titleInput;
-  if (!isEditorTarget && !isTitleTarget) return;
-  if ((event.ctrlKey || event.metaKey) && isUndoRedoShortcut(event) && isEditorTarget) {
-    flushCommittedGlyphAnimations({ preserveSelection: true });
-    return;
-  }
-  if (event.ctrlKey || event.metaKey || event.altKey) return;
-
-  const keyType = getKeyType(event);
-  if (!keyType) return;
-
-  triggerTypingTactile(keyType, isEditorTarget, event);
-}
-
-function handleBeforeInputFallback(event) {
-  if (!isTypingTarget(event.target)) return;
-  const compositionInput = event.isComposing || compositionActive || /Composition/i.test(event.inputType || "");
-  if (!compositionInput) return;
-  const now = performance.now();
-  if (now - lastTactileAt < 90) return;
-  triggerTypingTactile("normal", true, event);
-}
-
-function handleCompositionStart() {
-  compositionActive = true;
-}
-
-function handleCompositionUpdate() {}
-
-function handleCompositionEnd(event) {
-  compositionActive = false;
-  updateEditorContent();
-  const composed = lastGrapheme(event && typeof event.data === "string" ? event.data : "");
-  if (composed && composed.trim()) triggerTypingVisualOnly(composed);
-}
-
-function triggerTypingVisualOnly(glyph) {
-  // Fires the same caret-local burst + micro-vibration as a normal keystroke,
-  // without a sound, so a completed Hangul syllable gets its tactile payoff
-  // once composition settles (mid-composition jamo are never rendered as a
-  // ghost glyph, since they are not the final character yet).
-  const now = performance.now();
-  registerKeystrokeInterval(now);
-  lastTactileAt = now;
-  updateTypingStreak(now, "normal");
-  const tactile = {
-    keyType: "normal",
-    glyph,
-    seed: Math.floor(now * 10) + Math.floor(Math.random() * 1000),
-    streak: typingStreak,
-    allowGlyph: true
-  };
-  requestAnimationFrame(() => cueTypingVisual(tactile));
-}
-
-function maybeTriggerInputVisual(event) {
-  if (!event || !isTypingTarget(event.target)) return;
-  const inputType = event.inputType || "";
-  if (inputType !== "insertText" && inputType !== "insertReplacementText") return;
-  if (event.isComposing || compositionActive || /Composition/i.test(inputType)) return;
-
-  const now = performance.now();
-  if (now - lastTactileAt < 90) return;
-
-  const glyph = lastGrapheme(typeof event.data === "string" ? event.data : "");
-  if (glyph && !isRenderableGlyph(glyph)) return;
-  triggerTypingVisualOnly(glyph);
-}
-
-function lastGrapheme(value) {
-  const segments = segmentGraphemes(value || "");
-  return segments.length ? segments[segments.length - 1].text : "";
-}
-
-function triggerTypingTactile(keyType, visualTargetIsEditor, event) {
-  const now = performance.now();
-  registerKeystrokeInterval(now);
-  lastTactileAt = now;
-  soundEngine.play(keyType);
-  updateTypingStreak(lastTactileAt, keyType);
-  if (visualTargetIsEditor) {
-    // Composing Hangul is still allowed to resolve/show a glyph visual here:
-    // it's only ever rendered through the decorative overlay (appendGlyphOverlay,
-    // never touches the real note DOM), because animateCommittedGlyph has its
-    // own independent `compositionActive` check and always refuses to wrap the
-    // live composition text. That's what lets each jamo keystroke feel just as
-    // alive as an English letter, without ever risking the composition itself.
-    const tactile = {
-      keyType,
-      glyph: getVisualGlyph(event, keyType),
-      seed: Math.floor(lastTactileAt * 10) + Math.floor(Math.random() * 1000),
-      streak: typingStreak,
-      allowGlyph: true
-    };
-    requestAnimationFrame(() => cueTypingVisual(tactile));
-  }
-}
-
-function updateTypingStreak(now, keyType) {
-  // Lightweight combo tracking for the reward system: fast consecutive
-  // keystrokes build a streak, which nudges special-moment bursts to show
-  // up a little more often. No visible counter, no score UI.
-  if (keyType === "backspace") {
-    typingStreak = Math.max(0, typingStreak - 3);
-  } else if (now - lastStreakAt < 550) {
-    typingStreak += 1;
-  } else {
-    typingStreak = 1;
-  }
-  lastStreakAt = now;
-  maybeSpawnStreakReward(now, keyType);
-}
-
-// Tracks the rolling gap between recent keystrokes so motion/glow/particles
-// can respond a little to how fast someone is typing, without any visible
-// speed readout. Smoothed rather than snapping, and decays quickly back to
-// neutral after a pause.
-function registerKeystrokeInterval(now) {
-  if (lastTactileAt) {
-    const interval = now - lastTactileAt;
-    if (interval > 0 && interval < 900) {
-      recentKeyIntervals.push(interval);
-      if (recentKeyIntervals.length > 6) recentKeyIntervals.shift();
-    } else {
-      recentKeyIntervals = [];
-    }
-  }
-  if (recentKeyIntervals.length >= 2) {
-    const avg = recentKeyIntervals.reduce((sum, value) => sum + value, 0) / recentKeyIntervals.length;
-    const target = clamp01((260 - avg) / (260 - 90));
-    typingSpeedFactor = typingSpeedFactor * 0.65 + target * 0.35;
-  } else {
-    typingSpeedFactor *= 0.85;
-  }
-}
-
-// A quiet visual reward for a sustained fast streak: a small extra sparkle
-// burst at the caret, tinted to the active FX. No numbers, no combo UI.
-function maybeSpawnStreakReward(now, keyType) {
-  const settings = state.settings;
-  if (keyType === "backspace") return;
-  if (settings.reduceMotion || !settings.effectEnabled || settings.particleAmount <= 0.01) return;
-  if (typingStreak < STREAK_REWARD_STEP || typingStreak % STREAK_REWARD_STEP !== 0) return;
-  if (now - lastStreakRewardAt < 3200) return;
-  lastStreakRewardAt = now;
-  requestAnimationFrame(spawnStreakRewardBurst);
-}
-
-function spawnStreakRewardBurst() {
-  if (!fx.ctx) return;
-  const rect = caretRect();
-  if (!rect) return;
-  const settings = state.settings;
-  const effect = EFFECT_PRESETS[settings.effectMode] || EFFECT_PRESETS[defaultSettings.effectMode];
-  const x = rect.left;
-  const y = rect.top + rect.height * 0.4;
-  const count = clamp(Math.round(5 * (0.5 + settings.particleAmount)), 3, 9);
-  for (let i = 0; i < count; i += 1) {
-    const angle = fxRand(0, Math.PI * 2);
-    const speed = fxRand(14, 46);
-    addFxParticle({
-      start: performance.now() + i * 16,
-      life: fxRand(420, 720),
-      x,
-      y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 14,
-      ax: 0,
-      ay: -6,
-      size: fxRand(3, 7),
-      shape: Math.random() < 0.5 ? "star8" : "dot",
-      colorA: effect.secondary,
-      colorB: effect.primary,
-      glow: fxGlow({ settings, effectLevel: 1 }, 4),
-      peakAlpha: fxRand(0.55, 0.85)
-    });
-  }
-  ensureFxLoop();
-}
-
-function getVisualGlyph(event, keyType) {
-  if (keyType !== "normal" || !event) return "";
-  if (compositionActive || event.isComposing) return "";
-  if (event.key === "Process" || event.key === "Unidentified") return "";
-  if (event.key && event.key.length === 1 && event.key !== " ") return event.key;
-  return "";
-}
-
-function getKeyType(event) {
-  if (event.key === "Backspace" || event.key === "Delete") return "backspace";
-  if (event.key === "Enter") return "enter";
-  if (event.key === " " || event.code === "Space") return "space";
-  if (event.key === "Tab" || event.key === "Escape") return "";
-  if (event.isComposing && isCharacterCode(event.code)) return "normal";
-  if ((event.key === "Process" || event.key === "Unidentified") && isCharacterCode(event.code)) return "normal";
-  if (event.key && event.key.length === 1) return "normal";
-  if (isCharacterCode(event.code)) return "normal";
-  return "";
-}
-
-function isUndoRedoShortcut(event) {
-  const key = String(event.key || "").toLowerCase();
-  return key === "z" || key === "y";
-}
-
-function isCharacterCode(code) {
-  return /^(Key|Digit|Numpad|Intl|Bracket|Quote|Semicolon|Comma|Period|Slash|Backquote|Minus|Equal)/.test(code || "");
-}
-
-function isTypingTarget(target) {
-  return target === refs.editor || refs.editor.contains(target) || target === refs.titleInput;
-}
-
-function cueTypingVisual(tactile = {}) {
-  if (state.settings.reduceMotion) return;
-  const effect = EFFECT_PRESETS[state.settings.effectMode] || EFFECT_PRESETS[defaultSettings.effectMode];
-  const keyType = tactile.keyType || "normal";
-  const allowGlyph = tactile.allowGlyph !== false && keyType === "normal";
-  const glyphTargets = allowGlyph ? resolveGlyphTargets() : { current: null, previous: null, trail: [] };
-  const realGlyphAnimated = animateCommittedGlyph(glyphTargets.current, tactile);
-  refs.editor.classList.add("is-typing");
-  document.body.classList.add("typing-live");
-  window.clearTimeout(typingPulseTimer);
-  window.clearTimeout(moodPulseTimer);
-  typingPulseTimer = window.setTimeout(() => refs.editor.classList.remove("is-typing"), 140);
-  moodPulseTimer = window.setTimeout(() => document.body.classList.remove("typing-live"), Math.min(360, effect.life * 0.48));
-  updateCaretGlow();
-  spawnTypingMark({ ...tactile, realGlyphAnimated }, glyphTargets);
+function caretRect() {
+  const root = typingRoot();
+  const selection = window.getSelection();
+  if (!root || !selection || !selection.rangeCount) return null;
+  const range = selection.getRangeAt(0).cloneRange();
+  if (!root.contains(range.startContainer)) return null;
+  range.collapse(true);
+  const fontSize = parseFloat(getComputedStyle(root).fontSize) || 18;
+  const rect = range.getClientRects()[0];
+  if (rect && (rect.height || rect.width)) return { left: rect.left, top: rect.top, height: rect.height || fontSize * 1.3 };
+  // Empty line / end after a line break: fall back to the box edge.
+  const box = root.getBoundingClientRect();
+  const empty = !root.textContent;
+  return { left: box.left, top: empty ? box.top : box.bottom - fontSize * 1.3, height: fontSize * 1.3 };
 }
 
 function updateCaretGlow() {
   const rect = caretRect();
-  if (!rect) return;
+  if (!rect || !state.settings.effectEnabled) return;
   refs.caretGlow.style.left = `${rect.left}px`;
   refs.caretGlow.style.top = `${rect.top}px`;
   refs.caretGlow.style.height = `${Math.max(18, rect.height)}px`;
@@ -2818,15 +1276,63 @@ function updateCaretGlow() {
   caretHideTimer = window.setTimeout(() => refs.caretGlow.classList.remove("active"), 230);
 }
 
-// =====================================================================
-// Canvas FX layer: replaces the old "one particle shape recolored per
-// preset" DOM system with a real particle engine, so each preset can have
-// a genuinely different shape/motion language (stars, lightning forks,
-// glitch shards, crisp pixels, prism shards, buoyant bubbles...) without
-// flooding the DOM with elements. The character-level reaction (ghost
-// glyph + vibration) stays DOM-based, since it needs to render real text.
-// =====================================================================
+function keyTypeFromInput(event, fallback) {
+  const type = event.inputType || "";
+  if (type.startsWith("delete")) return "backspace";
+  if (type === "insertParagraph" || type === "insertLineBreak") return "enter";
+  if (type === "insertText" && event.data === " ") return "space";
+  return fallback || "normal";
+}
 
+function fireTypingFx(keyType, glyph) {
+  const s = state.settings;
+  const now = performance.now();
+  registerKeystrokeInterval(now);
+  lastTactileAt = now;
+  updateTypingStreak(now, keyType);
+  if (!s.effectEnabled || s.particleAmount <= 0.01) return;
+  const rect = caretRect();
+  if (!rect) return;
+  updateCaretGlow();
+
+  const effect = EFFECT_PRESETS[s.effectMode] || EFFECT_PRESETS[defaultSettings.effectMode];
+  const seed = Math.floor(now * 10) + Math.floor(Math.random() * 1000);
+  const keyScale = keyType === "enter" ? 1.25 : keyType === "space" ? 0.82 : keyType === "backspace" ? 0.56 : 1;
+  const specialChance = clamp(effect.special * (0.28 + s.specialFrequency * 1.72) * s.effectIntensity + Math.min(0.22, typingStreak * 0.006), 0, 0.95);
+  const isSpecial = seeded01(seed, 77) < specialChance;
+  const glyphWidth = Math.max(8, rect.height * 0.52);
+  // The caret sits just after the newest character, so the burst starts at that character's right side.
+  spawnEffectBurst(s.effectMode, {
+    x: rect.left - glyphWidth * 0.22, y: rect.top + rect.height * 0.55,
+    glyphWidth, glyphHeight: rect.height, settings: s, isSpecial, keyType,
+    effectLevel: s.effectIntensity, speedScale: 1.18 - s.effectSpeed * 0.46,
+    scale: keyScale, streak: typingStreak
+  });
+  if (glyph) spawnGhostGlyph(glyph, rect, isSpecial);
+}
+
+// A faint copy of the just-typed character that lifts off and fades: decorative only, never touches the note text.
+function spawnGhostGlyph(glyph, rect, isSpecial) {
+  const root = typingRoot();
+  if (!root) return;
+  const ghost = document.createElement("span");
+  ghost.className = `ghost-glyph${isSpecial ? " is-special" : ""}`;
+  ghost.textContent = glyph;
+  const style = getComputedStyle(root);
+  ghost.style.fontFamily = style.fontFamily;
+  ghost.style.fontSize = style.fontSize;
+  ghost.style.left = `${rect.left - (parseFloat(style.fontSize) || 18) * 0.55}px`;
+  ghost.style.top = `${rect.top}px`;
+  ghost.style.height = `${rect.height}px`;
+  ghost.style.lineHeight = `${rect.height}px`;
+  refs.inkLayer.append(ghost);
+  ghost.addEventListener("animationend", () => ghost.remove(), { once: true });
+  const ghosts = refs.inkLayer.querySelectorAll(".ghost-glyph");
+  if (ghosts.length > 12) ghosts[0].remove();
+}
+
+
+// ---- spark engine (canvas particles)
 const fx = { canvas: null, ctx: null, dpr: 1, particles: [], running: false, maxParticles: 320 };
 
 function initFxCanvas() {
@@ -4995,1139 +3501,91 @@ function spawnEffectBurst(mode, opts) {
   ensureFxLoop();
 }
 
-function getGlyphProfile(mode) {
-  return GLYPH_EFFECT_PROFILES[mode] || GLYPH_EFFECT_PROFILES[defaultSettings.effectMode];
+// ---- typing rhythm + streak reward
+// Tracks the rolling gap between recent keystrokes so motion/glow/particles
+// can respond a little to how fast someone is typing, without any visible
+// speed readout. Smoothed rather than snapping, and decays quickly back to
+// neutral after a pause.
+function registerKeystrokeInterval(now) {
+  if (lastTactileAt) {
+    const interval = now - lastTactileAt;
+    if (interval > 0 && interval < 900) {
+      recentKeyIntervals.push(interval);
+      if (recentKeyIntervals.length > 6) recentKeyIntervals.shift();
+    } else {
+      recentKeyIntervals = [];
+    }
+  }
+  if (recentKeyIntervals.length >= 2) {
+    const avg = recentKeyIntervals.reduce((sum, value) => sum + value, 0) / recentKeyIntervals.length;
+    const target = clamp01((260 - avg) / (260 - 90));
+    typingSpeedFactor = typingSpeedFactor * 0.65 + target * 0.35;
+  } else {
+    typingSpeedFactor *= 0.85;
+  }
 }
 
-function animateCommittedGlyph(target, tactile = {}) {
+// A quiet visual reward for a sustained fast streak: a small extra sparkle
+// burst at the caret, tinted to the active FX. No numbers, no combo UI.
+function maybeSpawnStreakReward(now, keyType) {
   const settings = state.settings;
-  const keyType = tactile.keyType || "normal";
-  if (keyType !== "normal" || tactile.allowGlyph === false || compositionActive) return false;
-  if (!target?.range || !isRenderableGlyph(target.glyph)) return false;
-  if (!settings.effectEnabled || settings.effectIntensity <= 0.01 || settings.feedbackStrength <= 0.01) return false;
-  if (settings.glyphMotion <= 0.01 || !rangeWithinEditor(target.range) || rangeTouchesTransientGlyph(target.range)) return false;
-
-  const selection = window.getSelection();
-  if (!selection || !selection.rangeCount || !selection.isCollapsed) return false;
-
-  const wrapper = document.createElement("span");
-  wrapper.className = "typing-real-glyph";
-  wrapper.dataset.effect = settings.effectMode;
-  wrapper.dataset.glyph = target.glyph;
-  wrapper.setAttribute("spellcheck", "false");
-
-  try {
-    target.range.surroundContents(wrapper);
-  } catch (error) {
-    return false;
-  }
-
-  if (!wrapper.textContent) {
-    unwrapCommittedGlyph(wrapper);
-    return false;
-  }
-
-  collapseSelectionAfterNode(wrapper);
-  startCommittedGlyphAnimation(wrapper, settings, target);
-  capCommittedGlyphAnimations();
-  return true;
+  if (keyType === "backspace") return;
+  if (settings.reduceMotion || !settings.effectEnabled || settings.particleAmount <= 0.01) return;
+  if (typingStreak < STREAK_REWARD_STEP || typingStreak % STREAK_REWARD_STEP !== 0) return;
+  if (now - lastStreakRewardAt < 3200) return;
+  lastStreakRewardAt = now;
+  requestAnimationFrame(spawnStreakRewardBurst);
 }
 
-function startCommittedGlyphAnimation(wrapper, settings, target) {
-  const vars = committedGlyphMotionVars(settings);
-  const motion = buildCommittedGlyphMotion(settings.effectMode, vars);
-  let cleaned = false;
-  const cleanup = () => {
-    if (cleaned) return;
-    cleaned = true;
-    unwrapCommittedGlyph(wrapper, { preserveSelection: true });
-  };
-
-  wrapper.style.setProperty("--real-glyph-glow", vars.glow);
-  wrapper.style.setProperty("--real-glyph-alt-glow", vars.altGlow);
-  // Capped to the character's own motion duration on purpose: this is a
-  // quick per-character "impact" flash, not a lingering wash. At normal
-  // typing speed a longer flash ends up overlapping 2-3 already-typed
-  // characters at once, which reads as "everything turned magenta"
-  // instead of "that letter just got hit."
-  startGlyphColorFlash(wrapper, settings, target, motion.duration);
-
-  if (typeof wrapper.animate !== "function") {
-    window.setTimeout(cleanup, motion.duration);
-    return;
-  }
-
-  const animation = wrapper.animate(motion.keyframes, {
-    duration: motion.duration,
-    easing: motion.easing,
-    fill: "both"
-  });
-  animation.addEventListener("finish", cleanup, { once: true });
-  animation.addEventListener("cancel", cleanup, { once: true });
-  window.setTimeout(cleanup, motion.duration + 90);
-}
-
-// Fires alongside the main glyph motion: a quick, FX-tinted color+glow
-// impact that snaps back to the character's real (inherited) ink color
-// well before the wrapper itself is cleaned up. Runs on the temporary
-// wrapper only, so the note's saved HTML/color is never touched.
-function startGlyphColorFlash(wrapper, settings, target, motionDuration) {
-  if (typeof wrapper.animate !== "function") return;
-  const trueColor = target?.style?.color;
-  if (!trueColor) return;
-  const effectLevel = clamp(settings.effectIntensity, 0.05, 1);
-  const strength = clamp01(settings.glyphMotion) * effectLevel;
-  if (strength <= 0.04) return;
-  const flash = GLYPH_FLASH_PRESETS[settings.effectMode] || defaultGlyphFlash(settings.effectMode);
-  const speedScale = 1.18 - settings.effectSpeed * 0.46;
-  const duration = Math.max(90, Math.min(motionDuration, Math.round((flash.life || 150) * speedScale)));
-  const hold = 0.38;
-  const c0 = flash.colors[0];
-  const c1 = flash.colors.length > 1 ? flash.colors[1] : flash.colors[0];
-  const glow = (color, size) => `0 0 ${size}px ${color}, 0 0 ${Math.max(1, size - 3)}px ${color}`;
-  const keyframes = [
-    { color: c0, textShadow: glow(c0, 8), offset: 0 },
-    { color: c1, textShadow: glow(c1, 6), offset: hold },
-    { color: trueColor, textShadow: "0 0 0px transparent", offset: 1 }
-  ];
-  try {
-    wrapper.animate(keyframes, { duration, easing: "ease-out", fill: "forwards" });
-  } catch (error) {
-    // Older browsers may reject animating `color`/`textShadow`; the
-    // transform motion still plays fine without the flash.
-  }
-}
-
-function defaultGlyphFlash(mode) {
-  const effect = EFFECT_PRESETS[mode] || EFFECT_PRESETS[defaultSettings.effectMode];
-  // Built from the effect's own saturated brand colors (the same ones used
-  // for its particles), not the paler glow/"hot" tone — that pale tone
-  // barely showed up against light paper themes, which is why the flash
-  // felt almost absent on non-tailored presets.
-  return { colors: [effect.secondary, effect.primary], life: 150, easing: "ease-out" };
-}
-
-// A fast, sharply-decaying echo through the 1-3 characters typed just before
-// the current one is rendered by `appendGlyphOverlay` (decorative, in the
-// fixed feedback layer) rather than by wrapping the real note text — see
-// spawnTypingMark(). Wrapping the live editable DOM for 3-4 characters on
-// every keystroke was found to occasionally interfere with fast/consecutive
-// native key input (e.g. a Space right after a letter), so the trail never
-// touches the actual contenteditable content.
-
-function committedGlyphMotionVars(settings) {
-  const mode = settings.effectMode;
-  const effect = EFFECT_PRESETS[mode] || EFFECT_PRESETS[defaultSettings.effectMode];
-  const profile = getGlyphProfile(mode);
-  const jolt = GLYPH_JOLT_PRESETS[mode] || GLYPH_JOLT_PRESETS[defaultSettings.effectMode];
-  const speedScale = 1.18 - settings.effectSpeed * 0.46;
-  const effectLevel = clamp(settings.effectIntensity, 0.05, 1);
-  const motionLevel = clamp01(settings.glyphMotion);
-  const isPressureMode = PRESSURE_MODES.has(mode);
-  // A little extra punch the faster someone is typing right now — kept
-  // subtle so it reads as "responsive to my hands", not gamified.
-  const handSpeedBoost = 1 + typingSpeedFactor * 0.16;
-  const strength = (jolt.strength ?? profile.impact ?? 1) * (0.52 + motionLevel * 1.24) * (0.72 + effectLevel * 0.5) * handSpeedBoost;
-  // Pushed hard over the base jolt values on purpose — the raw per-mode
-  // jolt numbers (tuned for the old, much subtler feel) read as barely
-  //-there on their own, especially for the gentler presets like the
-  // default Soft Spark. This is the main "how much does it move" dial.
-  let x = (jolt.x ?? effect.glyphX) * strength * 6.2;
-  let y = (jolt.y ?? effect.glyphY) * strength * 6.2;
-  const distance = Math.hypot(x, y);
-  // A firm floor so even the softest FX preset still visibly moves —
-  // this used to be tiny (3-5px) and was the main reason motion felt
-  // absent at default settings.
-  const minDistance = 8 + motionLevel * 6;
-
-  if (distance > 0 && distance < minDistance) {
-    const scalar = minDistance / distance;
-    x *= scalar;
-    y *= scalar;
-  } else if (distance === 0) {
-    y = -minDistance;
-  }
-
-  const pressureBoost = isPressureMode ? 1.35 : 1;
-  const scalePop = 1 + Math.max(0.06, Math.max(0, (jolt.scale ?? effect.glyphScale) - 1) * (0.95 + strength * 1.8) * pressureBoost);
-  const squashMultiplier = isPressureMode ? 2.2 : 1.7;
-  const squashCap = isPressureMode ? 0.4 : 0.28;
-  const squash = clamp((scalePop - 1) * squashMultiplier, 0.05, squashCap);
-  return {
-    x,
-    y,
-    rotate: (jolt.rotate ?? effect.glyphRotate) * strength * 5.2,
-    scale: scalePop,
-    squash,
-    split: profile.split * (0.5 + motionLevel * 1.05),
-    // A little longer than the "safety first" pass: long enough to
-    // actually register as motion, still short enough that the guard in
-    // animateCommittedGlyph (which skips rather than overlaps when a
-    // wrapper is still live) only rarely has to skip a keystroke's
-    // decoration during very fast bursts — text input itself is never
-    // at risk either way.
-    duration: Math.round(clamp((jolt.life || profile.duration * 0.44 + 54) * speedScale + 60, 130, 360)),
-    glow: hexToRgba(profile.accent, Math.min(0.6, profile.glow * settings.glowAmount * effectLevel * 0.3)),
-    altGlow: hexToRgba(profile.alt, Math.min(0.38, profile.glow * settings.glowAmount * effectLevel * 0.18))
-  };
-}
-
-function buildCommittedGlyphMotion(mode, v) {
-  const neutral = "translate3d(0, 0, 0) rotate(0deg) scale(1, 1)";
-  const settle = [
-    { transform: transformGlyph(v.x, v.y, v.rotate, v.scale, v.scale), offset: 0 },
-    { transform: transformGlyph(v.x * -0.32, v.y * -0.45, v.rotate * -0.26, 1 - (v.scale - 1) * 0.28, 1 + (v.scale - 1) * 0.16), offset: 0.36 },
-    { transform: transformGlyph(v.x * 0.14, v.y * 0.12, v.rotate * 0.12, 1.008, 0.996), offset: 0.62 },
-    { transform: transformGlyph(v.x * -0.04, v.y * -0.03, v.rotate * -0.03, 0.998, 1.002), offset: 0.84 },
-    { transform: neutral, offset: 1 }
-  ];
-
-  switch (mode) {
-    // Soft, rounded impact with a real bounce-settle-microbounce tail so it
-    // doesn't just decay smoothly — it lands, springs, and jiggles once more.
-    case "candy-pop":
-      return {
-        duration: v.duration + 75,
-        easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
-        keyframes: [
-          { transform: transformGlyph(0, Math.abs(v.y) * 0.95, v.rotate * 0.2, 1 + v.squash * 1.85, 1 - v.squash * 1.4), offset: 0 },
-          { transform: transformGlyph(v.x * 0.24, -Math.abs(v.y) * 1.1, v.rotate * -0.32, 1 - v.squash * 0.5, 1 + v.squash * 1.65), offset: 0.24 },
-          { transform: transformGlyph(v.x * -0.08, Math.abs(v.y) * 0.3, v.rotate * 0.18, 1 + v.squash * 0.6, 1 - v.squash * 0.4), offset: 0.46 },
-          { transform: transformGlyph(v.x * 0.03, -Math.abs(v.y) * 0.09, v.rotate * -0.06, 1 - v.squash * 0.12, 1 + v.squash * 0.16), offset: 0.7 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Sharp electrical hit-and-flicker: an instant snap out, a hard
-    // overcorrect, then a fast double-flicker before it dies.
-    case "electric":
-      return {
-        duration: Math.max(120, v.duration - 15),
-        easing: "steps(1, end)",
-        keyframes: [
-          { transform: `translate3d(${(v.x * 1.08).toFixed(2)}px, ${(v.y * 1.08).toFixed(2)}px, 0) skewX(-9deg) rotate(${v.rotate.toFixed(2)}deg)`, offset: 0 },
-          { transform: `translate3d(${(v.x * -0.86).toFixed(2)}px, ${(v.y * 0.68).toFixed(2)}px, 0) skewX(8deg) rotate(${(v.rotate * -0.85).toFixed(2)}deg)`, offset: 0.16 },
-          { transform: `translate3d(${(v.x * 0.3).toFixed(2)}px, ${(v.y * -0.82).toFixed(2)}px, 0) skewY(-5deg) scale(1.014)`, offset: 0.34 },
-          { transform: `translate3d(${(v.x * -0.14).toFixed(2)}px, ${(v.y * 0.22).toFixed(2)}px, 0) skewX(3deg) scale(0.996)`, offset: 0.52 },
-          { transform: transformGlyph(v.x * 0.06, v.y * -0.08, 0, 1, 1), offset: 0.72 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Chunky, blocky, stepped digital jump — one more step-stage than
-    // before so it reads more like discrete pixel snaps, less like a curve.
-    case "pixel":
-      return {
-        duration: Math.max(135, v.duration - 4),
-        easing: "steps(5, end)",
-        keyframes: [
-          { transform: transformGlyph(v.x, v.y, 0, 1.014, 0.986), offset: 0 },
-          { transform: transformGlyph(v.x * -0.68, v.y * -0.5, 0, 0.99, 1.01), offset: 0.26 },
-          { transform: transformGlyph(v.x * 0.4, v.y * 0.3, 0, 1.006, 0.994), offset: 0.52 },
-          { transform: transformGlyph(v.x * -0.14, v.y * -0.1, 0, 1, 1), offset: 0.76 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Upward twinkle-drift with a tiny mid-flight shimmer wobble instead of
-    // one smooth arc.
-    case "star-dust":
-      return {
-        duration: v.duration + 65,
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 0.3, -Math.abs(v.y) * 0.45, v.rotate * 0.35, 1.02, 1.02), offset: 0 },
-          { transform: transformGlyph(v.x * 0.2, -Math.abs(v.y) * 1.22, v.rotate * -0.2, 1.036, 1.036), offset: 0.3 },
-          { transform: transformGlyph(v.x * -0.06, -Math.abs(v.y) * 0.88, v.rotate * 0.12, 1.02, 1.02), offset: 0.52 },
-          { transform: transformGlyph(0, -Math.abs(v.y) * 0.26, 0, 1.007, 1.007), offset: 0.76 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // RGB-split glitch: the channel split now has an extra micro-jitter
-    // stage in the middle for a more broken, digital feel.
-    case "cyber-pink":
-      return {
-        duration: Math.max(135, v.duration - 6),
-        easing: "steps(1, end)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 1.05, v.y * 0.32, v.rotate * 0.22, 1.008, 1), filter: `drop-shadow(${(-v.split * 1.15).toFixed(2)}px 0 var(--real-glyph-glow))`, offset: 0 },
-          { transform: transformGlyph(v.x * -0.68, v.y * -0.2, 0, 1, 1), filter: `drop-shadow(${(v.split * 1.1).toFixed(2)}px 0 var(--real-glyph-alt-glow))`, offset: 0.22 },
-          { transform: transformGlyph(v.x * 0.32, v.y * 0.14, v.rotate * -0.1, 1, 1), filter: `drop-shadow(${(-v.split * 0.4).toFixed(2)}px 0 var(--real-glyph-glow))`, offset: 0.44 },
-          { transform: transformGlyph(v.x * 0.14, 0, 0, 1, 1), filter: "none", offset: 0.66 },
-          { transform: neutral, filter: "none", offset: 1 }
-        ]
-      };
-    // Analog ink press: nib presses in, flicks up, and now settles with one
-    // more tiny wobble as the pigment catches the paper grain.
-    case "ink":
-      return {
-        duration: v.duration + 40,
-        easing: "cubic-bezier(0.2, 0.9, 0.25, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 0.3, Math.abs(v.y) * 0.35, v.rotate * 0.58, 1 + v.squash * 0.95, 1 - v.squash * 0.8), offset: 0 },
-          { transform: transformGlyph(v.x * -0.14, -Math.abs(v.y) * 0.68, v.rotate * -0.24, 1 - v.squash * 0.32, 1 + v.squash * 0.6), offset: 0.28 },
-          { transform: transformGlyph(v.x * 0.05, Math.abs(v.y) * 0.14, v.rotate * 0.08, 1.012, 0.99), offset: 0.54 },
-          { transform: transformGlyph(0, Math.abs(v.y) * 0.05, 0, 1.004, 0.998), offset: 0.78 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Soap-bubble squash: added a small secondary jiggle after the main
-    // stretch so it reads as elastic, not just a single pop.
-    case "bubble":
-      return {
-        duration: v.duration + 60,
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-        keyframes: [
-          { transform: transformGlyph(0, Math.abs(v.y) * 0.5, v.rotate * 0.2, 1 + v.squash, 1 - v.squash * 0.75), offset: 0 },
-          { transform: transformGlyph(v.x * 0.2, -Math.abs(v.y) * 1.18, v.rotate * -0.14, 1.028, 1.045), offset: 0.4 },
-          { transform: transformGlyph(v.x * -0.06, Math.abs(v.y) * 0.18, v.rotate * 0.08, 1 + v.squash * 0.22, 1 - v.squash * 0.16), offset: 0.66 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Glass shimmer: a brief secondary glint flick added mid-settle.
-    case "crystal-glass":
-      return {
-        duration: v.duration + 50,
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 0.62, v.y * 0.34, v.rotate, 1.03, 1.03), filter: "drop-shadow(0 0 2px var(--real-glyph-glow))", offset: 0 },
-          { transform: transformGlyph(v.x * -0.2, -Math.abs(v.y) * 0.3, v.rotate * -0.32, 0.996, 1.022), filter: "drop-shadow(0 0 3.5px var(--real-glyph-alt-glow))", offset: 0.36 },
-          { transform: transformGlyph(v.x * 0.06, v.y * 0.06, v.rotate * 0.08, 1.01, 1.01), filter: "drop-shadow(0 0 1.5px var(--real-glyph-glow))", offset: 0.6 },
-          { transform: neutral, filter: "none", offset: 1 }
-        ]
-      };
-    // Slow celestial drift with a soft twinkle-wobble instead of a single arc.
-    case "constellation":
-    case "moon-pearl":
-      return {
-        duration: v.duration + 50,
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 0.36, -Math.abs(v.y) * 0.34, v.rotate * 0.36, 1.014, 1.014), offset: 0 },
-          { transform: transformGlyph(v.x * 0.14, -Math.abs(v.y) * 0.82, v.rotate * -0.24, 1.028, 1.028), filter: "drop-shadow(0 0 2px var(--real-glyph-glow))", offset: 0.36 },
-          { transform: transformGlyph(v.x * -0.04, -Math.abs(v.y) * 0.5, v.rotate * 0.1, 1.014, 1.014), filter: "drop-shadow(0 0 1px var(--real-glyph-glow))", offset: 0.62 },
-          { transform: neutral, filter: "none", offset: 1 }
-        ]
-      };
-    // Fibrous paper catch: a tiny extra snag/jitter stage as the character
-    // "catches" on the paper grain before settling flat.
-    case "paper-fiber":
-      return {
-        duration: Math.max(135, v.duration - 2),
-        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x, v.y * 0.36, v.rotate, 1.008, 0.996), offset: 0 },
-          { transform: transformGlyph(v.x * -0.4, v.y * -0.16, v.rotate * -0.28, 0.996, 1.006), offset: 0.36 },
-          { transform: transformGlyph(v.x * 0.1, v.y * 0.06, v.rotate * 0.08, 1.002, 0.999), offset: 0.62 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Aurora ripple: an extra wave-crest stage so the glow feels like it's
-    // rolling through, not just fading.
-    case "aurora-veil":
-      return {
-        duration: v.duration + 75,
-        easing: "cubic-bezier(0.19, 1, 0.22, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 0.85, v.y * 0.46, v.rotate, 1.022, 1.03), offset: 0 },
-          { transform: transformGlyph(v.x * -0.32, -Math.abs(v.y) * 0.55, v.rotate * -0.24, 1.03, 1.014), filter: "drop-shadow(0 0 2px var(--real-glyph-glow))", offset: 0.38 },
-          { transform: transformGlyph(v.x * 0.1, Math.abs(v.y) * 0.16, v.rotate * 0.1, 1.012, 1.02), filter: "drop-shadow(0 0 1px var(--real-glyph-alt-glow))", offset: 0.66 },
-          { transform: neutral, filter: "none", offset: 1 }
-        ]
-      };
-    // Firefly flicker: an extra pulse so the glow flickers twice, not once.
-    case "firefly-glow":
-      return {
-        duration: v.duration + 42,
-        easing: "cubic-bezier(0.18, 1.1, 0.28, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 0.56, v.y * 0.42, v.rotate, 1.022, 1.022), filter: "drop-shadow(0 0 2px var(--real-glyph-glow))", offset: 0 },
-          { transform: transformGlyph(v.x * -0.3, -Math.abs(v.y) * 0.84, v.rotate * -0.58, 1.034, 1.006), filter: "drop-shadow(0 0 0.5px transparent)", offset: 0.32 },
-          { transform: transformGlyph(v.x * 0.14, v.y * 0.12, v.rotate * 0.18, 1.016, 1.01), filter: "drop-shadow(0 0 2.5px var(--real-glyph-glow))", offset: 0.56 },
-          { transform: transformGlyph(v.x * -0.02, v.y * 0.02, 0, 1, 1), filter: "none", offset: 0.8 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Petal unfurl: skew now reverses direction mid-motion for a genuine
-    // "unfolding" read rather than a single lean.
-    case "petal-bloom":
-      return {
-        duration: v.duration + 34,
-        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        keyframes: [
-          { transform: `translate3d(${v.x.toFixed(2)}px, ${v.y.toFixed(2)}px, 0) rotate(${v.rotate.toFixed(2)}deg) skewY(-7deg) scale(${(1 + v.squash).toFixed(3)}, ${(1 - v.squash * 0.55).toFixed(3)})`, offset: 0 },
-          { transform: `translate3d(${(v.x * -0.28).toFixed(2)}px, ${(v.y * -0.4).toFixed(2)}px, 0) rotate(${(v.rotate * -0.4).toFixed(2)}deg) skewY(4deg) scale(0.99, 1.028)`, offset: 0.4 },
-          { transform: `translate3d(${(v.x * 0.08).toFixed(2)}px, ${(v.y * 0.1).toFixed(2)}px, 0) rotate(${(v.rotate * 0.12).toFixed(2)}deg) skewY(-1.5deg) scale(1.004, 0.998)`, offset: 0.68 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Neon rain streak: one more flicker step for a more electric drip feel.
-    case "neon-rain":
-      return {
-        duration: Math.max(128, v.duration - 8),
-        easing: "steps(4, end)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 0.34, Math.abs(v.y) * 1.08, v.rotate, 1.006, 0.994), offset: 0 },
-          { transform: transformGlyph(v.x * -0.16, -Math.abs(v.y) * 1.0, v.rotate * -0.22, 0.994, 1.014), offset: 0.3 },
-          { transform: transformGlyph(v.x * 0.06, Math.abs(v.y) * 0.26, v.rotate * 0.1, 1.002, 0.998), offset: 0.56 },
-          { transform: transformGlyph(0, Math.abs(v.y) * 0.06, 0, 1, 1), offset: 0.78 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Smoke wisp: an extra drift stage plus a touch more blur so it reads
-    // as curling rather than just fading.
-    case "velvet-smoke":
-      return {
-        duration: v.duration + 85,
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 0.42, Math.abs(v.y) * 0.55, v.rotate * 0.42, 1.028, 0.978), filter: "blur(0.28px)", offset: 0 },
-          { transform: transformGlyph(v.x * -0.16, -Math.abs(v.y) * 0.42, v.rotate * -0.2, 0.994, 1.022), filter: "blur(0.14px)", offset: 0.42 },
-          { transform: transformGlyph(v.x * 0.05, Math.abs(v.y) * 0.08, v.rotate * 0.06, 1.004, 0.998), filter: "blur(0.05px)", offset: 0.72 },
-          { transform: neutral, filter: "none", offset: 1 }
-        ]
-      };
-    // Ember crackle: added a tiny secondary pop so it flares, dims, then
-    // flares once more like a real spark catching.
-    case "ember-glow":
-      return {
-        duration: v.duration + 30,
-        easing: "cubic-bezier(0.19, 1, 0.22, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 1.05, v.y * 1.05, v.rotate, 1.03, 1.03), filter: "drop-shadow(0 0 2.5px var(--real-glyph-glow))", offset: 0 },
-          { transform: transformGlyph(v.x * -0.42, v.y * -0.3, v.rotate * -0.24, 0.996, 1.014), filter: "none", offset: 0.32 },
-          { transform: transformGlyph(v.x * 0.14, v.y * 0.12, v.rotate * 0.1, 1.014, 1.008), filter: "drop-shadow(0 0 1.5px var(--real-glyph-glow))", offset: 0.56 },
-          { transform: neutral, filter: "none", offset: 1 }
-        ]
-      };
-    // Laser etch: one more etched pass for a doubled hard-edged line effect.
-    case "laser-etch":
-      return {
-        duration: Math.max(125, v.duration - 6),
-        easing: "steps(1, end)",
-        keyframes: [
-          { transform: `translate3d(${(v.x * 1.05).toFixed(2)}px, ${(v.y * 1.05).toFixed(2)}px, 0) skewX(-9deg) rotate(${v.rotate.toFixed(2)}deg)`, offset: 0 },
-          { transform: `translate3d(${(v.x * -0.52).toFixed(2)}px, ${(v.y * -0.2).toFixed(2)}px, 0) skewX(6deg) rotate(${(v.rotate * -0.32).toFixed(2)}deg)`, offset: 0.3 },
-          { transform: `translate3d(${(v.x * 0.16).toFixed(2)}px, ${(v.y * 0.06).toFixed(2)}px, 0) skewX(-2deg) rotate(${(v.rotate * 0.1).toFixed(2)}deg)`, offset: 0.58 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Keycap "dokak" click: this is the one place we want a genuine
-    // mechanical-key sensation — a hard, near-instant bottom-out (steps),
-    // then a springy pop-back, then one tiny rattle before it settles, the
-    // way a real keycap bounces on its stem.
-    case "keycap-pop":
-      return {
-        duration: v.duration + 55,
-        easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
-        keyframes: [
-          { transform: transformGlyph(0, Math.abs(v.y) * 1.08, v.rotate, 1 + v.squash * 1.6, 1 - v.squash * 1.45), offset: 0 },
-          { transform: transformGlyph(0, Math.abs(v.y) * 1.14, v.rotate * 1.05, 1 + v.squash * 1.7, 1 - v.squash * 1.55), easing: "steps(1, end)", offset: 0.1 },
-          { transform: transformGlyph(0, -Math.abs(v.y) * 0.58, v.rotate * -0.22, 0.99, 1.05), offset: 0.36 },
-          { transform: transformGlyph(0, Math.abs(v.y) * 0.14, v.rotate * 0.1, 1 + v.squash * 0.22, 1 - v.squash * 0.2), offset: 0.58 },
-          { transform: transformGlyph(0, -Math.abs(v.y) * 0.04, 0, 0.998, 1.004), offset: 0.8 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // 3D flip snap: an extra half-turn settle wobble after the main flip.
-    case "magnetic-flip":
-      return {
-        duration: v.duration + 25,
-        easing: "cubic-bezier(0.19, 1, 0.22, 1)",
-        keyframes: [
-          { transform: `translate3d(${(v.x * 1.05).toFixed(2)}px, 0, 0) rotateY(0deg) rotate(${v.rotate.toFixed(2)}deg) scale(1.014)`, offset: 0 },
-          { transform: `translate3d(${(v.x * -0.78).toFixed(2)}px, 0, 0) rotateY(20deg) rotate(${(v.rotate * -0.42).toFixed(2)}deg) scale(0.996)`, offset: 0.34 },
-          { transform: `translate3d(${(v.x * 0.22).toFixed(2)}px, 0, 0) rotateY(-6deg) rotate(${(v.rotate * 0.18).toFixed(2)}deg) scale(1.004)`, offset: 0.6 },
-          { transform: transformGlyph(v.x * 0.05, 0, v.rotate * -0.04, 1, 1), offset: 0.82 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Mosaic tile shift: one more step-stage for a more visible tile-swap feel.
-    case "mosaic-shift":
-      return {
-        duration: Math.max(130, v.duration + 4),
-        easing: "steps(4, end)",
-        keyframes: [
-          { transform: transformGlyph(v.x, v.y, v.rotate, 1.016, 0.996), offset: 0 },
-          { transform: transformGlyph(v.x * -0.5, v.y * -0.56, v.rotate * -0.28, 0.996, 1.01), offset: 0.28 },
-          { transform: transformGlyph(v.x * 0.24, v.y * 0.26, v.rotate * 0.1, 1.006, 0.998), offset: 0.54 },
-          { transform: transformGlyph(v.x * -0.08, v.y * -0.08, 0, 1, 1), offset: 0.78 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // Lens ripple: an extra ring-wave stage so it pulses out and back once
-    // more before settling.
-    case "ripple-lens":
-      return {
-        duration: v.duration + 62,
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x * 0.4, v.y * 0.4, v.rotate, 0.976, 1.06), offset: 0 },
-          { transform: transformGlyph(v.x * -0.16, -Math.abs(v.y) * 0.36, v.rotate * -0.2, 1.058, 0.982), filter: "drop-shadow(0 0 2px var(--real-glyph-alt-glow))", offset: 0.36 },
-          { transform: transformGlyph(v.x * 0.06, v.y * 0.1, v.rotate * 0.08, 0.99, 1.016), filter: "drop-shadow(0 0 1px var(--real-glyph-glow))", offset: 0.62 },
-          { transform: neutral, filter: "none", offset: 1 }
-        ]
-      };
-    // Plasma thread: one more flicker step for a more crackling arc feel.
-    case "plasma-thread":
-      return {
-        duration: Math.max(130, v.duration + 4),
-        easing: "steps(3, end)",
-        keyframes: [
-          { transform: `translate3d(${(v.x * 1.02).toFixed(2)}px, ${(v.y * 1.02).toFixed(2)}px, 0) skewX(-8deg) rotate(${v.rotate.toFixed(2)}deg)`, offset: 0 },
-          { transform: `translate3d(${(v.x * -0.62).toFixed(2)}px, ${(v.y * -0.42).toFixed(2)}px, 0) skewX(6deg) rotate(${(v.rotate * -0.32).toFixed(2)}deg)`, offset: 0.3 },
-          { transform: `translate3d(${(v.x * 0.18).toFixed(2)}px, ${(v.y * 0.1).toFixed(2)}px, 0) skewX(-2deg) rotate(${(v.rotate * 0.12).toFixed(2)}deg)`, offset: 0.58 },
-          { transform: neutral, offset: 1 }
-        ]
-      };
-    // The default preset gets its own gentle-but-textured signature (a soft
-    // hit, a light overshoot, a tiny secondary settle) instead of relying
-    // purely on the raw fallback curve.
-    case "soft-spark":
-      return {
-        duration: v.duration + 20,
-        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        keyframes: [
-          { transform: transformGlyph(v.x, v.y, v.rotate, v.scale, v.scale), filter: "drop-shadow(0 0 1.5px var(--real-glyph-glow))", offset: 0 },
-          { transform: transformGlyph(v.x * -0.34, v.y * -0.42, v.rotate * -0.26, 1 - (v.scale - 1) * 0.3, 1 + (v.scale - 1) * 0.18), filter: "none", offset: 0.34 },
-          { transform: transformGlyph(v.x * 0.12, v.y * 0.1, v.rotate * 0.1, 1.008, 0.996), filter: "none", offset: 0.6 },
-          { transform: transformGlyph(v.x * -0.03, v.y * -0.03, 0, 0.999, 1.001), filter: "none", offset: 0.82 },
-          { transform: neutral, filter: "none", offset: 1 }
-        ]
-      };
-    default:
-      return {
-        duration: v.duration,
-        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        keyframes: settle
-      };
-  }
-}
-
-function transformGlyph(x, y, rotate, scaleX, scaleY) {
-  return `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) rotate(${rotate.toFixed(2)}deg) scale(${scaleX.toFixed(3)}, ${scaleY.toFixed(3)})`;
-}
-
-function capCommittedGlyphAnimations() {
-  const active = [...refs.editor.querySelectorAll(TRANSIENT_GLYPH_SELECTOR)];
-  const overflow = active.length - 42;
-  if (overflow <= 0) return;
-  active.slice(0, overflow).forEach((glyph) => unwrapCommittedGlyph(glyph));
-}
-
-function flushCommittedGlyphAnimations(options = {}) {
-  const active = [...refs.editor.querySelectorAll(TRANSIENT_GLYPH_SELECTOR)];
-  if (!active.length) return;
-  const saved = options.preserveSelection ? getEditorSelectionOffsets() : null;
-  active.forEach((glyph) => unwrapCommittedGlyph(glyph));
-  if (saved) restoreEditorSelectionOffsets(saved);
-}
-
-function unwrapCommittedGlyph(wrapper, options = {}) {
-  if (!wrapper || !wrapper.isConnected || !wrapper.matches(TRANSIENT_GLYPH_SELECTOR)) return;
-  const saved = options.preserveSelection ? getEditorSelectionOffsets() : null;
-  const parent = wrapper.parentNode;
-  if (!parent) return;
-  while (wrapper.firstChild) {
-    parent.insertBefore(wrapper.firstChild, wrapper);
-  }
-  parent.removeChild(wrapper);
-  parent.normalize();
-  if (saved) restoreEditorSelectionOffsets(saved);
-}
-
-function collapseSelectionAfterNode(node) {
-  const selection = window.getSelection();
-  if (!selection) return;
-  const range = document.createRange();
-  range.setStartAfter(node);
-  range.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
-
-function rangeWithinEditor(range) {
-  return isEditorRangePoint(range.startContainer) && isEditorRangePoint(range.endContainer);
-}
-
-function rangeTouchesTransientGlyph(range) {
-  return Boolean(
-    closestTransientGlyph(range.startContainer) ||
-    closestTransientGlyph(range.endContainer) ||
-    closestTransientGlyph(range.commonAncestorContainer)
-  );
-}
-
-function closestTransientGlyph(node) {
-  const element = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
-  return element?.closest ? element.closest(TRANSIENT_GLYPH_SELECTOR) : null;
-}
-
-function selectionWithinEditor() {
-  const selection = window.getSelection();
-  if (!selection || !selection.rangeCount) return false;
-  const range = selection.getRangeAt(0);
-  return rangeWithinEditor(range);
-}
-
-function isEditorRangePoint(node) {
-  return node === refs.editor || refs.editor.contains(node);
-}
-
-function getEditorSelectionOffsets() {
-  if (!selectionWithinEditor()) return null;
-  const selection = window.getSelection();
-  const range = selection.getRangeAt(0);
-  const startRange = range.cloneRange();
-  const endRange = range.cloneRange();
-  startRange.collapse(true);
-  endRange.collapse(false);
-  return {
-    start: collectTextBeforeCaret(startRange).text.length,
-    end: collectTextBeforeCaret(endRange).text.length
-  };
-}
-
-function restoreEditorSelectionOffsets(saved) {
-  if (!saved) return;
-  const spans = collectEditorTextSpans();
-  const start = pointForEditorTextOffset(spans, saved.start);
-  const end = pointForEditorTextOffset(spans, saved.end);
-  const range = document.createRange();
-  range.setStart(start.node, start.offset);
-  range.setEnd(end.node, end.offset);
-  const selection = window.getSelection();
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
-
-function collectEditorTextSpans() {
-  const spans = [];
-  let offset = 0;
-  const walker = document.createTreeWalker(refs.editor, NodeFilter.SHOW_TEXT);
-  let node = walker.nextNode();
-  while (node) {
-    const start = offset;
-    offset += node.nodeValue.length;
-    spans.push({ node, start, end: offset });
-    node = walker.nextNode();
-  }
-  return spans;
-}
-
-function pointForEditorTextOffset(spans, offset) {
-  if (!spans.length) return { node: refs.editor, offset: refs.editor.childNodes.length };
-  const max = spans[spans.length - 1].end;
-  const safeOffset = clamp(Number(offset) || 0, 0, max);
-  for (const span of spans) {
-    if (safeOffset <= span.end) {
-      return {
-        node: span.node,
-        offset: clamp(safeOffset - span.start, 0, span.node.nodeValue.length)
-      };
-    }
-  }
-  const last = spans[spans.length - 1];
-  return { node: last.node, offset: last.node.nodeValue.length };
-}
-
-function resolveGlyphTargets() {
-  const selection = window.getSelection();
-  if (!selection || !selection.rangeCount) return { current: null, previous: null, trail: [] };
-  const caretRange = selection.getRangeAt(0).cloneRange();
-  if (!caretRange.collapsed || !refs.editor.contains(caretRange.startContainer)) {
-    return { current: null, previous: null, trail: [] };
-  }
-
-  const textStream = collectTextBeforeCaret(caretRange);
-  const segments = segmentGraphemes(textStream.text);
-  const currentIndex = segments.length - 1;
-  const currentSegment = segments[currentIndex];
-  if (!currentSegment || !isRenderableGlyph(currentSegment.text)) {
-    return { current: null, previous: null, trail: [] };
-  }
-
-  const current = glyphTargetFromSegment(currentSegment, textStream.spans);
-  const previousSegment = segments[currentIndex - 1];
-  const previous = previousSegment && isRenderableGlyph(previousSegment.text)
-    ? glyphTargetFromSegment(previousSegment, textStream.spans)
-    : null;
-
-  // The last few committed characters before the caret, used for a fast,
-  // sharply-decaying "energy wave" that trails behind fast typing. Reuses
-  // the same segment math as `previous`, just a little further back.
-  const trail = [];
-  for (let back = 1; back <= 4; back += 1) {
-    const segment = segments[currentIndex - back];
-    if (!segment || !isRenderableGlyph(segment.text)) break;
-    const target = glyphTargetFromSegment(segment, textStream.spans);
-    if (target) trail.push(target);
-  }
-
-  return { current, previous, trail };
-}
-
-function collectTextBeforeCaret(caretRange) {
-  const spans = [];
-  let text = "";
-  const walker = document.createTreeWalker(refs.editor, NodeFilter.SHOW_TEXT);
-  let node = walker.nextNode();
-
-  while (node) {
-    let length = 0;
-    if (node === caretRange.startContainer) {
-      length = clamp(caretRange.startOffset, 0, node.nodeValue.length);
-    } else if (textNodeEndsBeforeRange(node, caretRange)) {
-      length = node.nodeValue.length;
-    }
-
-    if (length > 0) {
-      const start = text.length;
-      const chunk = node.nodeValue.slice(0, length);
-      text += chunk;
-      spans.push({ node, start, end: text.length });
-    }
-
-    node = walker.nextNode();
-  }
-
-  return { text, spans };
-}
-
-function textNodeEndsBeforeRange(node, range) {
-  const probe = document.createRange();
-  probe.selectNodeContents(node);
-  return probe.compareBoundaryPoints(Range.END_TO_START, range) <= 0;
-}
-
-function segmentGraphemes(text) {
-  if (!text) return [];
-  if (typeof Intl !== "undefined" && Intl.Segmenter) {
-    if (!graphemeSegmenter) {
-      graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-    }
-    return [...graphemeSegmenter.segment(text)].map((part) => ({
-      text: part.segment,
-      start: part.index,
-      end: part.index + part.segment.length
-    }));
-  }
-
-  const segments = [];
-  let index = 0;
-  Array.from(text).forEach((char) => {
-    segments.push({ text: char, start: index, end: index + char.length });
-    index += char.length;
-  });
-  return segments;
-}
-
-function glyphTargetFromSegment(segment, spans) {
-  const range = rangeForTextSlice(spans, segment.start, segment.end);
-  const rect = range ? rectFromRange(range) : null;
-  if (!rect) return null;
-  return {
-    glyph: segment.text,
-    range,
-    rect,
-    style: computedStyleForRange(range)
-  };
-}
-
-function rangeForTextSlice(spans, start, end) {
-  const startPoint = pointForTextOffset(spans, start, "start");
-  const endPoint = pointForTextOffset(spans, end, "end");
-  if (!startPoint || !endPoint) return null;
-  const range = document.createRange();
-  range.setStart(startPoint.node, startPoint.offset);
-  range.setEnd(endPoint.node, endPoint.offset);
-  return range;
-}
-
-function pointForTextOffset(spans, offset, edge) {
-  for (const span of spans) {
-    const inSpan = edge === "start"
-      ? offset >= span.start && offset < span.end
-      : offset > span.start && offset <= span.end;
-    if (inSpan) {
-      return { node: span.node, offset: offset - span.start };
-    }
-  }
-  return null;
-}
-
-function rectFromRange(range) {
-  const rects = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
-  const rect = rects[rects.length - 1];
-  return rect ? fixedLayerRect(rect) : null;
-}
-
-function fixedLayerRect(rect) {
-  const viewport = window.visualViewport;
-  const offsetLeft = viewport?.offsetLeft || 0;
-  const offsetTop = viewport?.offsetTop || 0;
-  return {
-    left: rect.left + offsetLeft,
-    top: rect.top + offsetTop,
-    width: rect.width,
-    height: rect.height
-  };
-}
-
-function isOpaqueColor(value) {
-  if (!value || value === "transparent") return false;
-  const rgbaMatch = value.match(/rgba?\(([^)]+)\)/);
-  if (rgbaMatch) {
-    const parts = rgbaMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
-    if (parts.length === 4 && parts[3] <= 0.02) return false;
-  }
-  return true;
-}
-
-// Walks up from a text position to find the nearest ancestor that actually
-// paints a background (e.g. a highlighter span), since background-color is
-// not inherited and the immediate parent may be a plain <b>/<i> wrapper
-// sitting inside a highlighted ancestor.
-function resolveEffectiveBackground(node) {
-  let element = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-  while (element && refs.editor.contains(element)) {
-    const bg = getComputedStyle(element).backgroundColor;
-    if (isOpaqueColor(bg)) return bg;
-    if (element === refs.editor) break;
-    element = element.parentElement;
-  }
-  return null;
-}
-
-function computedStyleForRange(range) {
-  const node = range.startContainer;
-  const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-  const style = getComputedStyle(element?.nodeType === Node.ELEMENT_NODE ? element : refs.editor);
-  return {
-    color: style.color,
-    backgroundColor: resolveEffectiveBackground(node),
-    fontFamily: style.fontFamily,
-    fontSize: style.fontSize,
-    fontStyle: style.fontStyle,
-    fontWeight: style.fontWeight,
-    lineHeight: style.lineHeight === "normal" ? style.fontSize : style.lineHeight,
-    letterSpacing: style.letterSpacing,
-    textTransform: style.textTransform,
-    textDecorationLine: style.textDecorationLine,
-    textDecorationStyle: style.textDecorationStyle,
-    textDecorationThickness: style.textDecorationThickness,
-    fontVariantLigatures: style.fontVariantLigatures
-  };
-}
-
-function fallbackGlyphTarget(glyph, caret) {
-  if (!isRenderableGlyph(glyph)) return null;
-  const style = getComputedStyle(refs.editor);
-  const height = Math.max(18, caret.height || Number.parseFloat(style.fontSize) || 18);
-  const width = Math.max(8, height * 0.52);
-  return {
-    glyph,
-    rect: {
-      left: caret.left - width,
-      top: caret.top,
-      width,
-      height
-    },
-    style: {
-      color: style.color,
-      backgroundColor: null,
-      fontFamily: style.fontFamily,
-      fontSize: style.fontSize,
-      fontStyle: style.fontStyle,
-      fontWeight: style.fontWeight,
-      lineHeight: style.lineHeight === "normal" ? style.fontSize : style.lineHeight,
-      letterSpacing: style.letterSpacing,
-      textTransform: style.textTransform,
-      textDecorationLine: style.textDecorationLine,
-      textDecorationStyle: style.textDecorationStyle,
-      textDecorationThickness: style.textDecorationThickness,
-      fontVariantLigatures: style.fontVariantLigatures
-    }
-  };
-}
-
-function isRenderableGlyph(glyph) {
-  return Boolean(glyph && !/^\s+$/.test(glyph));
-}
-
-function appendGlyphOverlay(mark, target, role, originX, originY, profile, settings, effectLevel, speedScale, isSpecial, effect, decay = 1) {
-  if (!target || !isRenderableGlyph(target.glyph)) return;
-  const roleStrength = (role === "echo" ? profile.echo : 1) * decay;
-  if (roleStrength <= 0.01) return;
-
-  const rect = target.rect;
-  const style = target.style;
-  const lifeBase = role === "echo" ? profile.echoDuration : profile.duration;
-  const life = Math.round(lifeBase * speedScale * (isSpecial && role === "current" ? 1.12 : 1) * (0.7 + decay * 0.3));
-  const motion = profile.motion * (0.35 + settings.glyphMotion * 1.45) * (0.72 + effectLevel * 0.5) * roleStrength;
-  const split = profile.split * (0.28 + settings.glyphMotion * 1.35) * (0.68 + effectLevel * 0.52) * roleStrength;
-  const glowAlpha = clamp01(profile.glow * settings.glowAmount * effectLevel * roleStrength);
-  const flashAlpha = clamp01(profile.flash * effectLevel * (role === "echo" ? 0.6 : 1));
-  const maxAlpha = role === "echo" ? 0.62 : 0.96;
-  const alpha = clamp(profile.alpha * (0.34 + effectLevel * 0.78) * roleStrength, 0, maxAlpha);
-  const scalePop = 1 + profile.scale * settings.glyphMotion * (0.012 + effectLevel * 0.026) * roleStrength;
-  const scaleDelta = Math.max(0, scalePop - 1);
-  const blur = profile.blur * (0.35 + effectLevel) * (role === "echo" ? 0.55 : 1);
-  const rotate = profile.rotate * settings.glyphMotion * (0.65 + effectLevel * 0.5) * roleStrength;
-  const glowSize = Math.round((3 + settings.glowAmount * 18) * profile.glow * (role === "echo" ? 0.62 : 1));
-
-  const glyph = document.createElement("span");
-  glyph.className = `typing-glyph is-${role}`;
-  glyph.textContent = target.glyph;
-  glyph.dataset.glyph = target.glyph;
-  glyph.style.left = `${(rect.left - originX).toFixed(2)}px`;
-  glyph.style.top = `${(rect.top - originY).toFixed(2)}px`;
-  glyph.style.width = `${Math.max(1, rect.width).toFixed(2)}px`;
-  glyph.style.height = `${Math.max(1, rect.height).toFixed(2)}px`;
-  glyph.style.fontFamily = style.fontFamily;
-  glyph.style.fontSize = style.fontSize;
-  glyph.style.fontStyle = style.fontStyle;
-  glyph.style.fontWeight = style.fontWeight;
-  glyph.style.lineHeight = style.lineHeight;
-  glyph.style.letterSpacing = style.letterSpacing;
-  glyph.style.textTransform = style.textTransform;
-  glyph.style.textDecorationLine = style.textDecorationLine;
-  glyph.style.textDecorationStyle = style.textDecorationStyle;
-  glyph.style.textDecorationThickness = style.textDecorationThickness;
-  glyph.style.fontVariantLigatures = style.fontVariantLigatures;
-  glyph.style.setProperty("--glyph-life", `${life}ms`);
-  glyph.style.setProperty("--glyph-base-color", style.color);
-  glyph.style.setProperty("--glyph-hot-color", profile.hot);
-  glyph.style.setProperty("--glyph-accent-color", profile.accent);
-  glyph.style.setProperty("--glyph-alt-color", profile.alt);
-  glyph.style.setProperty("--glyph-alpha", alpha.toFixed(3));
-  glyph.style.setProperty("--glyph-flash-alpha", flashAlpha.toFixed(3));
-  glyph.style.setProperty("--glyph-glow-alpha", glowAlpha.toFixed(3));
-  glyph.style.setProperty("--glyph-glow-size", `${glowSize}px`);
-  glyph.style.setProperty("--glyph-glow-color", hexToRgba(profile.accent, Math.min(0.86, glowAlpha * 0.82)));
-  glyph.style.setProperty("--glyph-alt-glow-color", hexToRgba(profile.alt, Math.min(0.74, glowAlpha * 0.72)));
-  glyph.style.setProperty("--glyph-motion-px", `${motion.toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-split", `${split.toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-scale-pop", scalePop.toFixed(3));
-  glyph.style.setProperty("--glyph-squash-x", (1 + scaleDelta * 1.5).toFixed(3));
-  glyph.style.setProperty("--glyph-squash-y", Math.max(0.88, 1 - scaleDelta * 2.2).toFixed(3));
-  glyph.style.setProperty("--glyph-stretch-x", Math.max(0.96, 1 - scaleDelta * 0.72).toFixed(3));
-  glyph.style.setProperty("--glyph-stretch-y", (1 + scaleDelta * 1.32).toFixed(3));
-  glyph.style.setProperty("--glyph-blur", `${blur.toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-rotate-amount", `${rotate.toFixed(2)}deg`);
-  const jolt = GLYPH_JOLT_PRESETS[settings.effectMode] || GLYPH_JOLT_PRESETS[defaultSettings.effectMode];
-  const impactStrength = (jolt.strength ?? profile.impact ?? 1) * (0.35 + settings.glyphMotion * 1.15) * (0.7 + effectLevel * 0.5) * roleStrength;
-  const impactLife = Math.max(60, Math.round((jolt.life || profile.duration * 0.4 + 40) * speedScale * (role === "echo" ? 0.7 : 1)));
-  const impactX = (jolt.x ?? effect.glyphX) * impactStrength * 3.2;
-  const impactY = (jolt.y ?? effect.glyphY) * impactStrength * 3.2;
-  const impactRotate = (jolt.rotate ?? effect.glyphRotate) * impactStrength * 3.8;
-  const impactScale = 1 + Math.max(0, (jolt.scale ?? effect.glyphScale) - 1) * Math.min(2.4, 0.55 + impactStrength * 1.35);
-  const recoil = jolt.recoil || [-0.34, -0.2];
-  const kick = jolt.kick || [0.12, 0.08];
-  const settle = jolt.settle || [0, 0];
-  glyph.style.setProperty("--glyph-impact-x", `${impactX.toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-impact-y", `${impactY.toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-impact-scale", impactScale.toFixed(3));
-  glyph.style.setProperty("--glyph-impact-rotate", `${impactRotate.toFixed(2)}deg`);
-  glyph.style.setProperty("--glyph-impact-life", `${impactLife}ms`);
-  glyph.style.setProperty("--glyph-jolt-recoil-x", `${(impactX * recoil[0]).toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-jolt-recoil-y", `${(impactY * recoil[1]).toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-jolt-recoil-scale", Math.max(0.982, 1 - (impactScale - 1) * 0.56).toFixed(3));
-  glyph.style.setProperty("--glyph-jolt-recoil-rotate", `${(impactRotate * -0.36).toFixed(2)}deg`);
-  glyph.style.setProperty("--glyph-jolt-kick-x", `${(impactX * kick[0]).toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-jolt-kick-y", `${(impactY * kick[1]).toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-jolt-kick-scale", (1 + (impactScale - 1) * 0.24).toFixed(3));
-  glyph.style.setProperty("--glyph-jolt-kick-rotate", `${(impactRotate * 0.15).toFixed(2)}deg`);
-  glyph.style.setProperty("--glyph-jolt-settle-x", `${(impactX * settle[0]).toFixed(2)}px`);
-  glyph.style.setProperty("--glyph-jolt-settle-y", `${(impactY * settle[1]).toFixed(2)}px`);
-
-  const slice = document.createElement("span");
-  slice.className = "glyph-slice";
-  slice.dataset.glyph = target.glyph;
-  glyph.append(slice);
-
-  const sheen = document.createElement("span");
-  sheen.className = "glyph-sheen";
-  sheen.dataset.glyph = target.glyph;
-  glyph.append(sheen);
-
-  mark.append(glyph);
-}
-
-function spawnTypingMark(tactile = {}, resolvedGlyphTargets = null) {
+function spawnStreakRewardBurst() {
+  if (!fx.ctx) return;
   const rect = caretRect();
   if (!rect) return;
   const settings = state.settings;
-  if (!settings.effectEnabled || settings.effectIntensity <= 0.01 || settings.feedbackStrength <= 0.01) return;
   const effect = EFFECT_PRESETS[settings.effectMode] || EFFECT_PRESETS[defaultSettings.effectMode];
-  const profile = getGlyphProfile(settings.effectMode);
-  const effectLevel = clamp(settings.effectIntensity, 0.05, 1);
-  const glyphMotion = clamp01(settings.glyphMotion);
-  const keyType = tactile.keyType || "normal";
-  const seed = tactile.seed || Math.floor(performance.now() * 10);
-  const allowGlyph = tactile.allowGlyph !== false && keyType === "normal";
-  const glyphTargets = resolvedGlyphTargets || (allowGlyph ? resolveGlyphTargets() : { current: null, previous: null });
-  if (!glyphTargets.current && allowGlyph) {
-    glyphTargets.current = fallbackGlyphTarget(tactile.glyph || "", rect);
+  const x = rect.left;
+  const y = rect.top + rect.height * 0.4;
+  const count = clamp(Math.round(5 * (0.5 + settings.particleAmount)), 3, 9);
+  for (let i = 0; i < count; i += 1) {
+    const angle = fxRand(0, Math.PI * 2);
+    const speed = fxRand(14, 46);
+    addFxParticle({
+      start: performance.now() + i * 16,
+      life: fxRand(420, 720),
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 14,
+      ax: 0,
+      ay: -6,
+      size: fxRand(3, 7),
+      shape: Math.random() < 0.5 ? "star8" : "dot",
+      colorA: effect.secondary,
+      colorB: effect.primary,
+      glow: fxGlow({ settings, effectLevel: 1 }, 4),
+      peakAlpha: fxRand(0.55, 0.85)
+    });
   }
-  const glyphRect = glyphTargets.current?.rect;
-  const glyphWidth = glyphRect?.width || Math.max(8, (rect.height || 18) * 0.52);
-  const glyphHeight = glyphRect?.height || Math.max(18, rect.height || 18);
-  const locality = EFFECT_LOCALITY_PRESETS[settings.effectMode] || {};
-  const keyParticleScale = keyType === "enter" ? 1.25 : keyType === "space" ? 0.82 : keyType === "backspace" ? 0.56 : 1;
-  const streakBoost = Math.min(0.22, Math.max(0, Number(tactile.streak || 0)) * 0.006);
-  const specialChance = clamp(effect.special * (0.28 + settings.specialFrequency * 1.72) * effectLevel + streakBoost, 0, 0.95);
-  const isSpecial = settings.specialFrequency > 0.01 && seeded01(seed, 77) < specialChance;
-  const speedScale = 1.18 - settings.effectSpeed * 0.46;
-  const life = Math.round(effect.life * speedScale);
-  // A gentle boost while the hands are typing fast, so particles/glow feel
-  // like they're keeping pace rather than a flat, constant reaction.
-  const handSpeedBoost = 1 + typingSpeedFactor * 0.12;
-  const particleCount = settings.particleAmount <= 0.01
-    ? 0
-    : Math.round((effect.particles + (isSpecial ? 2 : 0)) * keyParticleScale * (0.4 + settings.particleAmount * 1.55) * handSpeedBoost);
-  const maxParticles = clamp(particleCount, 0, locality.maxDomParticles || 16);
-  const originX = glyphRect ? glyphRect.left + glyphWidth * (locality.originX ?? 0.78) : rect.left;
-  const originY = glyphRect ? glyphRect.top + glyphHeight * (locality.originY ?? 0.56) : rect.top + rect.height * 0.55;
-  spawnEffectBurst(settings.effectMode, {
-    x: originX,
-    y: originY,
-    glyphWidth,
-    glyphHeight,
-    settings,
-    isSpecial,
-    keyType,
-    effectLevel,
-    speedScale,
-    scale: keyParticleScale,
-    streak: tactile.streak || 0
-  });
-  const mark = document.createElement("span");
-  mark.className = `typing-mark effect-${settings.effectMode} key-${keyType}${isSpecial ? " is-special" : ""}`;
-  mark.style.left = `${originX}px`;
-  mark.style.top = `${originY}px`;
-  mark.style.setProperty("--burst-life", `${life}ms`);
-  mark.style.setProperty("--core-scale", (effect.core * (0.82 + effectLevel * 0.52) * (1 + typingSpeedFactor * 0.08)).toFixed(2));
-  mark.style.setProperty("--shake-x", `${(seededSigned(seed, 4) * settings.shakeAmount * 2.5).toFixed(2)}px`);
-  mark.style.setProperty("--shake-y", `${(seededSigned(seed, 9) * settings.shakeAmount * 1.8).toFixed(2)}px`);
-  mark.style.setProperty("--glyph-life", `${Math.round(life * 0.54)}ms`);
-  mark.style.setProperty("--glyph-alpha", (0.18 + effectLevel * 0.42).toFixed(3));
-  mark.style.setProperty("--glyph-blur", `${(settings.effectMode === "ink" ? 1.2 : 0.35) * glyphMotion}px`);
-  mark.style.setProperty("--glyph-vibe-life", `${Math.round(clamp(life * 0.34, 90, 170))}ms`);
-
-  const core = document.createElement("span");
-  core.className = "typing-core";
-  mark.append(core);
-
-  if (isSpecial) {
-    const accent = document.createElement("span");
-    accent.className = "typing-special";
-    mark.append(accent);
-  }
-
-  // Small, FX-tinted tactile accents for the non-character keys: a short
-  // horizontal ripple for Space, a downward flow for Enter, and a "sucked
-  // toward the caret" shrink for Backspace.
-  if (keyType === "space") {
-    const ripple = document.createElement("span");
-    ripple.className = "typing-space-ripple";
-    mark.append(ripple);
-  } else if (keyType === "enter") {
-    const flow = document.createElement("span");
-    flow.className = "typing-enter-flow";
-    mark.append(flow);
-  } else if (keyType === "backspace") {
-    const erase = document.createElement("span");
-    erase.className = "typing-erase";
-    mark.append(erase);
-  }
-
-  appendGlyphOverlay(mark, glyphTargets.previous, "echo", originX, originY, profile, settings, effectLevel, speedScale, isSpecial, effect);
-  if (!tactile.realGlyphAnimated) {
-    appendGlyphOverlay(mark, glyphTargets.current, "current", originX, originY, profile, settings, effectLevel, speedScale, isSpecial, effect);
-  }
-  // Typing wave: 1-2 more already-committed characters, rendered as the same
-  // kind of decorative (non-editable) overlay as the echo above rather than
-  // by touching the real note text, so it never risks the live contenteditable
-  // during fast/consecutive typing. Each step back decays sharply.
-  if (Array.isArray(glyphTargets.trail)) {
-    for (let deep = 1; deep < glyphTargets.trail.length; deep += 1) {
-      appendGlyphOverlay(mark, glyphTargets.trail[deep], "echo", originX, originY, profile, settings, effectLevel, speedScale, false, effect, Math.pow(0.78, deep));
-    }
-  }
-
-  for (let index = 0; index < maxParticles; index += 1) {
-    const particle = document.createElement("span");
-    const angle = seeded01(seed + index, 12) * Math.PI * 2;
-    const distance = ((locality.particleBase ?? 10) + seeded01(seed + index, 21) * effect.spread * 1.6 * (locality.spreadScale ?? 1))
-      * effectLevel
-      * (0.7 + settings.particleAmount * 1.1);
-    const x = Math.cos(angle) * distance * (locality.xScale ?? 1);
-    const y = Math.sin(angle) * distance * (locality.yScale ?? 1) - effect.lift * effectLevel * 1.6 * (locality.liftScale ?? 1);
-    const size = 4 + seeded01(seed + index, 33) * (isSpecial ? 15 : 10);
-    particle.className = `typing-particle particle-${index % 4}`;
-    particle.style.setProperty("--x", `${x.toFixed(2)}px`);
-    particle.style.setProperty("--y", `${y.toFixed(2)}px`);
-    particle.style.setProperty("--size", `${size.toFixed(2)}px`);
-    particle.style.setProperty("--particle-offset", `${(-size / 2).toFixed(2)}px`);
-    particle.style.setProperty("--spin", `${Math.round(seededSigned(seed + index, 45) * 320)}deg`);
-    particle.style.setProperty("--delay", `${Math.round(seeded01(seed + index, 52) * 34)}ms`);
-    particle.style.setProperty("--particle-alpha", (settings.particleAmount * (0.55 + settings.effectIntensity * 0.55)).toFixed(2));
-    mark.append(particle);
-  }
-
-  // Absolute core reaction, present on every keystroke no matter which
-  // effect preset is active: a tiny star-dust burst hugging the newest
-  // character. Preset particles above add personality on top of this.
-  if (settings.particleAmount > 0.01 && keyType !== "backspace") {
-    const coreStarCount = 2 + (isSpecial ? 2 : 0) + (settings.particleAmount > 0.6 ? 1 : 0);
-    for (let index = 0; index < coreStarCount; index += 1) {
-      const star = document.createElement("span");
-      const starSeed = seed + index * 7 + 401;
-      const angle = seeded01(starSeed, 61) * Math.PI * 2;
-      const distance = (12 + seeded01(starSeed, 68) * 26) * (0.7 + settings.particleAmount * 1.2) * (locality.coreStarScale ?? 1);
-      const x = Math.cos(angle) * distance;
-      const y = Math.sin(angle) * distance - (6 + seeded01(starSeed, 74) * 8);
-      const isBright = isSpecial && index >= coreStarCount - 2;
-      const size = (isBright ? 15 : 7) + seeded01(starSeed, 80) * (isBright ? 8 : 6);
-      star.className = `typing-core-star${isBright ? " is-bright" : ""}`;
-      star.style.setProperty("--csx", `${x.toFixed(2)}px`);
-      star.style.setProperty("--csy", `${y.toFixed(2)}px`);
-      star.style.setProperty("--cs-size", `${size.toFixed(2)}px`);
-      star.style.setProperty("--cs-offset", `${(-size / 2).toFixed(2)}px`);
-      star.style.setProperty("--cs-spin", `${Math.round(seededSigned(starSeed, 88) * 260)}deg`);
-      star.style.setProperty("--cs-delay", `${Math.round(seeded01(starSeed, 91) * 30)}ms`);
-      star.style.setProperty("--cs-life", `${Math.round((520 + seeded01(starSeed, 95) * 240) * speedScale)}ms`);
-      star.style.setProperty("--cs-alpha", (0.7 + settings.particleAmount * 0.3 * (0.7 + effectLevel * 0.3)).toFixed(2));
-      star.style.setProperty("--cs-glow", `${(5 + settings.glowAmount * 9).toFixed(1)}px`);
-      mark.append(star);
-    }
-  }
-
-  const activeMarks = refs.inkLayer.querySelectorAll(".typing-mark");
-  if (activeMarks.length > 34) {
-    activeMarks[0].remove();
-  }
-
-  refs.inkLayer.append(mark);
-  const starLifeCap = Math.round(900 * speedScale);
-  window.setTimeout(() => mark.remove(), Math.max(life, starLifeCap) + 140);
+  ensureFxLoop();
 }
 
-function caretRect() {
-  const selection = window.getSelection();
-  if (!selection || !selection.rangeCount) return null;
-  const range = selection.getRangeAt(0).cloneRange();
-  if (!refs.editor.contains(range.startContainer)) return null;
-  range.collapse(true);
-  const rect = range.getClientRects()[0];
-  if (rect) return fixedLayerRect(rect);
-  const editorRect = fixedLayerRect(refs.editor.getBoundingClientRect());
-  const editorStyle = getComputedStyle(refs.editor);
-  return {
-    left: editorRect.left + (Number.parseFloat(editorStyle.paddingLeft) || 0),
-    top: editorRect.top + (Number.parseFloat(editorStyle.paddingTop) || 0),
-    height: Number.parseFloat(editorStyle.fontSize) || 18
-  };
+function updateTypingStreak(now, keyType) {
+  // Lightweight combo tracking for the reward system: fast consecutive
+  // keystrokes build a streak, which nudges special-moment bursts to show
+  // up a little more often. No visible counter, no score UI.
+  if (keyType === "backspace") {
+    typingStreak = Math.max(0, typingStreak - 3);
+  } else if (now - lastStreakAt < 550) {
+    typingStreak += 1;
+  } else {
+    typingStreak = 1;
+  }
+  lastStreakAt = now;
+  maybeSpawnStreakReward(now, keyType);
 }
 
+
+// ---- sound engine (synthesized key sounds)
 const soundEngine = {
   ctx: null,
   master: null,
@@ -6651,296 +4109,464 @@ function seededSigned(seed, salt) {
   return seeded01(seed, salt) * 2 - 1;
 }
 
-function toggleFormatToolbar() {
-  manualToolbarOpen = !manualToolbarOpen;
-  refs.formatToggleBtn.setAttribute("aria-expanded", String(manualToolbarOpen));
-  if (manualToolbarOpen) {
-    positionToolbarNearTop();
-  }
-  updateToolbarVisibility(manualToolbarOpen);
+
+
+// Wires sound + sparks onto any editable element (PDF notes and the Studio test box).
+function attachTyping(el, hooks = {}) {
+  let composing = false;
+  let lastKeydownAt = 0;
+  let lastKeyType = "normal";
+
+  el.addEventListener("keydown", (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const key = event.key;
+    let type = null;
+    if (key === "Backspace" || key === "Delete") type = "backspace";
+    else if (key === "Enter") type = "enter";
+    else if (key === " ") type = "space";
+    else if (key.length === 1 || key === "Process" || key === "Unidentified") type = "normal";
+    if (!type) return;
+    lastKeydownAt = performance.now();
+    lastKeyType = type;
+    soundEngine.play(type);
+  });
+
+  // Soft keyboards often skip keydown: make sure they still get a sound.
+  el.addEventListener("beforeinput", (event) => {
+    if (performance.now() - lastKeydownAt > 80 && !event.isComposing) {
+      soundEngine.play(keyTypeFromInput(event, "normal"));
+    }
+  });
+
+  el.addEventListener("compositionstart", () => { composing = true; });
+  el.addEventListener("compositionend", (event) => {
+    composing = false;
+    const last = (event.data || "").slice(-1);
+    if (last && state.settings.effectEnabled) {
+      const rect = caretRect();
+      if (rect) spawnGhostGlyph(last, rect, false);
+    }
+  });
+
+  el.addEventListener("input", (event) => {
+    const type = keyTypeFromInput(event, performance.now() - lastKeydownAt < 120 ? lastKeyType : "normal");
+    const glyph = !composing && !event.isComposing && event.inputType === "insertText" && event.data && event.data.trim() ? event.data.slice(-1) : "";
+    fireTypingFx(type, glyph);
+    if (hooks.onInput) hooks.onInput();
+  });
+
+  el.addEventListener("paste", (event) => {
+    event.preventDefault();
+    const text = (event.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, text);
+  });
 }
 
-function updateToolbarForSelection() {
-  if (manualToolbarOpen) return;
-  const selection = window.getSelection();
-  if (!selection || !selection.rangeCount || selection.isCollapsed) {
-    updateToolbarVisibility(false);
+// ---------------------------------------------------------- 4. PDF viewer
+function toast(message) {
+  refs.toast.textContent = message;
+  refs.toast.classList.add("show");
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => refs.toast.classList.remove("show"), 2800);
+}
+
+async function openPdf(file) {
+  if (!file) return;
+  if (!(file.type === "application/pdf" || /\.pdf$/i.test(file.name))) {
+    toast("That file isn't a PDF. Choose a .pdf file.");
     return;
   }
-  const range = selection.getRangeAt(0);
-  if (!refs.editor.contains(range.commonAncestorContainer)) {
-    updateToolbarVisibility(false);
+  if (!window.pdfjsLib) {
+    toast("The PDF engine didn't load. Check your connection and reload.");
     return;
   }
-  const rect = range.getBoundingClientRect();
-  if (!rect || (!rect.width && !rect.height)) {
-    updateToolbarVisibility(false);
-    return;
-  }
-  refs.toolbar.style.left = `${rect.left + rect.width / 2}px`;
-  refs.toolbar.style.top = `${Math.max(58, rect.top - 54)}px`;
-  updateToolbarVisibility(true);
-}
-
-function positionToolbarNearTop() {
-  refs.toolbar.style.left = "50%";
-  refs.toolbar.style.top = "74px";
-}
-
-function updateToolbarVisibility(visible) {
-  refs.toolbar.classList.toggle("visible", visible);
-  refs.formatToggleBtn.setAttribute("aria-expanded", String(visible));
-}
-
-function setLibraryOpen(open) {
-  document.body.classList.toggle("library-open", open);
-  refs.libraryToggleBtn.setAttribute("aria-expanded", String(open));
-  if (open) {
-    setSettingsOpen(false);
-    setTimerPanel(false);
-    manualToolbarOpen = false;
-    updateToolbarVisibility(false);
+  try {
+    toast("Opening…");
+    const data = new Uint8Array(await file.arrayBuffer());
+    const doc = await pdfjsLib.getDocument({ data }).promise;
+    flushNotes();
+    state.doc = doc;
+    state.fileName = file.name;
+    state.noteKey = `${NOTES_PREFIX}${file.name}:${file.size}:${doc.numPages}`;
+    state.notes = loadNotes();
+    state.zoom = 1;
+    // Show the stage first: the fit-to-width math needs a real, measurable width.
+    refs.uploadStage.hidden = true;
+    refs.pdfStage.hidden = false;
+    refs.inkToolbar.hidden = false;
+    refs.pdfNameLabel.textContent = file.name;
+    await buildPages();
+    refs.pdfScroll.scrollTop = 0;
+    updatePageReadout();
+    toast(state.notes.length ? "Welcome back — your notes are restored." : "Press T, then click the page to type.");
+  } catch (error) {
+    console.error(error);
+    toast(error && error.name === "PasswordException" ? "This PDF is password-protected." : "Couldn't open that PDF. It may be damaged.");
+  } finally {
+    refs.pdfInput.value = "";
   }
 }
 
-function setSettingsOpen(open) {
-  document.body.classList.toggle("settings-open", open);
-  refs.settingsToggleBtn.setAttribute("aria-expanded", String(open));
-  if (open) {
-    setLibraryOpen(false);
-    setTimerPanel(false);
-    manualToolbarOpen = false;
-    updateToolbarVisibility(false);
+async function buildPages() {
+  refs.pdfScroll.innerHTML = "";
+  if (state.observer) state.observer.disconnect();
+  state.pages = [];
+  const total = state.doc.numPages;
+  const pdfPages = await Promise.all(Array.from({ length: total }, (_, i) => state.doc.getPage(i + 1)));
+  state.observer = new IntersectionObserver(onPageVisibility, { root: refs.pdfScroll, rootMargin: "900px 0px" });
+  pdfPages.forEach((page, index) => {
+    const el = document.createElement("div");
+    el.className = "pdf-page";
+    el.dataset.page = String(index + 1);
+    const canvas = document.createElement("canvas");
+    const layer = document.createElement("div");
+    layer.className = "note-layer";
+    el.append(canvas, layer);
+    refs.pdfScroll.append(el);
+    const entry = { index: index + 1, page, el, canvas, layer, base: page.getViewport({ scale: 1 }), renderedKey: "", task: null, visible: false };
+    el.__entry = entry;
+    state.pages.push(entry);
+    state.observer.observe(el);
+    layer.addEventListener("pointerdown", (event) => onLayerPointerDown(event, entry));
+    // Stop the browser's follow-up mousedown from stealing focus from the note we just created.
+    layer.addEventListener("mousedown", (event) => { if (state.typeTool && !event.target.closest(".note-wrap")) event.preventDefault(); });
+  });
+  computeFit();
+  layoutPages();
+  state.notes.forEach(renderNote);
+}
+
+function computeFit() {
+  const first = state.pages[0];
+  if (!first) return;
+  const available = Math.max(280, refs.pdfScroll.clientWidth - (window.innerWidth < 700 ? 16 : 64));
+  state.fit = clamp(available / first.base.width, 0.3, 1.8);
+}
+
+function layoutPages() {
+  const scale = state.fit * state.zoom;
+  state.pages.forEach((entry) => {
+    const width = entry.base.width * scale;
+    const height = entry.base.height * scale;
+    entry.el.style.width = `${width}px`;
+    entry.el.style.height = `${height}px`;
+    entry.el.style.setProperty("--k", (width / 800).toFixed(4));
+    entry.renderedKey = entry.renderedKey && entry.visible ? entry.renderedKey : "";
+  });
+  refs.zoomReadout.textContent = `${Math.round(state.zoom * 100)}%`;
+  state.pages.filter((entry) => entry.visible).forEach(renderPage);
+}
+
+function onPageVisibility(changes) {
+  changes.forEach((change) => {
+    const entry = change.target.__entry;
+    entry.visible = change.isIntersecting;
+    if (entry.visible) renderPage(entry);
+    else releasePage(entry);
+  });
+}
+
+function releasePage(entry) {
+  if (entry.task) { try { entry.task.cancel(); } catch (error) { /* already finished */ } entry.task = null; }
+  entry.canvas.width = entry.canvas.height = 0;
+  entry.renderedKey = "";
+}
+
+async function renderPage(entry) {
+  const scale = state.fit * state.zoom;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const pixelCap = 16e6 / (entry.base.width * entry.base.height);
+  const renderScale = Math.min(scale * dpr, Math.sqrt(pixelCap));
+  const key = renderScale.toFixed(3);
+  if (entry.renderedKey === key) return;
+  entry.renderedKey = key;
+  if (entry.task) { try { entry.task.cancel(); } catch (error) { /* ignore */ } }
+  const viewport = entry.page.getViewport({ scale: renderScale });
+  const off = document.createElement("canvas");
+  off.width = Math.floor(viewport.width);
+  off.height = Math.floor(viewport.height);
+  entry.task = entry.page.render({ canvasContext: off.getContext("2d"), viewport });
+  try {
+    await entry.task.promise;
+    if (entry.renderedKey !== key) return;
+    entry.canvas.width = off.width;
+    entry.canvas.height = off.height;
+    entry.canvas.getContext("2d").drawImage(off, 0, 0);
+  } catch (error) {
+    if (error && error.name === "RenderingCancelledException") return;
+    entry.renderedKey = "";
+    console.error(error);
   }
 }
 
-function toggleTimerPanel() {
-  setTimerPanel(!document.body.classList.contains("timer-open"));
+function setZoom(next) {
+  const target = clamp(next, ZOOM_STEPS[0], ZOOM_STEPS[ZOOM_STEPS.length - 1]);
+  if (target === state.zoom) return;
+  const scroll = refs.pdfScroll;
+  const ratio = scroll.scrollHeight ? (scroll.scrollTop + scroll.clientHeight / 2) / scroll.scrollHeight : 0;
+  state.zoom = target;
+  layoutPages();
+  scroll.scrollTop = ratio * scroll.scrollHeight - scroll.clientHeight / 2;
 }
 
-function setTimerPanel(open) {
-  document.body.classList.toggle("timer-open", open);
-  refs.timerToggleBtn.setAttribute("aria-expanded", String(open));
-  if (open) {
-    setLibraryOpen(false);
-    setSettingsOpen(false);
+function stepZoom(direction) {
+  const steps = ZOOM_STEPS;
+  const current = steps.findIndex((value) => value >= state.zoom - 0.001);
+  const index = clamp((current < 0 ? steps.length - 1 : current) + direction, 0, steps.length - 1);
+  setZoom(steps[index]);
+}
+
+function updatePageReadout() {
+  if (!state.pages.length) return;
+  const mid = refs.pdfScroll.scrollTop + refs.pdfScroll.clientHeight * 0.4;
+  let current = 1;
+  for (const entry of state.pages) {
+    if (entry.el.offsetTop <= mid) current = entry.index; else break;
+  }
+  state.currentPage = current;
+  refs.pageReadout.textContent = `${current} / ${state.pages.length}`;
+}
+
+function goToPage(index) {
+  const entry = state.pages[clamp(index, 1, state.pages.length) - 1];
+  if (entry) refs.pdfScroll.scrollTo({ top: entry.el.offsetTop - 76, behavior: reducedMotionQuery.matches ? "auto" : "smooth" });
+}
+
+// ------------------------------------------------------------------ notes
+function loadNotes() {
+  try {
+    const list = JSON.parse(localStorage.getItem(state.noteKey) || "[]");
+    return Array.isArray(list) ? list.filter((n) => n && typeof n.text === "string") : [];
+  } catch (error) {
+    return [];
   }
 }
 
-function closeOverlays() {
-  setLibraryOpen(false);
-  setSettingsOpen(false);
+function scheduleSave() {
+  window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(flushNotes, 400);
 }
 
-function closeEverything() {
-  setLibraryOpen(false);
-  setSettingsOpen(false);
-  setTimerPanel(false);
-  manualToolbarOpen = false;
-  updateToolbarVisibility(false);
-}
-
-function toggleFocusMode() {
-  const active = document.body.classList.toggle("focus-mode");
-  refs.focusBtn.setAttribute("aria-pressed", String(active));
-  refs.focusBtn.textContent = active ? "Exit focus" : "Focus";
-  if (active) closeEverything();
-  refs.editor.focus();
-}
-
-function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => showToast("Full screen is not available here"));
-  } else {
-    document.exitFullscreen();
+function flushNotes() {
+  window.clearTimeout(saveTimer);
+  if (!state.noteKey) return;
+  try {
+    if (state.notes.length) localStorage.setItem(state.noteKey, JSON.stringify(state.notes));
+    else localStorage.removeItem(state.noteKey);
+  } catch (error) {
+    toast("Couldn't save notes in this browser.");
   }
+}
+
+function makeEditable(el) {
+  el.setAttribute("contenteditable", "plaintext-only");
+  if (el.contentEditable !== "plaintext-only") {
+    el.setAttribute("contenteditable", "true");
+    el.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.isComposing) {
+        event.preventDefault();
+        document.execCommand("insertLineBreak");
+      }
+    });
+  }
+  el.spellcheck = false;
+}
+
+function noteText(el) {
+  return el.innerText.replace(/\n+$/, "");
+}
+
+function createNoteAt(entry, x, y) {
+  const note = { id: `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, page: entry.index, x, y, text: "" };
+  state.notes.push(note);
+  const wrap = renderNote(note);
+  wrap.querySelector(".ink-note").focus();
+}
+
+function renderNote(note) {
+  const entry = state.pages[note.page - 1];
+  if (!entry) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "note-wrap";
+  wrap.dataset.id = note.id;
+  wrap.style.left = `${note.x * 100}%`;
+  wrap.style.top = `${note.y * 100}%`;
+  const handle = document.createElement("span");
+  handle.className = "note-handle";
+  handle.title = "Drag to move";
+  const el = document.createElement("div");
+  el.className = "ink-note";
+  el.textContent = note.text;
+  makeEditable(el);
+  wrap.append(handle, el);
+  entry.layer.append(wrap);
+
+  attachTyping(el, { onInput: () => { note.text = noteText(el); scheduleSave(); } });
+  el.addEventListener("focus", () => { state.activeNote = el; wrap.classList.add("is-editing"); refs.placeHint.hidden = true; });
+  el.addEventListener("blur", () => {
+    wrap.classList.remove("is-editing");
+    if (state.activeNote === el) state.activeNote = null;
+    if (!noteText(el).trim()) removeNote(note, wrap);
+    else { note.text = noteText(el); scheduleSave(); }
+    updateHint();
+  });
+  el.addEventListener("keydown", (event) => { if (event.key === "Escape") el.blur(); });
+  handle.addEventListener("pointerdown", (event) => dragNote(event, note, wrap, entry));
+  return wrap;
+}
+
+function removeNote(note, wrap) {
+  state.notes = state.notes.filter((n) => n !== note);
+  wrap.remove();
+  scheduleSave();
+}
+
+function layoutNotes() { /* note size follows --note-size and --k in CSS */ }
+
+function dragNote(event, note, wrap, entry) {
+  event.preventDefault();
+  const handle = event.currentTarget;
+  handle.setPointerCapture(event.pointerId);
+  wrap.classList.add("is-dragging");
+  const move = (e) => {
+    const box = entry.layer.getBoundingClientRect();
+    note.x = clamp((e.clientX - box.left) / box.width, 0, 0.98);
+    note.y = clamp((e.clientY - box.top) / box.height, 0, 0.99);
+    wrap.style.left = `${note.x * 100}%`;
+    wrap.style.top = `${note.y * 100}%`;
+  };
+  const end = () => {
+    handle.removeEventListener("pointermove", move);
+    handle.removeEventListener("pointerup", end);
+    handle.removeEventListener("pointercancel", end);
+    wrap.classList.remove("is-dragging");
+    scheduleSave();
+  };
+  handle.addEventListener("pointermove", move);
+  handle.addEventListener("pointerup", end);
+  handle.addEventListener("pointercancel", end);
+}
+
+function onLayerPointerDown(event, entry) {
+  if (!state.typeTool || event.target.closest(".note-wrap")) return;
+  event.preventDefault();
+  const box = entry.layer.getBoundingClientRect();
+  createNoteAt(entry, clamp((event.clientX - box.left) / box.width, 0, 0.96), clamp((event.clientY - box.top) / box.height, 0, 0.98));
+}
+
+function setTypeTool(on) {
+  state.typeTool = on;
+  refs.typeToolBtn.setAttribute("aria-pressed", String(on));
+  document.body.classList.toggle("type-mode", on);
+  updateHint();
+}
+
+function updateHint() {
+  refs.placeHint.hidden = !(state.typeTool && !state.activeNote);
+}
+
+// ------------------------------------------------------------------ boot
+function cacheRefs() {
+  [
+    "uploadStage", "uploadDrop", "pdfInput", "pdfStage", "pdfScroll", "inkToolbar", "changePdfBtn", "pdfNameLabel",
+    "zoomOutBtn", "zoomInBtn", "zoomReadout", "prevPageBtn", "nextPageBtn", "pageReadout", "typeToolBtn",
+    "effectEnabled", "soundEnabled", "settingsToggleBtn", "fullscreenBtn", "placeHint", "drawerOverlay",
+    "settingsPanel", "closeSettingsBtn", "moodGrid", "tryNote", "intensityRange", "intensityReadout",
+    "volumeRange", "volumeReadout", "fontSelect", "fontSizeRange", "fontSizeReadout", "inkColorRow",
+    "effectModeSelect", "soundPackSelect", "inkLayer", "fxCanvas", "caretGlow", "toast"
+  ].forEach((id) => { refs[id] = document.getElementById(id); });
+}
+
+function bindEvents() {
+  refs.pdfInput.addEventListener("change", () => openPdf(refs.pdfInput.files[0]));
+  refs.changePdfBtn.addEventListener("click", () => refs.pdfInput.click());
+  window.addEventListener("dragover", (event) => { event.preventDefault(); refs.uploadDrop.classList.add("is-over"); });
+  window.addEventListener("dragleave", (event) => { if (!event.relatedTarget) refs.uploadDrop.classList.remove("is-over"); });
+  window.addEventListener("drop", (event) => {
+    event.preventDefault();
+    refs.uploadDrop.classList.remove("is-over");
+    openPdf(event.dataTransfer.files[0]);
+  });
+
+  refs.zoomInBtn.addEventListener("click", () => stepZoom(1));
+  refs.zoomOutBtn.addEventListener("click", () => stepZoom(-1));
+  refs.prevPageBtn.addEventListener("click", () => goToPage(state.currentPage - 1));
+  refs.nextPageBtn.addEventListener("click", () => goToPage(state.currentPage + 1));
+  let scrollFrame = 0;
+  refs.pdfScroll.addEventListener("scroll", () => {
+    if (scrollFrame) return;
+    scrollFrame = requestAnimationFrame(() => { scrollFrame = 0; updatePageReadout(); });
+  }, { passive: true });
+  refs.pdfScroll.addEventListener("wheel", (event) => {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    event.preventDefault();
+    setZoom(state.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1));
+  }, { passive: false });
+  let resizeTimer = 0;
+  window.addEventListener("resize", () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => { if (state.doc) { computeFit(); layoutPages(); } }, 120);
+  });
+
+  refs.typeToolBtn.addEventListener("click", () => setTypeTool(!state.typeTool));
+  refs.fullscreenBtn.addEventListener("click", () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.().catch(() => toast("Full screen isn't available here."));
+  });
+
+  refs.settingsToggleBtn.addEventListener("click", () => setSettingsOpen(!document.body.classList.contains("settings-open")));
+  refs.closeSettingsBtn.addEventListener("click", () => setSettingsOpen(false));
+  refs.drawerOverlay.addEventListener("click", () => setSettingsOpen(false));
+
+  refs.effectEnabled.addEventListener("change", () => setPrefs({ effectEnabled: refs.effectEnabled.checked }, { keepMood: true }));
+  refs.soundEnabled.addEventListener("change", () => setPrefs({ soundEnabled: refs.soundEnabled.checked }, { keepMood: true }));
+  refs.intensityRange.addEventListener("input", () => setPrefs({ intensity: Number(refs.intensityRange.value) / 100 }, { keepMood: true }));
+  refs.volumeRange.addEventListener("input", () => setPrefs({ volume: Number(refs.volumeRange.value) / 100 }, { keepMood: true }));
+  refs.fontSelect.addEventListener("change", () => setPrefs({ font: refs.fontSelect.value }));
+  refs.fontSizeRange.addEventListener("input", () => setPrefs({ fontSize: Number(refs.fontSizeRange.value) }, { keepMood: true }));
+  refs.effectModeSelect.addEventListener("change", () => setPrefs({ effectMode: refs.effectModeSelect.value }));
+  refs.soundPackSelect.addEventListener("change", () => { setPrefs({ soundPack: refs.soundPackSelect.value }); soundEngine.play("normal"); });
+  refs.inkColorRow.addEventListener("click", (event) => {
+    const swatch = event.target.closest(".swatch");
+    if (swatch) setPrefs({ color: swatch.dataset.color });
+  });
+
+  attachTyping(refs.tryNote);
+  refs.tryNote.addEventListener("focus", () => { state.activeNote = refs.tryNote; });
+  refs.tryNote.addEventListener("blur", () => { if (state.activeNote === refs.tryNote) state.activeNote = null; });
+
+  // First user gesture unlocks audio so the very first key already clicks.
+  window.addEventListener("pointerdown", () => soundEngine.unlock(), { once: true });
+  window.addEventListener("keydown", handleGlobalKeys);
+  window.addEventListener("pagehide", flushNotes);
+  reducedMotionQuery.addEventListener?.("change", applyPrefs);
 }
 
 function handleGlobalKeys(event) {
-  if ((event.ctrlKey || event.metaKey) && isUndoRedoShortcut(event) && selectionWithinEditor()) {
-    flushCommittedGlyphAnimations({ preserveSelection: true });
+  const target = event.target;
+  const typing = target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName));
+  if (event.key === "Escape") {
+    if (document.body.classList.contains("settings-open")) setSettingsOpen(false);
+    else if (!typing && state.typeTool) setTypeTool(false);
     return;
   }
-  if (event.key !== "Escape") return;
-  if (document.body.classList.contains("focus-mode")) {
-    document.body.classList.remove("focus-mode");
-    refs.focusBtn.setAttribute("aria-pressed", "false");
-    refs.focusBtn.textContent = "Focus";
-    return;
-  }
-  closeEverything();
+  if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (!state.doc) return;
+  if (event.key === "t" || event.key === "T") { event.preventDefault(); setTypeTool(!state.typeTool); }
+  else if (event.key === "+" || event.key === "=") stepZoom(1);
+  else if (event.key === "-") stepZoom(-1);
 }
 
-function exportActiveNote() {
-  const note = getActiveNote();
-  const title = (note.title || "study-note").trim();
-  const markdown = `# ${title}\n\nSubject: ${note.label || "Ideas"}\nFolder: ${note.folder || "General"}\n\n${htmlToMarkdown(note.content)}`;
-  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `${slugify(title)}.md`;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(link.href), 500);
-  showToast("Exported markdown");
+function init() {
+  cacheRefs();
+  if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+  fillSelect(refs.effectModeSelect, EFFECT_PRESETS, (d) => d.label);
+  fillSelect(refs.soundPackSelect, SOUND_PACKS, (d) => d.label);
+  fillFontSelect();
+  buildMoodGrid();
+  initFxCanvas();
+  bindEvents();
+  applyPrefs();
 }
 
-function htmlToMarkdown(html) {
-  const root = document.createElement("div");
-  root.innerHTML = html;
-  return [...root.childNodes].map(markdownNode).join("").replace(/\n{3,}/g, "\n\n").trim();
-}
-
-function markdownNode(node) {
-  if (node.nodeType === Node.TEXT_NODE) {
-    return node.textContent;
-  }
-  if (node.nodeType !== Node.ELEMENT_NODE) {
-    return "";
-  }
-
-  const tag = node.tagName.toLowerCase();
-  const children = [...node.childNodes].map(markdownNode).join("");
-
-  if (tag === "h1") return `# ${children.trim()}\n\n`;
-  if (tag === "h2") return `## ${children.trim()}\n\n`;
-  if (tag === "h3") return `### ${children.trim()}\n\n`;
-  if (tag === "p" || tag === "div") return `${children.trim()}\n\n`;
-  if (tag === "br") return "\n";
-  if (tag === "strong" || tag === "b") return `**${children}**`;
-  if (tag === "em" || tag === "i") return `*${children}*`;
-  if (tag === "u") return `<u>${children}</u>`;
-  if (tag === "mark" || (tag === "span" && node.getAttribute("style")?.includes("background-color"))) {
-    return `==${children}==`;
-  }
-  if (tag === "blockquote") {
-    return children.split("\n").filter(Boolean).map((line) => `> ${line}`).join("\n") + "\n\n";
-  }
-  if (tag === "hr") return "---\n\n";
-  if (tag === "ul") {
-    return [...node.children].map((child) => `- ${markdownNode(child).trim()}`).join("\n") + "\n\n";
-  }
-  if (tag === "ol") {
-    return [...node.children].map((child, index) => `${index + 1}. ${markdownNode(child).trim()}`).join("\n") + "\n\n";
-  }
-  if (tag === "li") return children;
-  if (tag === "label" && node.classList.contains("check-line")) {
-    const checked = node.querySelector("input")?.checked ? "x" : " ";
-    const text = [...node.childNodes]
-      .filter((child) => child.tagName?.toLowerCase() !== "input")
-      .map(markdownNode)
-      .join("")
-      .trim();
-    return `- [${checked}] ${text}\n`;
-  }
-  return children;
-}
-
-function setTimerMode(mode) {
-  state.timer.mode = mode;
-  state.timer.running = false;
-  state.timer.secondsLeft = mode === "study" ? 25 * 60 : 5 * 60;
-  saveStateNow();
-  renderTimer();
-}
-
-function toggleTimer() {
-  state.timer.running = !state.timer.running;
-  saveStateNow();
-  renderTimer();
-}
-
-function resetTimer() {
-  state.timer.running = false;
-  state.timer.secondsLeft = state.timer.mode === "study" ? 25 * 60 : 5 * 60;
-  saveStateNow();
-  renderTimer();
-}
-
-function startTimerLoop() {
-  window.clearInterval(timerInterval);
-  timerInterval = window.setInterval(() => {
-    if (!state.timer.running) return;
-    state.timer.secondsLeft -= 1;
-    if (state.timer.secondsLeft <= 0) {
-      state.timer.running = false;
-      state.timer.secondsLeft = 0;
-      soundEngine.play("enter");
-      showToast(state.timer.mode === "study" ? "Study session complete" : "Break complete");
-    }
-    saveStateNow();
-    renderTimer();
-  }, 1000);
-}
-
-function formatClock(totalSeconds) {
-  const safeSeconds = Math.max(0, totalSeconds);
-  const minutes = Math.floor(safeSeconds / 60);
-  const seconds = safeSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function plainText(html) {
-  const div = document.createElement("div");
-  div.innerHTML = html || "";
-  return div.textContent || div.innerText || "";
-}
-
-function countWords(text) {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  const matches = trimmed.match(/[\p{L}\p{N}]+/gu);
-  return matches ? matches.length : trimmed.split(/\s+/).length;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function relativeTime(timestamp) {
-  const diff = Math.max(0, Date.now() - Number(timestamp || Date.now()));
-  const minute = 60 * 1000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  if (diff < minute) return "just now";
-  if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
-  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
-  return `${Math.floor(diff / day)}d ago`;
-}
-
-function createId() {
-  if (window.crypto?.randomUUID) {
-    return window.crypto.randomUUID();
-  }
-  return `note-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function slugify(value) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9가-힣]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 54) || "study-note";
-}
-
-function clamp01(value) {
-  return clamp(Number.isFinite(value) ? value : 0, 0, 1);
-}
-
-function clamp(value, min, max) {
-  const safe = Number.isFinite(value) ? value : min;
-  return Math.min(max, Math.max(min, safe));
-}
-
-function showToast(message) {
-  refs.toast.textContent = message;
-  refs.toast.classList.add("show");
-  window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => refs.toast.classList.remove("show"), 1800);
-}
+document.addEventListener("DOMContentLoaded", init);

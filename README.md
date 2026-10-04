@@ -22,10 +22,7 @@ Open `index.html` in a browser. No backend or build step is required.
 
 - Themes: edit `THEMES` in `app.js` and the matching `body[data-theme="..."]` blocks in `styles.css`.
 - Typing feel presets: edit `FEEL_PRESETS` in `app.js` and the `body[data-feel="..."]` variables in `styles.css`.
-- Visual effects: edit `EFFECT_PRESETS`, `GLYPH_EFFECT_PROFILES`, `GLYPH_JOLT_PRESETS`, and `buildCommittedGlyphMotion()` in `app.js`, plus the `.typing-mark.effect-...` rules in `styles.css`. Each newly committed grapheme is wrapped in a temporary `.typing-real-glyph` span, animated in place, then unwrapped so saved note HTML stays clean. Korean IME text is never wrapped during composition; the completed Hangul syllable is animated only after `compositionend`. The fixed feedback layer remains decorative for particles, stars, and fallback glyph echoes.
-- Typing color flash: edit `GLYPH_FLASH_PRESETS` (with `defaultGlyphFlash()` as the fallback for presets not listed) in `app.js`. Runs as a second, parallel Web Animations API animation on the same temporary glyph wrapper, fading from an FX-tinted color back to the character's real, inherited color — the saved note color is never touched.
-- Pressure / tactile presets: `PRESSURE_MODES` in `app.js` (currently Candy Pop, Keycap Pop, Ink, Bubble) get an amplified squash-and-settle in `committedGlyphMotionVars()`.
-- Typing wave: `animateGlyphTrailWave()` in `app.js` re-wraps the 1-3 already-committed characters just before the newest one and plays a fast, sharply-decaying echo of the same motion, so quick typing reads as energy flowing back through the word. Trail targets come from `resolveGlyphTargets()`'s `trail` array.
+- Visual effects: edit `EFFECT_PRESETS`, `GLYPH_EFFECT_PROFILES`, and `GLYPH_JOLT_PRESETS` in `app.js`, plus the `.typing-mark.effect-...` and `.typing-glyph` rules in `styles.css`. Every per-keystroke visual (the just-typed character's "impact" pop, the previous character's echo) is a decorative, non-editable ghost glyph absolutely positioned over the real text in the fixed feedback layer — it never wraps or mutates the actual note DOM. That's a deliberate reliability choice: an earlier version briefly wrapped the real committed character in a `<span>` to animate it in place, and on some setups that occasionally interfered with fast/normal typing, so it was removed in favor of the ghost-overlay-only approach. Korean IME composition text is never touched either way; a completed Hangul syllable gets its ghost-glyph pop right after `compositionend`.
 - Typing speed reactivity: `registerKeystrokeInterval()` tracks a smoothed rolling average of recent keystroke gaps into `typingSpeedFactor` (0-1), which lightly scales glyph motion strength and particle/glow intensity — no visible speed readout.
 - Streak visual reward: `maybeSpawnStreakReward()` / `spawnStreakRewardBurst()` in `app.js` fire a small extra sparkle burst every `STREAK_REWARD_STEP` fast keystrokes in a row. No counter or combo UI.
 - Space / Enter / Backspace accents: `.typing-space-ripple`, `.typing-enter-flow`, and `.typing-erase` in `styles.css`, appended in `spawnTypingMark()` based on `keyType`. Tinted with `--effect-primary`/`--effect-secondary`, so they match whichever FX preset is active.
@@ -37,7 +34,9 @@ Open `index.html` in a browser. No backend or build step is required.
 
 ## Input Notes
 
-Typing sound is driven primarily from physical `keydown` events for low perceived latency. Korean IME composition is preserved by avoiding text mutation during composition; `beforeinput` is used only as a fallback tactile signal when a browser does not emit a usable keydown.
+Typing sound is driven primarily from physical `keydown` events for low perceived latency. Korean IME composition is preserved by avoiding text mutation during composition; `beforeinput` is used only as a fallback tactile signal when a browser does not emit a usable keydown. Per-keystroke visuals are scheduled with `queueMicrotask` (not `requestAnimationFrame`), so each keystroke's animation resolves against its own DOM update rather than getting batched with whatever else was typed in the same display frame during fast typing.
+
+If Enter/Space right after finishing a Korean composition ever seems to get "eaten," that's worth checking against the browser/IME itself first — some IME implementations use that keystroke purely to commit the composition rather than also inserting the literal character, which is behavior outside this app's control.
 
 ## Deploy
 

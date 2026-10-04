@@ -75,7 +75,7 @@ body.type-mode .note-layer { cursor: text; }
 .note-wrap.is-dragging .note-handle { cursor: grabbing; }
 .ink-note {
   min-width: 2ch; min-height: 1.4em; padding: 1px 3px; border-radius: 4px;
-  font-family: var(--note-font); font-size: calc(var(--note-size) * var(--k, 1) * 1.25); line-height: 1.45;
+  font-family: var(--note-font); font-size: calc(var(--note-size) * var(--k, 1) * 1.25 * var(--font-adjust, 1)); line-height: 1.45;
   color: var(--note-color); white-space: pre-wrap; overflow-wrap: anywhere; caret-color: var(--accent);
   outline: none; cursor: text; transition: background .15s, box-shadow .15s;
 }
@@ -153,7 +153,7 @@ input[type="checkbox"]:checked::after { transform: translateX(12px); }
 .try-note {
   margin-top: 10px; min-height: 76px; padding: 12px 14px; border-radius: 12px; background: #fff;
   border: 1.5px dashed rgba(38,39,44,.25); outline: none; white-space: pre-wrap; overflow-wrap: anywhere;
-  font-family: var(--note-font); font-size: var(--note-size); line-height: 1.5; color: var(--note-color); caret-color: var(--accent);
+  font-family: var(--note-font); font-size: calc(var(--note-size) * var(--font-adjust, 1)); line-height: 1.5; color: var(--note-color); caret-color: var(--accent);
 }
 .try-note:empty::before { content: attr(data-placeholder); color: #a2a3aa; font-family: var(--ui); font-size: 14px; }
 .try-note:focus { border-style: solid; border-color: var(--accent); }
@@ -220,3 +220,33 @@ select {
 
 /* Keep every glyph (incl. in-progress jamo) in the chosen face; never synthesize bold/italic mid-typing. */
 .ink-note, .try-note, .ghost-glyph { font-synthesis: none; font-kerning: none; text-rendering: optimizeSpeed; }
+
+/* ---------- REVIEW: toolbar pill, focus lens, laser trail ---------- */
+.tool-pill {
+  height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 11px;
+  border: 0; border-radius: 10px; background: transparent;
+  font-size: 12px; font-weight: 650; letter-spacing: 0.09em; line-height: 1;
+  transition: background .15s, color .15s;
+}
+.tool-pill:hover { background: rgba(38,39,44,.08); }
+.pill-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #b9bac1; flex: none;
+  transition: background .2s, box-shadow .2s;
+}
+.tool-pill[aria-pressed="true"] { background: var(--chrome-ink); color: #fff; }
+.tool-pill[aria-pressed="true"] .pill-dot { background: #ff7d5f; box-shadow: 0 0 0 3px rgba(255,125,95,.24); }
+
+/* Both canvases sit above the PDF and notes but below the toolbar (z 20), hint (15) and settings (30+). */
+.review-lens, .review-trail { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.review-lens { z-index: 8; opacity: 0; transition: opacity .4s ease; }
+.review-lens.on { opacity: 1; }
+.review-trail { z-index: 9; }
+body.review-mode .pdf-page { cursor: default; }
+
+@media (max-width: 760px) {
+  .pill-label { display: none; }
+  .tool-pill { padding: 0 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-lens { transition-duration: .01ms; }
+}

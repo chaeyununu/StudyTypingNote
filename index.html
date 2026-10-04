@@ -99,11 +99,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Hahmlet:wght@400;600&family=Diphylleia&family=Orbit&family=Gaegu:wght@400;700&family=Dongle:wght@400;700&family=Bagel+Fat+One&family=JetBrains+Mono:wght@400;500&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Hahmlet:wght@400;600&family=Diphylleia&family=Orbit&family=Gaegu:wght@400;700&family=Dongle:wght@400;700&family=Bagel+Fat+One&family=Nanum+Myeongjo:wght@400;700&family=Song+Myung&family=Grandiflora+One&family=Gasoek+One&family=Hi+Melody&family=Gamja+Flower&family=JetBrains+Mono:wght@400;500&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
     <!-- Extra Korean faces (CDN). Full-file or variable fonts, so no mid-typing slice swaps. -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/spoqa/spoqa-han-sans@latest/css/SpoqaHanSansNeo.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquareRound@2.0/nanumsquareround.css">
     <link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/maru-buri.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/webfontworld/ridi/RIDIBatang.css">
@@ -177,6 +178,17 @@
       </div>
     </header>
 
+    <div class="review-dock" id="reviewDock" inert aria-label="Review options">
+      <div class="dock-group" id="reviewColors" role="group" aria-label="Laser color"></div>
+      <span class="toolbar-divider" aria-hidden="true"></span>
+      <select class="dock-select" id="reviewFxSelect" aria-label="Review effect"></select>
+      <span class="toolbar-divider" aria-hidden="true"></span>
+      <div class="dock-size" id="reviewSize" role="group" aria-label="Line thickness">
+        <button type="button" data-size="s" aria-pressed="false" title="Thin">S</button>
+        <button type="button" data-size="m" aria-pressed="true" title="Medium">M</button>
+        <button type="button" data-size="l" aria-pressed="false" title="Thick">L</button>
+      </div>
+    </div>
     <p class="place-hint" id="placeHint" hidden>페이지 아무 곳이나 클릭해서 typing start ✍️</p>
 
     <div class="drawer-overlay" id="drawerOverlay" aria-hidden="true"></div>

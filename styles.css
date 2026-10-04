@@ -217,3 +217,6 @@ select {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
   .ghost-glyph, .caret-glow { display: none; }
 }
+
+/* Keep every glyph (incl. in-progress jamo) in the chosen face; never synthesize bold/italic mid-typing. */
+.ink-note, .try-note, .ghost-glyph { font-synthesis: none; font-kerning: none; text-rendering: optimizeSpeed; }

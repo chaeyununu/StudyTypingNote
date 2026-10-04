@@ -4598,7 +4598,47 @@ const review = {
   stops: null, vx: [], vy: [], vt: [], sprites: new Map()
 };
 
+// If index.html / styles.css are older than app.js (a very common deploy mix-up), build the missing pieces here so
+// REVIEW still works instead of silently dying during init.
+function ensureReviewDom() {
+  const make = (tag, props, parent) => { const el = document.createElement(tag); Object.assign(el, props); (parent || document.body).append(el); return el; };
+  if (!document.getElementById("reviewBtn")) {
+    const cluster = refs.typeToolBtn && refs.typeToolBtn.parentElement;
+    const b = make("button", { id: "reviewBtn", type: "button", className: "tool-pill", title: "Review (R)" }, cluster || document.body);
+    b.setAttribute("aria-pressed", "false");
+    b.innerHTML = '<span class="pill-dot" aria-hidden="true"></span><span class="pill-label">REVIEW</span>';
+    if (cluster && refs.typeToolBtn) refs.typeToolBtn.after(b);
+  }
+  if (!document.getElementById("reviewLens")) make("canvas", { id: "reviewLens", className: "review-lens" });
+  if (!document.getElementById("reviewTrail")) make("canvas", { id: "reviewTrail", className: "review-trail" });
+  if (!document.getElementById("reviewDock")) {
+    const dock = make("div", { id: "reviewDock", className: "review-dock" });
+    dock.inert = true;
+    dock.innerHTML = '<div class="dock-group" id="reviewColors"></div><span class="toolbar-divider"></span>' +
+      '<select class="dock-select" id="reviewFxSelect" aria-label="Review effect"></select><span class="toolbar-divider"></span>' +
+      '<div class="dock-size" id="reviewSize"><button type="button" data-size="s">S</button><button type="button" data-size="m">M</button><button type="button" data-size="l">L</button></div>';
+  }
+  ["reviewBtn", "reviewLens", "reviewTrail", "reviewDock", "reviewColors", "reviewFxSelect", "reviewSize"].forEach((id) => { refs[id] = document.getElementById(id); });
+  // minimal styling when styles.css predates the review rules
+  if (getComputedStyle(refs.reviewLens).position !== "fixed" && !document.getElementById("reviewFallbackCss")) {
+    make("style", { id: "reviewFallbackCss", textContent: `
+      .review-lens,.review-trail{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+      .review-lens{z-index:8;opacity:0;transition:opacity .4s}.review-lens.on{opacity:1}.review-trail{z-index:9}
+      .tool-pill{height:36px;display:inline-flex;align-items:center;gap:8px;padding:0 12px 0 11px;border:0;border-radius:10px;background:transparent;font-size:12px;font-weight:650;letter-spacing:.09em}
+      .pill-dot{width:7px;height:7px;border-radius:50%;background:#b9bac1}
+      .tool-pill[aria-pressed="true"]{background:#26272c;color:#fff}.tool-pill[aria-pressed="true"] .pill-dot{background:#ff7d5f}
+      .review-dock{position:fixed;z-index:19;top:68px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:6px 12px;background:rgba(246,244,240,.94);border-radius:14px;box-shadow:0 8px 28px -10px rgba(0,0,0,.5)}
+      body.review-mode .review-dock{display:flex}
+      .dock-group{display:flex;gap:7px}.dock-swatch{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid #f6f4f0;background:var(--c,#999);color:#fff;font-size:10px}
+      .dock-swatch[aria-pressed="true"]{box-shadow:0 0 0 2px #26272c}
+      .dock-size button{width:28px;height:28px;border:0;border-radius:8px;background:transparent}.dock-size button[aria-pressed="true"]{background:#26272c;color:#fff}` });
+  }
+}
+
 function initReview() {
+  ensureReviewDom();
+  // bind the button first so it keeps working even if something below fails
+  refs.reviewBtn.addEventListener("click", () => setReview(!review.on));
   review.lensCtx = refs.reviewLens.getContext("2d");
   review.trailCtx = refs.reviewTrail.getContext("2d");
   review.stops = [];
@@ -4614,7 +4654,6 @@ function initReview() {
   stage.addEventListener("pointermove", onReviewMove, { passive: true });
   stage.addEventListener("pointerleave", onReviewLeave, { passive: true });
   window.addEventListener("blur", onReviewLeave);
-  refs.reviewBtn.addEventListener("click", () => setReview(!review.on));
 }
 
 // ---- look settings dock (colour / effect / thickness): visible only while REVIEW is on
@@ -4668,7 +4707,7 @@ function setReview(on) {
   if (on && state.typeTool) setTypeTool(false);     // Review and the type tool are mutually exclusive
   review.on = on;
   refs.reviewBtn.setAttribute("aria-pressed", String(on));
-  refs.reviewDock.inert = !on;
+  if (refs.reviewDock) refs.reviewDock.inert = !on;
   document.body.classList.toggle("review-mode", on);
   if (on) {
     reviewResize();
@@ -5085,7 +5124,7 @@ function init() {
   buildMoodGrid();
   initFxCanvas();
   bindEvents();
-  initReview();
+  try { initReview(); } catch (error) { console.error("Review init failed", error); }
   applyPrefs();
   if (document.readyState === "complete") pruneMissingFonts();
   else window.addEventListener("load", pruneMissingFonts, { once: true });

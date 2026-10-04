@@ -994,40 +994,108 @@ const PREF_KEY = "ink-over-pdf-prefs-v2";
 const NOTES_PREFIX = "ink-over-pdf-notes-v1:";
 const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
+// Every stack ends in the same Korean-capable fallbacks, so if a font slice is still downloading
+// the placeholder glyph looks like its neighbours instead of a random system font.
+const KR_SANS = '"Pretendard Variable", Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+const KR_SERIF = '"Noto Serif KR", "Nanum Myeongjo", "Apple SD Myungjo", "Batang", serif';
+const KR_MONO = '"D2Coding", "Nanum Gothic Coding", ui-monospace, monospace';
+const fontDef = (group, label, family, fallback = KR_SANS) => ({ group, label, family, stack: `"${family}", ${fallback}` });
+
 const FONTS = {
-  sans: { group: "고딕", label: "Pretendard 프리텐다드", stack: '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  notoSans: { group: "고딕", label: "Noto Sans 본고딕", stack: '"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  nanumGothic: { group: "고딕", label: "나눔고딕", stack: '"Nanum Gothic", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  plexKr: { group: "고딕", label: "IBM Plex Sans KR", stack: '"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  gothicA1: { group: "고딕", label: "Gothic A1", stack: '"Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  sunflower: { group: "고딕", label: "해바라기 Sunflower", stack: '"Sunflower", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  serif: { group: "명조·바탕", label: "Noto Serif 본명조", stack: '"Noto Serif KR", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
-  nanumMyeongjo: { group: "명조·바탕", label: "나눔명조", stack: '"Nanum Myeongjo", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
-  batang: { group: "명조·바탕", label: "고운바탕", stack: '"Gowun Batang", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
-  hahmlet: { group: "명조·바탕", label: "함렛 Hahmlet", stack: '"Hahmlet", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
-  songMyung: { group: "명조·바탕", label: "송명", stack: '"Song Myung", "Noto Serif KR", "Nanum Myeongjo", "Batang", serif' },
-  dodum: { group: "손글씨", label: "고운돋움", stack: '"Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  hand: { group: "손글씨", label: "개구 Gaegu", stack: '"Gaegu", "Nanum Pen Script", cursive' },
-  hiMelody: { group: "손글씨", label: "하이멜로디", stack: '"Hi Melody", cursive' },
-  gamja: { group: "손글씨", label: "감자꽃", stack: '"Gamja Flower", cursive' },
-  poorStory: { group: "손글씨", label: "푸어스토리", stack: '"Poor Story", cursive' },
-  singleDay: { group: "손글씨", label: "싱글데이", stack: '"Single Day", cursive' },
-  penScript: { group: "손글씨", label: "나눔펜", stack: '"Nanum Pen Script", cursive' },
-  brush: { group: "손글씨", label: "나눔붓", stack: '"Nanum Brush Script", cursive' },
-  eastSea: { group: "손글씨", label: "동해독도", stack: '"East Sea Dokdo", cursive' },
-  dokdo: { group: "손글씨", label: "독도", stack: '"Dokdo", cursive' },
-  dongle: { group: "개성", label: "동글", stack: '"Dongle", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  jua: { group: "개성", label: "주아", stack: '"Jua", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  cute: { group: "개성", label: "귀여운 폰트", stack: '"Cute Font", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  yeonSung: { group: "개성", label: "연성", stack: '"Yeon Sung", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  stylish: { group: "개성", label: "스타일리시", stack: '"Stylish", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  kirang: { group: "개성", label: "기랑해랑", stack: '"Kirang Haerang", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  gugi: { group: "개성", label: "구기", stack: '"Gugi", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  doHyeon: { group: "개성", label: "도현", stack: '"Do Hyeon", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  blackHan: { group: "개성", label: "블랙한산스", stack: '"Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif' },
-  mono: { group: "코드", label: "JetBrains Mono", stack: '"JetBrains Mono", "D2Coding", ui-monospace, monospace' },
-  nanumCoding: { group: "코드", label: "나눔고딕코딩", stack: '"Nanum Gothic Coding", "D2Coding", ui-monospace, monospace' },
+  // 고딕
+  sans: fontDef("고딕", "Pretendard 프리텐다드", "Pretendard Variable"),
+  suit: fontDef("고딕", "SUIT 수트", "SUIT Variable"),
+  wanted: fontDef("고딕", "Wanted Sans 원티드산스", "Wanted Sans Variable"),
+  spoqa: fontDef("고딕", "Spoqa Han Sans Neo 스포카", "Spoqa Han Sans Neo"),
+  notoSans: fontDef("고딕", "Noto Sans 본고딕", "Noto Sans KR"),
+  nanumGothic: fontDef("고딕", "나눔고딕", "Nanum Gothic"),
+  nanumSquareRound: fontDef("고딕", "나눔스퀘어라운드", "NanumSquareRound"),
+  plexKr: fontDef("고딕", "IBM Plex Sans KR", "IBM Plex Sans KR"),
+  gothicA1: fontDef("고딕", "Gothic A1", "Gothic A1"),
+  sunflower: fontDef("고딕", "해바라기 Sunflower", "Sunflower"),
+  // 명조·바탕
+  serif: fontDef("명조·바탕", "Noto Serif 본명조", "Noto Serif KR", KR_SERIF),
+  maruBuri: fontDef("명조·바탕", "마루부리 MaruBuri", "MaruBuri", KR_SERIF),
+  nanumMyeongjo: fontDef("명조·바탕", "나눔명조", "Nanum Myeongjo", KR_SERIF),
+  batang: fontDef("명조·바탕", "고운바탕", "Gowun Batang", KR_SERIF),
+  hahmlet: fontDef("명조·바탕", "함렛 Hahmlet", "Hahmlet", KR_SERIF),
+  songMyung: fontDef("명조·바탕", "송명", "Song Myung", KR_SERIF),
+  diphylleia: fontDef("명조·바탕", "디필레이아 Diphylleia", "Diphylleia", KR_SERIF),
+  // 손글씨
+  dodum: fontDef("손글씨", "고운돋움", "Gowun Dodum"),
+  hand: fontDef("손글씨", "개구 Gaegu", "Gaegu"),
+  hiMelody: fontDef("손글씨", "하이멜로디", "Hi Melody"),
+  gamja: fontDef("손글씨", "감자꽃", "Gamja Flower"),
+  poorStory: fontDef("손글씨", "푸어스토리", "Poor Story"),
+  singleDay: fontDef("손글씨", "싱글데이", "Single Day"),
+  penScript: fontDef("손글씨", "나눔펜", "Nanum Pen Script"),
+  brush: fontDef("손글씨", "나눔붓", "Nanum Brush Script"),
+  eastSea: fontDef("손글씨", "동해독도", "East Sea Dokdo"),
+  dokdo: fontDef("손글씨", "독도", "Dokdo"),
+  // 개성
+  dongle: fontDef("개성", "동글", "Dongle"),
+  jua: fontDef("개성", "주아", "Jua"),
+  cute: fontDef("개성", "귀여운 폰트", "Cute Font"),
+  yeonSung: fontDef("개성", "연성", "Yeon Sung"),
+  stylish: fontDef("개성", "스타일리시", "Stylish"),
+  kirang: fontDef("개성", "기랑해랑", "Kirang Haerang"),
+  gugi: fontDef("개성", "구기", "Gugi"),
+  doHyeon: fontDef("개성", "도현", "Do Hyeon"),
+  blackHan: fontDef("개성", "블랙한산스", "Black Han Sans"),
+  gasoek: fontDef("개성", "가속 Gasoek One", "Gasoek One"),
+  bagel: fontDef("개성", "베이글팻원 Bagel Fat One", "Bagel Fat One"),
+  gmarket: fontDef("개성", "지마켓산스", "GmarketSans"),
+  // 코드
+  mono: fontDef("코드", "JetBrains Mono", "JetBrains Mono", KR_MONO),
+  nanumCoding: fontDef("코드", "나눔고딕코딩", "Nanum Gothic Coding", KR_MONO),
 };
+
+// ---- Hangul font preloading
+// Google's Korean fonts are cut into many unicode-range slices that download lazily. The first time you type a
+// syllable (or a bare jamo like ㅎ mid-composition) from a slice that hasn't arrived yet, the browser paints it in a
+// fallback font for a moment — that's the "different typeface popping in". So we fetch every slice we're likely to
+// need up front: jamo first, then the 2,350 everyday syllables (KS X 1001) in small idle-time batches.
+const fontPreload = { done: new Set(), syllables: null };
+
+function hangulSyllables() {
+  if (fontPreload.syllables) return fontPreload.syllables;
+  let list = [];
+  try {
+    const dec = new TextDecoder("euc-kr");
+    for (let hi = 0xb0; hi <= 0xc8; hi++) {
+      const bytes = [];
+      for (let lo = 0xa1; lo <= 0xfe; lo++) bytes.push(hi, lo);
+      list.push(...Array.from(dec.decode(new Uint8Array(bytes))));
+    }
+  } catch (e) {
+    for (let c = 0xac00; c <= 0xd7a3; c += 5) list.push(String.fromCharCode(c)); // sparse sample still hits most slices
+  }
+  fontPreload.syllables = list.filter((ch) => ch >= "\uac00" && ch <= "\ud7a3");
+  return fontPreload.syllables;
+}
+
+function ensureFontReady(key) {
+  const font = FONTS[key];
+  if (!font || !document.fonts || !document.fonts.load || fontPreload.done.has(key)) return;
+  fontPreload.done.add(key);
+  const spec = `400 18px "${font.family}"`;
+  const jamo = "ㄱㄲㄳㄴㄵㄶㄷㄸㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅃㅄㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
+  const basics = " .,!?-~()[]0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  document.fonts.load(spec, jamo + basics).catch(() => {}).then(() => {
+    const all = hangulSyllables();
+    const step = 160;
+    let i = 0;
+    const next = () => {
+      if (i >= all.length) return;
+      const chunk = all.slice(i, i + step).join("");
+      i += step;
+      document.fonts.load(spec, chunk).catch(() => {}).then(() => {
+        (window.requestIdleCallback || ((fn) => setTimeout(fn, 80)))(next);
+      });
+    };
+    next();
+  });
+}
 
 // One pick sets spark style + key sound + font + ink color. Everything stays editable.
 const MOODS = {
@@ -1126,6 +1194,7 @@ function applyPrefs() {
   const body = document.body;
   body.dataset.effect = p.effectMode;
   body.style.setProperty("--note-font", FONTS[p.font].stack);
+  ensureFontReady(p.font);
   body.style.setProperty("--note-size", `${p.fontSize}px`);
   body.style.setProperty("--note-color", p.color);
   body.style.setProperty("--effect-primary", effect.primary);

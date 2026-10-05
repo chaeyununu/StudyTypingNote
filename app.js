@@ -1144,9 +1144,13 @@ const defaultPrefs = {
   font: "batang",
   fontSize: 18,
   color: "#2c2420",
+  reviewLook: "ember",
   reviewColor: "coral",
-  reviewFx: "none",
-  reviewSize: "m"
+  reviewFx: "ember-glow",
+  reviewBrush: "laser",
+  reviewSize: "m",
+  reviewLens: "spot",
+  reviewLensSize: "m"
 };
 
 // Names the spark/sound engines fall back to.
@@ -1190,9 +1194,16 @@ function loadPrefs() {
     prefs.volume = clamp01(Number(prefs.volume));
     prefs.intensity = clamp01(Number(prefs.intensity));
     prefs.fontSize = clamp(Number(prefs.fontSize), 12, 36);
+    if (!("reviewLook" in saved)) {                      // first run of Review 2.0: start from the Ember look
+      prefs.reviewLook = "ember"; prefs.reviewColor = "coral"; prefs.reviewFx = "ember-glow"; prefs.reviewBrush = "laser"; prefs.reviewSize = "m";
+    }
+    if (typeof prefs.reviewLook !== "string") prefs.reviewLook = "ember";
     if (typeof prefs.reviewColor !== "string") prefs.reviewColor = defaultPrefs.reviewColor;
     if (prefs.reviewFx !== "none" && !EFFECT_PRESETS[prefs.reviewFx]) prefs.reviewFx = "none";
+    if (!["laser", "comet", "veil", "ribbon"].includes(prefs.reviewBrush)) prefs.reviewBrush = "laser";
     if (!["s", "m", "l"].includes(prefs.reviewSize)) prefs.reviewSize = "m";
+    if (!["spot", "ruler", "off"].includes(prefs.reviewLens)) prefs.reviewLens = "spot";
+    if (!["s", "m", "l"].includes(prefs.reviewLensSize)) prefs.reviewLensSize = "m";
     return prefs;
   } catch (error) {
     return { ...defaultPrefs };
@@ -4562,9 +4573,21 @@ function onLayerPointerDown(event, entry) {
 // Both effects live on two fixed, pointer-events:none canvases above the PDF and below the toolbar. Nothing here
 // touches the note DOM or storage (only the 3 look settings are remembered), so a trail is never saved and
 // typing / notes / zoom behave exactly as before.
+// ================================================================== REVIEW 2.0
+// A reading-light for studying a PDF. Hover leaves a short, soft beam; press and drag to circle something (it lingers
+// ~3 s); click to "ping" a spot. Everything is temporary and never stored. The room dims around a lens (a round
+// spotlight or a reading ruler), the desk takes on a faint tint of the beam colour, and the effect (sparkles, petals,
+// ink...) is born from the beam itself. One tap on a "Look" sets all of it; Tune exposes the individual parts.
 const REVIEW = {
-  trailLife: 1700,                                  // ms a trail point stays visible
-  lens: { clear: 92, feather: 230, dim: 0.10, scale: 0.25 },  // px radius kept clear, feather width, outer darkness, canvas scale
+  sizes: { s: 0.74, m: 1, l: 1.45 },
+  lens: {
+    sizes: {
+      s: { clear: 72, feather: 190, band: 20, bandFeather: 90 },
+      m: { clear: 92, feather: 230, band: 28, bandFeather: 110 },
+      l: { clear: 118, feather: 280, band: 40, bandFeather: 140 }
+    },
+    dim: { spot: 0.10, ruler: 0.12 }, scale: 0.25
+  },
   colors: [
     { id: "coral",    label: "Coral",    rgb: [255, 104, 78] },
     { id: "rose",     label: "Rose",     rgb: [233, 84, 134] },
@@ -4573,36 +4596,132 @@ const REVIEW = {
     { id: "sky",      label: "Sky",      rgb: [60, 140, 250] },
     { id: "violet",   label: "Violet",   rgb: [140, 100, 238] },
     { id: "graphite", label: "Graphite", rgb: [64, 66, 78] },
-    { id: "iris",     label: "Iris (hue drifts along the line)", rgb: null },
+    { id: "iris",     label: "Iris (hue drifts along the beam)", rgb: null },
     { id: "auto",     label: "Auto (the effect's own colours)", rgb: null }
   ],
-  sizes: { s: 0.74, m: 1, l: 1.45 },
-  // The line is stamped from soft sprites along a smooth curve: a faint halo, a body, a pale core.
-  layers: [
-    { R: 15,  stops: [[0, 0.06], [0.4, 0.035], [0.75, 0.01], [1, 0]],  stride: 3, white: 0 },
-    { R: 6.2, stops: [[0, 0.34], [0.55, 0.28], [0.85, 0.1], [1, 0]],   stride: 1, white: 0 },
-    { R: 2.9, stops: [[0, 0.8], [0.6, 0.5], [1, 0]],                   stride: 1, white: 0.42 }
-  ]
+  // Brushes are stacks of soft sprites stamped along a smooth curve. taper = [tail thinness, falloff],
+  // speedW = how much slow strokes swell and fast ones thin out, life = ms the beam stays visible.
+  brushes: {
+    laser: { label: "Laser", life: 1700, taper: [0.38, 0.6], speedW: 0.18, layers: [
+      { R: 15,  stops: [[0, 0.06], [0.4, 0.035], [0.75, 0.01], [1, 0]], stride: 3, white: 0 },
+      { R: 6.2, stops: [[0, 0.34], [0.55, 0.28], [0.85, 0.1], [1, 0]],  stride: 1, white: 0 },
+      { R: 2.9, stops: [[0, 0.8], [0.6, 0.5], [1, 0]],                  stride: 1, white: 0.42 }
+    ] },
+    comet: { label: "Comet", life: 1500, taper: [0.1, 0.9], speedW: 0.1, layers: [
+      { R: 22,  stops: [[0, 0.07], [0.4, 0.04], [0.8, 0.01], [1, 0]],   stride: 3, white: 0 },
+      { R: 9, stops: [[0, 0.36], [0.55, 0.3], [0.85, 0.1], [1, 0]],   stride: 1, white: 0 },
+      { R: 3.4, stops: [[0, 0.85], [0.6, 0.55], [1, 0]],                stride: 1, white: 0.5 }
+    ] },
+    veil: { label: "Veil", life: 2200, taper: [0.5, 0.5], speedW: 0.1, layers: [
+      { R: 30,  stops: [[0, 0.05], [0.5, 0.032], [0.85, 0.01], [1, 0]], stride: 4, white: 0 },
+      { R: 13,  stops: [[0, 0.12], [0.5, 0.085], [1, 0]],               stride: 2, white: 0 },
+      { R: 2.2, stops: [[0, 0.55], [0.6, 0.3], [1, 0]],                 stride: 1, white: 0.6 }
+    ] },
+    ribbon: { label: "Ribbon", life: 1800, taper: [0.3, 0.7], speedW: 0.7, layers: [
+      { R: 11,  stops: [[0, 0.04], [0.6, 0.015], [1, 0]],               stride: 3, white: 0 },
+      { R: 5.4, stops: [[0, 0.62], [0.6, 0.55], [0.9, 0.2], [1, 0]],    stride: 1, white: 0 },
+      { R: 2.2, stops: [[0, 0.7], [0.6, 0.4], [1, 0]],                  stride: 1, white: 0.6 }
+    ] }
+  },
+  looks: [
+    { id: "ember",  label: "Ember",     color: "coral",    fx: "ember-glow",  brush: "laser",  size: "m" },
+    { id: "aurora", label: "Aurora",    color: "iris",     fx: "aurora-veil", brush: "veil",   size: "m" },
+    { id: "moon",   label: "Moonlight", color: "sky",      fx: "moon-pearl",  brush: "comet",  size: "m" },
+    { id: "sakura", label: "Sakura",    color: "rose",     fx: "petal-bloom", brush: "ribbon", size: "m" },
+    { id: "ink",    label: "Ink",       color: "graphite", fx: "ink",         brush: "ribbon", size: "m" },
+    { id: "matcha", label: "Matcha",    color: "mint",     fx: "bubble",      brush: "laser",  size: "m" },
+    { id: "static", label: "Static",    color: "violet",   fx: "laser-etch",  brush: "comet",  size: "m" },
+    { id: "plain",  label: "Laser",     color: "coral",    fx: "none",        brush: "laser",  size: "m" }
+  ],
+  penLife: 3200, pingLife: 760
 };
+Object.entries(REVIEW.brushes).forEach(([id, b]) => b.layers.forEach((L, i) => { L.id = `${id}${i}`; }));
+const RV_SOFT = { id: "soft", R: 10, stops: [[0, 0.85], [0.5, 0.5], [1, 0]], white: 0 };
 const IRIS = Array.from({ length: 24 }, (_, i) => {   // 24 hue buckets (HSL s=.7 l=.6), pre-converted to rgb
   const h = i / 24, a = 0.28;
   const f = (n) => { const k = (n + h * 12) % 12; return Math.round(255 * (0.6 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
   return [f(0), f(8), f(4)];
 });
 const review = {
-  on: false, hinted: false, raf: 0, lastFrame: 0, inside: false, dirty: true, lensReady: false,
-  pts: [], breakNext: true, hasFilter: false,
-  sx: 0, sy: 0, st: 0, rx: 0, ry: 0, prx: 0, pry: 0,   // low-pass filter state + last raw pointer
-  mx: 0, my: 0, lx: 0, ly: 0, sparkAcc: 0, lastSpark: 0,
+  on: false, hinted: false, raf: 0, lastFrame: 0, inside: false,
+  pts: [], breakNext: true, hasFilter: false, down: false, curL: 1700, curPen: false,
+  sx: 0, sy: 0, st: 0, rx: 0, ry: 0, prx: 0, pry: 0,        // low-pass filter state + last raw pointer
+  mx: 0, my: 0, pmx: 0, pmy: 0, lx: 0, ly: 0, lensReady: false, lensSpeed: 0, lensPulseT: -9999,
+  lampA: 0, lampX: 0, lampY: 0, lastMoveT: 0, restFired: true, emitT: 0, emitAcc: 0, gap: 24,
+  parts: [], pings: [], pal: null, tint: [16, 18, 24], bb: null, now: 0, panelOpen: false,
   lensCtx: null, trailCtx: null, dpr: 1, w: 0, h: 0, lw: 0, lh: 0, box: null,
-  stops: null, vx: [], vy: [], vt: [], sprites: new Map(),
-  parts: [], emitT: 0, emitAcc: 0, gap: 24, lastMoveT: 0, restFired: true, pal: null, bb: null, now: 0, life: 1700, styles: new Map()
+  vx: [], vy: [], vt: [], vl: [], vs: [], sprites: new Map(), styles: new Map()
 };
 
-// If index.html / styles.css are older than app.js (a very common deploy mix-up), build the missing pieces here so
-// REVIEW still works instead of silently dying during init.
+const REVIEW_CSS = `
+.tool-pill { height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 11px; border: 0; border-radius: 10px;
+  background: transparent; font-size: 12px; font-weight: 650; letter-spacing: .09em; line-height: 1; transition: background .15s, color .15s; }
+.tool-pill:hover { background: rgba(38,39,44,.08); }
+.pill-dot { width: 7px; height: 7px; border-radius: 50%; background: #b9bac1; flex: none; transition: background .3s, box-shadow .3s; }
+.tool-pill[aria-pressed="true"] { background: var(--chrome-ink); color: #fff; }
+.tool-pill[aria-pressed="true"] .pill-dot { background: rgb(var(--rv, 255,125,95)); box-shadow: 0 0 0 3px rgba(var(--rv, 255,125,95), .28); }
+.review-lens, .review-trail { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.review-lens { z-index: 8; opacity: 0; transition: opacity .45s ease; }
+.review-lens.on { opacity: 1; }
+.review-trail { z-index: 9; }
+body, .pdf-stage { transition: background-color .7s ease; }
+body.review-mode .pdf-page { cursor: default; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 28px 64px -18px rgba(0,0,0,.72); }
+body.review-mode .toast { top: 124px; }
+.review-dock { position: fixed; z-index: 19; top: 68px; left: 50%; transform: translate(-50%, -8px); display: flex; flex-direction: column;
+  padding: 8px 12px; max-width: calc(100vw - 16px); background: var(--chrome); border-radius: 20px; backdrop-filter: blur(16px);
+  box-shadow: 0 14px 36px -12px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.45) inset;
+  opacity: 0; visibility: hidden; transition: opacity .25s, transform .3s var(--ease), visibility 0s linear .25s; }
+body.review-mode .review-dock { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition: opacity .25s, transform .3s var(--ease); }
+.rv-row { display: flex; align-items: center; gap: 10px; }
+.rv-looks { display: flex; gap: 8px; padding: 3px 2px; }
+.rv-orb { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 34% 28%, var(--o1), var(--o2) 56%, var(--o3));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 1px 3px rgba(0,0,0,.28); transition: transform .2s var(--ease), box-shadow .2s; }
+.rv-orb.iris { background: conic-gradient(from 200deg, #ff9aa8, #ffd27a, #9be58f, #72d0ff, #b79bff, #ff9aa8); }
+.rv-orb.plain { background: radial-gradient(circle at 34% 28%, #fff, #ffd9d0 40%, #ff6a4d 100%); }
+.rv-orb:hover { transform: translateY(-1px) scale(1.09); }
+.rv-orb[aria-pressed="true"] { transform: scale(1.08); box-shadow: 0 0 0 2px var(--chrome), 0 0 0 3.5px var(--chrome-ink), 0 5px 12px -3px var(--o2); }
+.rv-name { min-width: 74px; font-size: 12px; font-weight: 650; letter-spacing: .05em; color: var(--chrome-ink); white-space: nowrap; }
+.rv-sep { width: 1px; height: 20px; background: var(--line); flex: none; }
+.rv-seg { display: flex; gap: 2px; padding: 2px; border-radius: 10px; background: rgba(38,39,44,.07); flex: none; }
+.rv-seg button { min-width: 28px; height: 26px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; display: grid; place-items: center;
+  font-size: 11.5px; font-weight: 650; color: var(--chrome-soft); transition: background .15s, color .15s, box-shadow .15s; }
+.rv-seg button svg { width: 15px; height: 15px; }
+.rv-seg button:hover { color: var(--chrome-ink); }
+.rv-seg button[aria-pressed="true"] { background: #fff; color: var(--chrome-ink); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.rv-tune { height: 28px; padding: 0 11px; border: 0; border-radius: 9px; background: rgba(38,39,44,.07); font-size: 12px; font-weight: 650; flex: none; }
+.rv-tune[aria-expanded="true"] { background: var(--chrome-ink); color: #fff; }
+.rv-panel { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; align-items: center; overflow: hidden; max-height: 0; opacity: 0;
+  margin-top: 0; padding-top: 0; border-top: 1px solid transparent; transition: max-height .3s var(--ease), opacity .2s, margin .3s var(--ease), padding .3s var(--ease); }
+.rv-panel.open { max-height: 260px; opacity: 1; margin-top: 9px; padding-top: 11px; border-top-color: var(--line); }
+.rv-panel > span { font-size: 12px; color: var(--chrome-soft); font-weight: 600; }
+.rv-colors { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.dock-swatch { flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid #f6f4f0; background: var(--c, #999);
+  box-shadow: 0 0 0 1px var(--line); color: #fff; font-size: 10px; font-weight: 700; line-height: 1; transition: transform .15s var(--ease), box-shadow .15s; }
+.dock-swatch:hover { transform: scale(1.12); }
+.dock-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--chrome-ink); }
+.dock-swatch[data-v="iris"] { background: conic-gradient(#ff8a8a, #ffd36a, #93e08f, #6fcaff, #b690ff, #ff8a8a); }
+.dock-swatch[data-v="auto"] { background: #3a3c44; }
+.rv-panel select { height: 28px; padding: 0 8px; font-size: 12.5px; border-radius: 9px; width: 100%; }
+@media (max-width: 760px) {
+  .pill-label, .rv-name { display: none; }
+  .tool-pill { padding: 0 11px; }
+  .rv-row { flex-wrap: wrap; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) { .review-lens, body, .pdf-stage { transition-duration: .01ms; } }
+`;
+
+const RV_ICONS = {
+  spot: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/></svg>',
+  ruler: '<svg viewBox="0 0 16 16"><rect x="1.5" y="5.2" width="13" height="5.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+  off: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.4 11.6 11.6 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+};
+
+// If index.html / styles.css are older than app.js (a common deploy mix-up) the missing pieces are created here, and all
+// review styling lives in this file, so REVIEW cannot silently die or look unstyled.
 function ensureReviewDom() {
   const make = (tag, props, parent) => { const el = document.createElement(tag); Object.assign(el, props); (parent || document.body).append(el); return el; };
+  if (!document.getElementById("reviewCss")) make("style", { id: "reviewCss", textContent: REVIEW_CSS }, document.head);
   if (!document.getElementById("reviewBtn")) {
     const cluster = refs.typeToolBtn && refs.typeToolBtn.parentElement;
     const b = make("button", { id: "reviewBtn", type: "button", className: "tool-pill", title: "Review (R)" }, cluster || document.body);
@@ -4612,28 +4731,8 @@ function ensureReviewDom() {
   }
   if (!document.getElementById("reviewLens")) make("canvas", { id: "reviewLens", className: "review-lens" });
   if (!document.getElementById("reviewTrail")) make("canvas", { id: "reviewTrail", className: "review-trail" });
-  if (!document.getElementById("reviewDock")) {
-    const dock = make("div", { id: "reviewDock", className: "review-dock" });
-    dock.inert = true;
-    dock.innerHTML = '<div class="dock-group" id="reviewColors"></div><span class="toolbar-divider"></span>' +
-      '<select class="dock-select" id="reviewFxSelect" aria-label="Review effect"></select><span class="toolbar-divider"></span>' +
-      '<div class="dock-size" id="reviewSize"><button type="button" data-size="s">S</button><button type="button" data-size="m">M</button><button type="button" data-size="l">L</button></div>';
-  }
-  ["reviewBtn", "reviewLens", "reviewTrail", "reviewDock", "reviewColors", "reviewFxSelect", "reviewSize"].forEach((id) => { refs[id] = document.getElementById(id); });
-  // minimal styling when styles.css predates the review rules
-  if (getComputedStyle(refs.reviewLens).position !== "fixed" && !document.getElementById("reviewFallbackCss")) {
-    make("style", { id: "reviewFallbackCss", textContent: `
-      .review-lens,.review-trail{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
-      .review-lens{z-index:8;opacity:0;transition:opacity .4s}.review-lens.on{opacity:1}.review-trail{z-index:9}
-      .tool-pill{height:36px;display:inline-flex;align-items:center;gap:8px;padding:0 12px 0 11px;border:0;border-radius:10px;background:transparent;font-size:12px;font-weight:650;letter-spacing:.09em}
-      .pill-dot{width:7px;height:7px;border-radius:50%;background:#b9bac1}
-      .tool-pill[aria-pressed="true"]{background:#26272c;color:#fff}.tool-pill[aria-pressed="true"] .pill-dot{background:#ff7d5f}
-      .review-dock{position:fixed;z-index:19;top:68px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:6px 12px;background:rgba(246,244,240,.94);border-radius:14px;box-shadow:0 8px 28px -10px rgba(0,0,0,.5)}
-      body.review-mode .review-dock{display:flex}
-      .dock-group{display:flex;gap:7px}.dock-swatch{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid #f6f4f0;background:var(--c,#999);color:#fff;font-size:10px}
-      .dock-swatch[aria-pressed="true"]{box-shadow:0 0 0 2px #26272c}
-      .dock-size button{width:28px;height:28px;border:0;border-radius:8px;background:transparent}.dock-size button[aria-pressed="true"]{background:#26272c;color:#fff}` });
-  }
+  if (!document.getElementById("reviewDock")) { const d = make("div", { id: "reviewDock", className: "review-dock" }); d.inert = true; }
+  ["reviewBtn", "reviewLens", "reviewTrail", "reviewDock"].forEach((id) => { refs[id] = document.getElementById(id); });
 }
 
 function initReview() {
@@ -4642,52 +4741,117 @@ function initReview() {
   refs.reviewBtn.addEventListener("click", () => setReview(!review.on));
   review.lensCtx = refs.reviewLens.getContext("2d");
   review.trailCtx = refs.reviewTrail.getContext("2d");
-  review.stops = [];
-  for (let i = 0; i <= 10; i++) {                   // smoothstep ramp: no visible edge where the clear area ends
-    const t = i / 10;
-    review.stops.push([t, `rgba(16,18,24,${(REVIEW.lens.dim * t * t * (3 - 2 * t)).toFixed(4)})`]);
-  }
   buildReviewDock();
   reviewResize();
   let timer = 0;
   window.addEventListener("resize", () => { window.clearTimeout(timer); timer = window.setTimeout(reviewResize, 100); });
   const stage = refs.pdfScroll;
   stage.addEventListener("pointermove", onReviewMove, { passive: true });
+  stage.addEventListener("pointerdown", onReviewDown, { passive: true });
   stage.addEventListener("pointerleave", onReviewLeave, { passive: true });
-  window.addEventListener("blur", onReviewLeave);
+  window.addEventListener("pointerup", onReviewUp);
+  window.addEventListener("pointercancel", onReviewUp);
+  window.addEventListener("blur", () => { onReviewLeave(); onReviewUp(); });
+  syncReviewDock();
 }
 
-// ---- look settings dock (colour / effect / thickness): visible only while REVIEW is on
+// ---- the dock: Looks (one tap sets everything) · lens mode · Tune (the individual parts)
 function buildReviewDock() {
-  refs.reviewColors.innerHTML = "";
-  REVIEW.colors.forEach((c) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "dock-swatch"; b.dataset.color = c.id;
-    b.title = c.label; b.setAttribute("aria-label", `${c.label} laser`);
-    if (c.rgb) b.style.setProperty("--c", `rgb(${c.rgb.join(",")})`);
-    if (c.id === "auto") b.textContent = "A";
-    refs.reviewColors.append(b);
+  const dock = refs.reviewDock;
+  if (dock.dataset.rvBound) return;                 // built once; init running twice must not stack listeners
+  dock.dataset.rvBound = "1";
+  dock.innerHTML = "";
+  dock.setAttribute("aria-label", "Review options");
+  const lookOrbs = REVIEW.looks.map((l, i) => {
+    const rgb = (REVIEW.colors.find((c) => c.id === l.color) || {}).rgb || [217, 143, 113];
+    const light = rvMix(rgb, [255, 255, 255], 0.6), dark = rvMix(rgb, [0, 0, 0], 0.42);
+    const cls = l.color === "iris" ? "rv-orb iris" : l.fx === "none" ? "rv-orb plain" : "rv-orb";
+    return `<button type="button" class="${cls}" data-look="${l.id}" aria-pressed="false" title="${l.label} · ${i + 1}" aria-label="${l.label} look"
+      style="--o1:rgb(${light});--o2:rgb(${rgb});--o3:rgb(${dark})"></button>`;
+  }).join("");
+  const seg = (pref, items) => `<div class="rv-seg" role="group" data-pref="${pref}">${items.map(([v, label, title]) =>
+    `<button type="button" data-v="${v}" aria-pressed="false" title="${title || label}">${label}</button>`).join("")}</div>`;
+  const colors = REVIEW.colors.map((c) =>
+    `<button type="button" class="dock-swatch" data-pref="reviewColor" data-v="${c.id}" title="${c.label}" aria-label="${c.label}" aria-pressed="false"
+      ${c.rgb ? `style="--c:rgb(${c.rgb.join(",")})"` : ""}>${c.id === "auto" ? "A" : ""}</button>`).join("");
+  const fxOptions = `<option value="none">Laser only</option>` +
+    Object.entries(EFFECT_PRESETS).map(([k, d]) => `<option value="${k}">+ ${d.label}</option>`).join("");
+  dock.innerHTML = `
+    <div class="rv-row">
+      <div class="rv-looks" role="group" aria-label="Looks">${lookOrbs}</div>
+      <span class="rv-name" id="rvName">Ember</span>
+      <span class="rv-sep" aria-hidden="true"></span>
+      <div class="rv-seg" role="group" data-pref="reviewLens" aria-label="Lens">
+        <button type="button" data-v="spot" aria-pressed="false" title="Spotlight (L)">${RV_ICONS.spot}</button>
+        <button type="button" data-v="ruler" aria-pressed="false" title="Reading ruler (L)">${RV_ICONS.ruler}</button>
+        <button type="button" data-v="off" aria-pressed="false" title="No lens (L)">${RV_ICONS.off}</button>
+      </div>
+      <button type="button" class="rv-tune" id="rvTune" aria-expanded="false">Tune</button>
+    </div>
+    <div class="rv-panel" id="rvPanel" inert>
+      <span>Color</span><div class="rv-colors">${colors}</div>
+      <span>Effect</span><select id="rvFx" aria-label="Review effect">${fxOptions}</select>
+      <span>Brush</span>${seg("reviewBrush", Object.entries(REVIEW.brushes).map(([id, b]) => [id, b.label]))}
+      <span>Thickness</span>${seg("reviewSize", [["s", "S", "Thin"], ["m", "M", "Medium"], ["l", "L", "Thick"]])}
+      <span>Lens size</span>${seg("reviewLensSize", [["s", "S", "Small ([)"], ["m", "M", "Medium"], ["l", "L", "Large (])"]])}
+    </div>`;
+  dock.addEventListener("click", (event) => {
+    const orb = event.target.closest(".rv-orb");
+    if (orb) { applyLook(REVIEW.looks.findIndex((l) => l.id === orb.dataset.look)); return; }
+    if (event.target.closest("#rvTune")) { setTunePanel(!review.panelOpen); return; }
+    const b = event.target.closest("[data-v]");
+    if (!b) return;
+    const group = b.dataset.pref ? b : b.closest("[data-pref]");
+    if (!group) return;
+    const key = group.dataset.pref;
+    const patch = { [key]: b.dataset.v };
+    if (["reviewColor", "reviewFx", "reviewBrush", "reviewSize"].includes(key)) patch.reviewLook = "custom";
+    setPrefs(patch, { keepMood: true });
   });
-  refs.reviewFxSelect.innerHTML = "";
-  refs.reviewFxSelect.add(new Option("Laser only", "none"));
-  Object.entries(EFFECT_PRESETS).forEach(([key, def]) => refs.reviewFxSelect.add(new Option(`+ ${def.label}`, key)));
-  refs.reviewColors.addEventListener("click", (event) => {
-    const b = event.target.closest(".dock-swatch");
-    if (b) setPrefs({ reviewColor: b.dataset.color }, { keepMood: true });
-  });
-  refs.reviewFxSelect.addEventListener("change", () => setPrefs({ reviewFx: refs.reviewFxSelect.value }, { keepMood: true }));
-  refs.reviewSize.addEventListener("click", (event) => {
-    const b = event.target.closest("button[data-size]");
-    if (b) setPrefs({ reviewSize: b.dataset.size }, { keepMood: true });
-  });
+  dock.querySelector("#rvFx").addEventListener("change", (event) => setPrefs({ reviewFx: event.target.value, reviewLook: "custom" }, { keepMood: true }));
+}
+
+function setTunePanel(open) {
+  review.panelOpen = open;
+  const panel = refs.reviewDock.querySelector("#rvPanel");
+  panel.classList.toggle("open", open);
+  panel.inert = !open;
+  refs.reviewDock.querySelector("#rvTune").setAttribute("aria-expanded", String(open));
+}
+
+function applyLook(index) {
+  const l = REVIEW.looks[index];
+  if (!l) return;
+  setPrefs({ reviewLook: l.id, reviewColor: l.color, reviewFx: l.fx, reviewBrush: l.brush, reviewSize: l.size }, { keepMood: true });
 }
 
 function syncReviewDock() {
-  if (!refs.reviewColors || !state.prefs) return;
-  const p = state.prefs;
-  refs.reviewColors.querySelectorAll(".dock-swatch").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.color === p.reviewColor)));
-  refs.reviewFxSelect.value = p.reviewFx;
-  refs.reviewSize.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.size === p.reviewSize)));
+  if (!refs.reviewDock || !state.prefs || !refs.reviewDock.querySelector("#rvName")) return;
+  const p = state.prefs, d = refs.reviewDock;
+  d.querySelectorAll(".rv-orb").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.look === p.reviewLook)));
+  const look = REVIEW.looks.find((l) => l.id === p.reviewLook);
+  d.querySelector("#rvName").textContent = look ? look.label : "Custom";
+  d.querySelectorAll("[data-pref]").forEach((group) => {
+    if (group.classList.contains("rv-seg")) group.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(p[group.dataset.pref] === b.dataset.v)));
+    else group.setAttribute("aria-pressed", String(p[group.dataset.pref] === group.dataset.v));
+  });
+  d.querySelector("#rvFx").value = p.reviewFx;
+  review.styles.clear();
+  review.parts.length = 0;
+  refs.reviewLens.classList.toggle("on", review.on && review.inside && p.reviewLens !== "off");
+  applyReviewAtmosphere();
+  if (review.on) scheduleReview();
+}
+
+// the room takes on a faint tint of the beam colour: desk, lens shade and the pill's dot
+function applyReviewAtmosphere() {
+  const base = reviewBaseColor().rgb, body = document.body;
+  const rgb = base || [255, 125, 95];
+  body.style.setProperty("--rv", rgb.join(","));
+  if (review.on) {
+    const d = rvMix([24, 25, 30], rgb, 0.07);
+    body.style.setProperty("--desk", `rgb(${d.join(",")})`);
+  } else body.style.removeProperty("--desk");
 }
 
 function reviewResize() {
@@ -4698,7 +4862,7 @@ function reviewResize() {
   const sc = REVIEW.lens.scale;
   review.lw = Math.max(2, Math.ceil(review.w * sc)); review.lh = Math.max(2, Math.ceil(review.h * sc));
   refs.reviewLens.width = review.lw; refs.reviewLens.height = review.lh;
-  review.box = null; review.dirty = true;
+  review.box = null;
   if (review.on) scheduleReview();
 }
 
@@ -4712,19 +4876,25 @@ function setReview(on) {
   document.body.classList.toggle("review-mode", on);
   if (on) {
     reviewResize();
-    if (!review.hinted) { review.hinted = true; toast("Review — 페이지 위에서 마우스를 움직여 보세요. Esc로 종료."); }
+    if (!review.hinted) { review.hinted = true; toast("Review — 움직이면 빛이 따라와요 · 누른 채 드래그하면 오래 남고 · 클릭하면 핑 ✦"); }
   } else {
-    review.pts.length = 0; review.parts.length = 0; review.emitAcc = 0; review.inside = false; review.lensReady = false; review.breakNext = true; review.hasFilter = false;
+    review.pts.length = 0; review.parts.length = 0; review.pings.length = 0; review.emitAcc = 0;
+    review.inside = false; review.lensReady = false; review.breakNext = true; review.hasFilter = false; review.down = false; review.lampA = 0;
     refs.reviewLens.classList.remove("on");
     clearTrailCanvas();
+    setTunePanel(false);
   }
+  applyReviewAtmosphere();
   updateHint();
+  if (on) scheduleReview();
 }
 
 // ---- pointer input -> low-pass filtered points
 // Raw mouse coordinates are integers and jitter by a pixel or two, which reads as a wobbly line once it is drawn thick.
 // A speed-adaptive exponential filter (heavier when slow, nearly transparent when fast) removes that without making the
 // head feel laggy; Catmull-Rom then turns the filtered points into a continuous curve.
+function reviewBrush() { return REVIEW.brushes[state.prefs.reviewBrush] || REVIEW.brushes.laser; }
+
 function onReviewMove(event) {
   if (!review.on || event.pointerType === "touch") return;
   const now = performance.now();
@@ -4738,21 +4908,50 @@ function onReviewMove(event) {
       if (t > now || now - t > 120) t = now;
       feedTrail(e.clientX, e.clientY, t);
     }
-    if (review.pts.length > 900) review.pts.splice(0, review.pts.length - 900);
+    if (review.pts.length > 900) { review.pts.splice(0, review.pts.length - 900); review.pts[0].b = true; }
+    review.lastMoveT = now; review.restFired = false;
   } else {
     review.breakNext = true; review.hasFilter = false;   // never join a stroke across the desk / gaps between pages
   }
-  if (overPage) { review.lastMoveT = now; review.restFired = false; }
   review.mx = event.clientX; review.my = event.clientY;
-  if (!review.inside) { review.inside = true; review.lensReady = false; refs.reviewLens.classList.add("on"); }
+  if (!review.inside) {
+    review.inside = true; review.lensReady = false; review.pmx = review.mx; review.pmy = review.my;
+    if (state.prefs.reviewLens !== "off") refs.reviewLens.classList.add("on");
+  }
   scheduleReview();
+}
+
+// press = a "ping" ring + a held pen stroke (lingers ~3 s); release returns to the short hover beam
+function onReviewDown(event) {
+  if (!review.on || event.button !== 0 || event.pointerType === "touch") return;
+  if (!(event.target.closest && event.target.closest(".pdf-page"))) return;
+  const now = performance.now();
+  review.down = true; review.breakNext = true; review.hasFilter = false;
+  feedTrail(event.clientX, event.clientY, now);
+  review.mx = event.clientX; review.my = event.clientY;
+  if (!review.inside) { review.inside = true; review.lensReady = false; if (state.prefs.reviewLens !== "off") refs.reviewLens.classList.add("on"); }
+  review.pings.push({ x: event.clientX, y: event.clientY, t0: now });
+  review.lensPulseT = now;
+  review.lastMoveT = now; review.restFired = true;
+  const st = reviewStyle(state.prefs.reviewFx);
+  if (st && st.rest && !reducedMotionQuery.matches) {
+    for (let i = 0; i < st.rest.count; i++) spawnReviewParticle(st.rest, st, event.clientX, event.clientY, now, 0, 0, 0, true);
+  }
+  scheduleReview();
+}
+
+function onReviewUp() {
+  if (!review.down) return;
+  review.down = false; review.breakNext = true; review.hasFilter = false;
 }
 
 function feedTrail(x, y, t) {
   if (!review.hasFilter || review.breakNext) {
     review.sx = x; review.sy = y; review.st = t; review.rx = review.prx = x; review.ry = review.pry = y;
     review.hasFilter = true; review.breakNext = false;
-    review.pts.push({ x, y, t, b: true });
+    review.curPen = review.down;
+    review.curL = reducedMotionQuery.matches ? 700 : review.down ? REVIEW.penLife : reviewBrush().life;
+    review.pts.push({ x, y, t, b: true, l: review.curL, pen: review.curPen });
     return;
   }
   stepTrailFilter(x, y, t);
@@ -4766,8 +4965,23 @@ function stepTrailFilter(x, y, t) {
   review.sx += (x - review.sx) * a; review.sy += (y - review.sy) * a;
   review.st = t; review.prx = review.rx = x; review.pry = review.ry = y;
   const last = review.pts[review.pts.length - 1];
-  const seg = Math.hypot(review.sx - last.x, review.sy - last.y);
-  if (seg >= 0.7) { review.pts.push({ x: review.sx, y: review.sy, t, b: false }); }
+  if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen }); return; }
+  if (Math.hypot(review.sx - last.x, review.sy - last.y) >= 0.7) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen });
+}
+
+// each stroke fades from its tail; strokes with different lifetimes (hover vs pen) expire independently
+function pruneTrail(now) {
+  const pts = review.pts, n = pts.length;
+  let w = 0, i = 0;
+  while (i < n) {
+    let e = i + 1;
+    while (e < n && !pts[e].b) e++;
+    let j = i;
+    while (j < e && now - pts[j].t > pts[j].l) j++;
+    for (let k = j; k < e; k++) { const p = pts[k]; if (k === j && j > i) p.b = true; pts[w++] = p; }
+    i = e;
+  }
+  pts.length = w;
 }
 
 function onReviewLeave() {
@@ -4791,41 +5005,68 @@ function clearTrailCanvas() {
 
 function reviewFrame(now) {
   review.raf = 0;
+  if (!review.on) return;
   const dt = Math.min(64, review.lastFrame ? now - review.lastFrame : 16);
   review.lastFrame = now;
   let more = false;
+  review.pal = reviewPalette();
+  review.tint = rvMix([14, 15, 20], review.pal.base, 0.14);
 
-  if (review.on && review.inside) {                 // lens eases toward the pointer: soft, but never laggy
-    if (!review.lensReady) { review.lx = review.mx; review.ly = review.my; review.lensReady = true; review.dirty = true; }
+  if (review.inside) {
+    const sp = Math.hypot(review.mx - review.pmx, review.my - review.pmy) / Math.max(1, dt);
+    review.pmx = review.mx; review.pmy = review.my;
+    review.lensSpeed += (Math.min(1, sp / 2.2) - review.lensSpeed) * (1 - Math.exp(-dt / 140));
+    if (!review.lensReady) { review.lx = review.mx; review.ly = review.my; review.lensReady = true; }
     const k = 1 - Math.exp(-dt / 34);
-    const dx = review.mx - review.lx, dy = review.my - review.ly;
-    review.lx += dx * k; review.ly += dy * k;
-    const moving = Math.abs(dx) > 0.15 || Math.abs(dy) > 0.15;
-    if (moving || review.dirty) { drawLens(); review.dirty = false; }
-    if (moving) more = true;
+    review.lx += (review.mx - review.lx) * k; review.ly += (review.my - review.ly) * k;
+    drawLens(now);
+    more = true;                                   // the pointer lamp breathes while the pointer is on the page
   }
 
-  if (review.on) {
-    // let the filtered head settle onto the pointer when the mouse slows down or stops
-    if (review.hasFilter && !review.breakNext && review.pts.length &&
-        Math.hypot(review.rx - review.sx, review.ry - review.sy) > 0.35) {
-      stepTrailFilter(review.rx, review.ry, now);
-      more = true;
-    }
-    review.pal = reviewPalette();
-    emitAlongLine(now);
-    drawTrail(now);
-    if (review.pts.length || review.parts.length) more = true;
+  // let the filtered head settle onto the pointer when the mouse slows down or stops
+  if (review.hasFilter && !review.breakNext && review.pts.length &&
+      Math.hypot(review.rx - review.sx, review.ry - review.sy) > 0.35) {
+    stepTrailFilter(review.rx, review.ry, now);
   }
-  if (more) { review.raf = requestAnimationFrame(reviewFrame); } else review.lastFrame = 0;
+  const lampTarget = review.hasFilter ? 1 : 0;
+  review.lampA += (lampTarget - review.lampA) * (1 - Math.exp(-dt / 110));
+  if (review.hasFilter) { review.lampX = review.sx; review.lampY = review.sy; }
+  if (Math.abs(lampTarget - review.lampA) < 0.01) review.lampA = lampTarget;
+
+  emitAlongLine(now);
+  drawTrail(now);
+  if (review.pts.length || review.parts.length || review.pings.length || review.lampA > 0.02) more = true;
+  if (more) review.raf = requestAnimationFrame(reviewFrame); else review.lastFrame = 0;
 }
 
-function drawLens() {
-  const c = review.lensCtx, L = REVIEW.lens, s = L.scale;
+// ---- the lens: dims the room around a clear zone. Spot = round, Ruler = a band to read one line at a time.
+// It "breathes": slightly wider while the pointer moves fast, a soft swell on click.
+function drawLens(now) {
+  const mode = state.prefs.reviewLens;
+  const c = review.lensCtx;
+  if (!c || mode === "off") return;
+  const L = REVIEW.lens, s = L.scale, spec = L.sizes[state.prefs.reviewLensSize] || L.sizes.m;
+  const t = review.tint, dim = L.dim[mode] || 0.1;
+  const col = (a) => `rgba(${t[0]},${t[1]},${t[2]},${a.toFixed(4)})`;
+  const sm = (x) => x * x * (3 - 2 * x);
+  const pulse = Math.max(0, 1 - (now - review.lensPulseT) / 520);
+  const mult = (1 + 0.22 * pulse * pulse) * (1 + 0.08 * review.lensSpeed);
   c.clearRect(0, 0, review.lw, review.lh);
-  const x = review.lx * s, y = review.ly * s;
-  const g = c.createRadialGradient(x, y, L.clear * s, x, y, (L.clear + L.feather) * s);
-  for (let i = 0; i < review.stops.length; i++) g.addColorStop(review.stops[i][0], review.stops[i][1]);
+  let g;
+  if (mode === "ruler") {
+    const y = review.ly * s, half = spec.band * s * mult, ramp = spec.bandFeather * s;
+    g = c.createLinearGradient(0, y - half - ramp, 0, y + half + ramp);
+    const rf = ramp / (2 * (half + ramp));
+    for (let i = 0; i <= 10; i++) {
+      const u = i / 10;
+      g.addColorStop(u * rf, col(dim * (1 - sm(u))));
+      g.addColorStop(1 - rf + u * rf, col(dim * sm(u)));
+    }
+  } else {
+    const x = review.lx * s, y = review.ly * s, r0 = spec.clear * s * mult;
+    g = c.createRadialGradient(x, y, r0, x, y, r0 + spec.feather * s);
+    for (let i = 0; i <= 10; i++) g.addColorStop(i / 10, col(dim * sm(i / 10)));   // smoothstep: no visible edge
+  }
   c.fillStyle = g;
   c.fillRect(0, 0, review.lw, review.lh);
 }
@@ -4845,12 +5086,12 @@ function autoPreset() {
 function reviewBaseColor() {
   const id = state.prefs.reviewColor;
   if (id === "auto") return { rgb: hexToRgbArray(autoPreset().primary), iris: false };
-  if (id === "iris") return { rgb: IRIS[0], iris: true };
+  if (id === "iris") return { rgb: [150, 124, 236], iris: true };
   const found = REVIEW.colors.find((c) => c.id === id) || REVIEW.colors[0];
   return { rgb: found.rgb, iris: false };
 }
 
-// one palette per frame, shared by the line and everything the effect sheds
+// one palette per frame, shared by the beam, the lens shade and everything the effect sheds
 function reviewPalette() {
   const id = state.prefs.reviewColor;
   const base = reviewBaseColor();
@@ -4858,32 +5099,32 @@ function reviewPalette() {
   return { auto: false, iris: base.iris, base: base.rgb };
 }
 
-function reviewSprite(layerIndex, rgb, gain = 1) {
+function reviewSprite(def, rgb, gain = 1) {
   const q = (v) => (v & 0xf8) | 4;                   // quantise so soft random tints share sprites
   const r0 = q(rgb[0]), g0 = q(rgb[1]), b0 = q(rgb[2]);
-  const key = `${layerIndex}:${r0},${g0},${b0}:${gain.toFixed(2)}:${review.dpr}`;
+  const key = `${def.id}:${r0},${g0},${b0}:${gain.toFixed(2)}:${review.dpr}`;
   let cv = review.sprites.get(key);
   if (cv) return cv;
-  const L = REVIEW.layers[layerIndex];
-  const px = Math.max(4, Math.ceil(L.R * 2 * review.dpr));
+  const px = Math.max(4, Math.ceil(def.R * 2 * review.dpr));
   cv = document.createElement("canvas");
   cv.width = cv.height = px;
   const c = cv.getContext("2d");
   const r = px / 2;
-  const col = L.white ? [r0, g0, b0].map((v) => Math.round(v + (255 - v) * L.white)) : [r0, g0, b0];
+  const col = def.white ? [r0, g0, b0].map((v) => Math.round(v + (255 - v) * def.white)) : [r0, g0, b0];
   const g = c.createRadialGradient(r, r, 0, r, r, r);
-  for (let i = 0; i < L.stops.length; i++) g.addColorStop(L.stops[i][0], `rgba(${col[0]},${col[1]},${col[2]},${Math.min(1, L.stops[i][1] * gain).toFixed(3)})`);
+  for (let i = 0; i < def.stops.length; i++) g.addColorStop(def.stops[i][0], `rgba(${col[0]},${col[1]},${col[2]},${Math.min(1, def.stops[i][1] * gain).toFixed(3)})`);
   c.fillStyle = g;
   c.fillRect(0, 0, px, px);
-  if (review.sprites.size > 400) review.sprites.clear();
+  if (review.sprites.size > 500) review.sprites.clear();
   review.sprites.set(key, cv);
   return cv;
 }
 
 // ---- smooth curve: centripetal Catmull-Rom through the filtered points, sampled every `spacing` px
+// also yields, per vertex, the stroke's lifetime (vl) and pointer speed (vs) so width can answer to speed
 function buildPath(pts, i0, i1, spacing) {
-  const vx = review.vx, vy = review.vy, vt = review.vt;
-  vx.length = vy.length = vt.length = 0;
+  const vx = review.vx, vy = review.vy, vt = review.vt, vl = review.vl, vs = review.vs;
+  vx.length = vy.length = vt.length = vl.length = vs.length = 0;
   const n = i1 - i0;
   // two passes of a [1 2 1]/4 kernel over the points (ends pinned) irons out whatever jitter the filter left
   let sp = [];
@@ -4896,6 +5137,16 @@ function buildPath(pts, i0, i1, spacing) {
     }
     sp = nx;
   }
+  // pointer speed per point (px/ms), smoothed
+  const pv = new Array(n).fill(0);
+  for (let k = 0; k < n - 1; k++) pv[k] = Math.hypot(sp[k + 1].x - sp[k].x, sp[k + 1].y - sp[k].y) / Math.max(1, sp[k + 1].t - sp[k].t);
+  pv[n - 1] = pv[Math.max(0, n - 2)];
+  for (let pass = 0; pass < 3; pass++) {
+    const nv = pv.slice();
+    for (let k = 1; k < n - 1; k++) nv[k] = pv[k - 1] * 0.25 + pv[k] * 0.5 + pv[k + 1] * 0.25;
+    for (let k = 0; k < n; k++) pv[k] = nv[k];
+  }
+  const L = pts[i0].l;
   const at = (k) => sp[k];
   for (let k = 0; k < n - 1; k++) {
     const p1 = at(k), p2 = at(k + 1);
@@ -4903,7 +5154,7 @@ function buildPath(pts, i0, i1, spacing) {
     const p3 = k < n - 2 ? at(k + 2) : { x: 2 * p2.x - p1.x, y: 2 * p2.y - p1.y };
     const d12 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const steps = Math.max(1, Math.min(300, Math.ceil(d12 / spacing)));
-    if (k === 0) { vx.push(p1.x); vy.push(p1.y); vt.push(p1.t); }
+    if (k === 0) { vx.push(p1.x); vy.push(p1.y); vt.push(p1.t); vl.push(L); vs.push(pv[0]); }
     const t0 = 0;
     const t1 = t0 + Math.sqrt(Math.max(1e-3, Math.hypot(p1.x - p0.x, p1.y - p0.y)));
     const t2 = t1 + Math.sqrt(Math.max(1e-3, d12));
@@ -4918,6 +5169,8 @@ function buildPath(pts, i0, i1, spacing) {
       vx.push((b1x * (t2 - t) + b2x * (t - t1)) / (t2 - t1));
       vy.push((b1y * (t2 - t) + b2y * (t - t1)) / (t2 - t1));
       vt.push(p1.t + (p2.t - p1.t) * f);
+      vl.push(L);
+      vs.push(pv[k] + (pv[k + 1] - pv[k]) * f);
     }
   }
 }
@@ -4966,7 +5219,7 @@ const RV_ARCH = {
   },
   glow: {    // warm orbs drifting up
     shimmer: { shape: "dot", every: 60, prob: 0.5, size: [3, 6], life: 900 },
-    shed: { gap: 22, shape: "ember", size: [2.4, 5], speed: [8, 26], dir: "up", lift: -70, life: [850, 1450], flicker: true },
+    shed: { gap: 20, shape: "ember", size: [3.4, 6.4], speed: [8, 26], dir: "up", lift: -70, life: [850, 1450], flicker: true },
     rest: { count: 6, shape: "ember", size: [2.6, 5], speed: [14, 36], lift: -70, life: [900, 1400], flicker: true },
     line: { halo: 1.6, core: 1.1 }
   },
@@ -5028,7 +5281,7 @@ function rvEnvelope(u) {                           // pop in, hold, ease out
 }
 function rvHash(n) { const h = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return h - Math.floor(h); }
 function rvMix(a, b, t) { return [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)]; }
-function rvIntensity(t) { const a = (review.now - t) / review.life; return a >= 1 ? 0 : Math.pow(1 - Math.max(0, a), 1.5); }
+function rvIntensity(t, l) { const a = (review.now - t) / l; return a >= 1 ? 0 : Math.pow(1 - Math.max(0, a), 1.5); }
 function rvAdd(x, y, r) {
   const b = review.bb;
   if (x - r < b.x0) b.x0 = x - r; if (x + r > b.x1) b.x1 = x + r;
@@ -5056,7 +5309,7 @@ function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
   switch (shape) {
     case "star4": {
       c.globalAlpha = a * 0.34;
-      c.drawImage(reviewSprite(1, rgb), -r * 1.5, -r * 1.5, r * 3, r * 3);
+      c.drawImage(reviewSprite(RV_SOFT, rgb), -r * 1.5, -r * 1.5, r * 3, r * 3);
       c.rotate(rot); c.globalAlpha = a; c.fillStyle = solid;
       c.beginPath(); c.moveTo(0, -r); c.quadraticCurveTo(0, 0, r, 0); c.quadraticCurveTo(0, 0, 0, r);
       c.quadraticCurveTo(0, 0, -r, 0); c.quadraticCurveTo(0, 0, 0, -r); c.fill();
@@ -5065,8 +5318,8 @@ function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
     }
     case "dot": case "smoke": case "ember": {
       const k = shape === "smoke" ? 3.2 : shape === "ember" ? 3.2 : 3;
-      c.globalAlpha = a * (shape === "ember" ? 0.75 : 1);
-      c.drawImage(reviewSprite(1, rgb), -r * k / 2, -r * k / 2, r * k, r * k);
+      c.globalAlpha = a * (shape === "ember" ? 0.9 : 1);
+      c.drawImage(reviewSprite(RV_SOFT, rgb), -r * k / 2, -r * k / 2, r * k, r * k);
       if (shape !== "smoke") {
         c.globalAlpha = a * 0.85; c.fillStyle = shape === "ember" ? `rgb(255,${Math.min(255, rgb[1] + 90)},${Math.min(255, rgb[2] + 110)})` : "#fff";
         c.beginPath(); c.arc(0, 0, Math.max(0.5, r * 0.36), 0, 6.283); c.fill();
@@ -5074,7 +5327,7 @@ function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
       break;
     }
     case "pearl": {
-      c.globalAlpha = a; c.drawImage(reviewSprite(1, rgb), -r * 1.5, -r * 1.5, r * 3, r * 3);
+      c.globalAlpha = a; c.drawImage(reviewSprite(RV_SOFT, rgb), -r * 1.5, -r * 1.5, r * 3, r * 3);
       c.strokeStyle = solid; c.lineWidth = 0.9; c.globalAlpha = a * 0.55; c.beginPath(); c.arc(0, 0, r * 1.25, 0, 6.283); c.stroke();
       c.globalAlpha = a * 0.9; c.fillStyle = "#fff"; c.beginPath(); c.arc(-r * 0.25, -r * 0.25, Math.max(0.4, r * 0.3), 0, 6.283); c.fill();
       break;
@@ -5133,7 +5386,7 @@ function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
 
 // ---- along-the-line twinkles: stateless. Time is cut into short cells; a cell may place a glyph on the beam at the
 // spot the pointer was passing at that moment, and the glyph lives and fades with that stretch of line.
-function drawShimmer(c, st, now, vx, vy, vt, n, sz) {
+function drawShimmer(c, st, now, vx, vy, vt, vl, n, sz) {
   const sp = st.shimmer;
   if (!sp || n < 2) return;
   const t0 = vt[0], t1 = vt[n - 1];
@@ -5152,7 +5405,7 @@ function drawShimmer(c, st, now, vx, vy, vt, n, sz) {
     const nx = -dy / dl, ny = dx / dl, off = (rvHash(k + 31) - 0.5) * 5 * sz;
     const x = vx[lo] + dx * f + nx * off, y = vy[lo] + dy * f + ny * off;
     const u = age / sp.life, env = rvEnvelope(u);
-    const a = env.a * (0.25 + 0.75 * rvIntensity(tc));
+    const a = env.a * (0.25 + 0.75 * rvIntensity(tc, vl[lo]));
     const r = (sp.size[0] + (sp.size[1] - sp.size[0]) * rvHash(k + 57)) * sz * env.s;
     const rot = sp.shape === "tick" ? Math.atan2(ny, nx) + Math.PI / 2 : rvHash(k + 5) * 1.57 + age * 0.0012;
     const col = rvColor(st, tc, k);
@@ -5246,67 +5499,94 @@ function drawTrail(now) {
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   if (review.box) c.clearRect(review.box.x, review.box.y, review.box.w, review.box.h);
   else c.clearRect(0, 0, review.w, review.h);
+  pruneTrail(now);
   const pts = review.pts;
-  const life = reducedMotionQuery.matches ? 700 : REVIEW.trailLife;
-  let drop = 0;
-  while (drop < pts.length && now - pts[drop].t > life) drop++;
-  if (drop) pts.splice(0, drop);
   const st = reviewStyle(state.prefs.reviewFx);
   if (!st) review.parts.length = 0;
-  if (!pts.length && !review.parts.length) { review.box = null; return; }
+  const lampOn = review.lampA > 0.02;
+  if (!pts.length && !review.parts.length && !review.pings.length && !lampOn) { review.box = null; return; }
 
-  review.now = now; review.life = life;
+  review.now = now;
   review.bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
   const pal = review.pal || reviewPalette();
+  const brush = reviewBrush(), layers = brush.layers, nl = layers.length;
   const sizeMul = REVIEW.sizes[state.prefs.reviewSize] || 1;
   const sz = Math.pow(sizeMul, 0.6) * 1.45;                                // glyphs grow gently with line thickness
   const gain = st ? st.line : { halo: 1, core: 1 };
-  const lineGain = [gain.halo || 1, 1, gain.core || 1];
+  const lineGain = layers.map((_, i) => (i === 0 ? gain.halo || 1 : i === nl - 1 ? gain.core || 1 : 1));
   const colorAt = (t) => pal.iris ? IRIS[Math.floor(((t * 0.09) % 360) / 15) % 24] : pal.base;
 
   let totalLen = 0;
   for (let i = 1; i < pts.length; i++) if (!pts[i].b) totalLen += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
   const spacing = Math.max(1.4, totalLen / 1800);                        // keeps very long, fast strokes affordable
+  const [tMin, tPow] = brush.taper;
 
   let s = 0;
   while (s < pts.length) {
     let e = s + 1;
     while (e < pts.length && !pts[e].b) e++;
     if (e - s >= 2) {
+      const penK = pts[s].pen ? 1.18 : 1;                                  // a held pen stroke is a touch bolder
       buildPath(pts, s, e, spacing);
-      const vx = review.vx, vy = review.vy, vt = review.vt, n = vx.length;
-      for (let li = 0; li < REVIEW.layers.length; li++) {
-        const L = REVIEW.layers[li], R = L.R * sizeMul;
+      const vx = review.vx, vy = review.vy, vt = review.vt, vl = review.vl, vs = review.vs, n = vx.length;
+      for (let li = 0; li < nl; li++) {
+        const L = layers[li], R = L.R * sizeMul * penK;
         for (let i = 0; i < n; i += L.stride) {
-          const I = rvIntensity(vt[i]);
+          const I = rvIntensity(vt[i], vl[i]);
           if (I < 0.015) continue;
-          const r = R * (0.38 + 0.62 * Math.pow(I, 0.6));                 // tail tapers to a hair
+          let wf = 1 + brush.speedW * (0.5 - Math.min(1, vs[i] / 1.6));   // slow = fuller, fast = finer
+          if (wf < 0.35) wf = 0.35;
+          const r = R * (tMin + (1 - tMin) * Math.pow(I, tPow)) * wf;      // tail tapers
           c.globalAlpha = Math.min(1, Math.pow(I, 0.8));
-          c.drawImage(reviewSprite(li, colorAt(vt[i]), lineGain[li]), vx[i] - r, vy[i] - r, r * 2, r * 2);
+          c.drawImage(reviewSprite(L, colorAt(vt[i]), lineGain[li]), vx[i] - r, vy[i] - r, r * 2, r * 2);
         }
       }
       c.globalAlpha = 1;
-      for (let i = 0; i < n; i += 4) rvAdd(vx[i], vy[i], 28 * sizeMul);
-      rvAdd(vx[n - 1], vy[n - 1], 28 * sizeMul);
-      if (st) drawShimmer(c, st, now, vx, vy, vt, n, sz);
+      const m = layers[0].R * sizeMul * penK * 1.3;
+      for (let i = 0; i < n; i += 4) rvAdd(vx[i], vy[i], m);
+      rvAdd(vx[n - 1], vy[n - 1], m);
+      if (st) drawShimmer(c, st, now, vx, vy, vt, vl, n, sz);
     }
     s = e;
   }
 
-  // pointer dot: a slightly larger pale point at the head that fades with the line when the mouse rests
-  if (pts.length) {
-    const head = pts[pts.length - 1];
-    const hi = rvIntensity(head.t);
-    if (hi > 0.02) {
-      const r = REVIEW.layers[2].R * sizeMul * 1.5;
-      c.globalAlpha = Math.min(1, hi);
-      c.drawImage(reviewSprite(1, colorAt(head.t)), head.x - r * 2, head.y - r * 2, r * 4, r * 4);
-      c.drawImage(reviewSprite(2, colorAt(head.t), lineGain[2]), head.x - r, head.y - r, r * 2, r * 2);
-      c.globalAlpha = 1;
-      rvAdd(head.x, head.y, r * 2.5);
-    }
+  // pointer lamp: a soft point of light that breathes while the pointer rests on the page, so you always see where you are
+  if (lampOn) {
+    const Lb = layers[Math.min(1, nl - 1)], Lc = layers[nl - 1];
+    const breath = reducedMotionQuery.matches ? 1 : 0.5 + 0.5 * Math.sin(now / 520);
+    const x = review.lampX, y = review.lampY, col = colorAt(now);
+    const rb = Lb.R * sizeMul * (2.1 + 0.3 * breath);
+    c.globalAlpha = review.lampA * (0.45 + 0.3 * breath);
+    c.drawImage(reviewSprite(Lb, col, 1), x - rb, y - rb, rb * 2, rb * 2);
+    const rc = Lc.R * sizeMul * 1.15;
+    c.globalAlpha = review.lampA;
+    c.drawImage(reviewSprite(Lc, col, lineGain[nl - 1]), x - rc, y - rc, rc * 2, rc * 2);
+    c.globalAlpha = review.lampA * 0.9; c.fillStyle = "#fff";
+    c.beginPath(); c.arc(x, y, Math.max(0.8, rc * 0.2), 0, 6.283); c.fill();
+    c.globalAlpha = 1;
+    rvAdd(x, y, rb * 1.2);
   }
   if (st) drawReviewParticles(c, st, now, sz);
+
+  // pings: a click sends two soft rings outward from the spot
+  for (let i = review.pings.length - 1; i >= 0; i--) {
+    const p = review.pings[i], age = now - p.t0;
+    if (age > REVIEW.pingLife) { review.pings.splice(i, 1); continue; }
+    const col = colorAt(p.t0), solid = `rgb(${col[0]},${col[1]},${col[2]})`;
+    const u = age / REVIEW.pingLife, e1 = 1 - Math.pow(1 - u, 3), k = Math.sqrt(sizeMul);
+    const gr = 30 * k * (1 - 0.35 * u);
+    c.globalAlpha = 0.4 * Math.pow(1 - u, 1.3);
+    c.drawImage(reviewSprite(RV_SOFT, col, 1), p.x - gr, p.y - gr, gr * 2, gr * 2);
+    c.strokeStyle = solid;
+    c.globalAlpha = 0.85 * Math.pow(1 - u, 1.5); c.lineWidth = 0.7 + 2 * (1 - u);
+    c.beginPath(); c.arc(p.x, p.y, (6 + 46 * e1) * k, 0, 6.283); c.stroke();
+    const u2 = Math.max(0, (age - 120) / (REVIEW.pingLife - 120));
+    if (u2 > 0) {
+      c.globalAlpha = 0.5 * Math.pow(1 - u2, 1.5); c.lineWidth = 0.6 + 1.2 * (1 - u2);
+      c.beginPath(); c.arc(p.x, p.y, (4 + 32 * (1 - Math.pow(1 - u2, 3))) * k, 0, 6.283); c.stroke();
+    }
+    rvAdd(p.x, p.y, 62 * k);
+  }
   c.globalAlpha = 1;
 
   const b = review.bb;
@@ -5417,6 +5697,14 @@ function handleGlobalKeys(event) {
   if (!state.doc) return;
   if (event.key === "t" || event.key === "T") { event.preventDefault(); setTypeTool(!state.typeTool); }
   else if (event.key === "r" || event.key === "R") { event.preventDefault(); setReview(!review.on); }
+  else if (review.on && /^[1-8]$/.test(event.key)) applyLook(Number(event.key) - 1);
+  else if (review.on && (event.key === "l" || event.key === "L")) {
+    const modes = ["spot", "ruler", "off"];
+    setPrefs({ reviewLens: modes[(modes.indexOf(state.prefs.reviewLens) + 1) % 3] }, { keepMood: true });
+  } else if (review.on && (event.key === "[" || event.key === "]")) {
+    const sizes = ["s", "m", "l"], i = sizes.indexOf(state.prefs.reviewLensSize);
+    setPrefs({ reviewLensSize: sizes[Math.max(0, Math.min(2, i + (event.key === "]" ? 1 : -1)))] }, { keepMood: true });
+  }
   else if (event.key === "+" || event.key === "=") stepZoom(1);
   else if (event.key === "-") stepZoom(-1);
 }

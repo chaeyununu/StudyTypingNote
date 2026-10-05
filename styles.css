@@ -221,67 +221,6 @@ select {
 /* Keep every glyph (incl. in-progress jamo) in the chosen face; never synthesize bold/italic mid-typing. */
 .ink-note, .try-note, .ghost-glyph { font-synthesis: none; font-kerning: none; text-rendering: optimizeSpeed; }
 
-/* ---------- REVIEW: toolbar pill, focus lens, laser trail ---------- */
-.tool-pill {
-  height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 11px;
-  border: 0; border-radius: 10px; background: transparent;
-  font-size: 12px; font-weight: 650; letter-spacing: 0.09em; line-height: 1;
-  transition: background .15s, color .15s;
-}
-.tool-pill:hover { background: rgba(38,39,44,.08); }
-.pill-dot {
-  width: 7px; height: 7px; border-radius: 50%; background: #b9bac1; flex: none;
-  transition: background .2s, box-shadow .2s;
-}
-.tool-pill[aria-pressed="true"] { background: var(--chrome-ink); color: #fff; }
-.tool-pill[aria-pressed="true"] .pill-dot { background: #ff7d5f; box-shadow: 0 0 0 3px rgba(255,125,95,.24); }
-
-/* Both canvases sit above the PDF and notes but below the toolbar (z 20), hint (15) and settings (30+). */
-.review-lens, .review-trail { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.review-lens { z-index: 8; opacity: 0; transition: opacity .4s ease; }
-.review-lens.on { opacity: 1; }
-.review-trail { z-index: 9; }
-body.review-mode .pdf-page { cursor: default; }
-
-@media (max-width: 760px) {
-  .pill-label { display: none; }
-  .tool-pill { padding: 0 11px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .review-lens { transition-duration: .01ms; }
-}
-
-/* ---------- Review dock (colour / effect / thickness) ---------- */
-.review-dock {
-  position: fixed; z-index: 19; top: 68px; left: 50%; transform: translate(-50%, -6px);
-  display: flex; align-items: center; gap: 8px; padding: 6px 12px; max-width: calc(100vw - 16px); overflow-x: auto;
-  background: var(--chrome); border-radius: 14px; backdrop-filter: blur(14px);
-  box-shadow: 0 8px 28px -10px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.4) inset;
-  opacity: 0; visibility: hidden; transition: opacity .2s, transform .2s var(--ease), visibility 0s linear .2s;
-}
-body.review-mode .review-dock { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition: opacity .2s, transform .2s var(--ease); }
-body.review-mode .toast { top: 118px; }
-.dock-group { display: flex; align-items: center; gap: 7px; }
-.dock-swatch {
-  flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid #f6f4f0;
-  background: var(--c, #999); box-shadow: 0 0 0 1px var(--line); color: #fff; font-size: 10px; font-weight: 700; line-height: 1;
-  transition: transform .15s var(--ease), box-shadow .15s;
-}
-.dock-swatch:hover { transform: scale(1.12); }
-.dock-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--chrome-ink); }
-.dock-swatch[data-color="iris"] { background: conic-gradient(#ff8a8a, #ffd36a, #93e08f, #6fcaff, #b690ff, #ff8a8a); }
-.dock-swatch[data-color="auto"] { background: #3a3c44; }
-.dock-select {
-  flex: none; width: auto; max-width: 150px; height: 28px; padding: 0 8px; font-size: 12.5px; border-radius: 9px;
-}
-.dock-size { display: flex; gap: 2px; }
-.dock-size button {
-  width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent;
-  font-size: 12px; font-weight: 650; transition: background .15s, color .15s;
-}
-.dock-size button:hover { background: rgba(38,39,44,.08); }
-.dock-size button[aria-pressed="true"] { background: var(--chrome-ink); color: #fff; }
-
 /* faces that have no stylesheet of their own (checked when first picked) */
 @font-face { font-family: "Cafe24Ssurround"; font-display: swap;
   src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24Ssurround.woff") format("woff"); }

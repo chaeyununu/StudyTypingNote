@@ -1158,7 +1158,7 @@ function loadPrefs() {
     if (!FONTS[prefs.font]) prefs.font = defaultPrefs.font;
     prefs.volume = clamp01(Number(prefs.volume));
     prefs.intensity = clamp01(Number(prefs.intensity));
-    prefs.fontSize = clamp(Number(prefs.fontSize), 8, 36);
+    prefs.fontSize = clamp(Number(prefs.fontSize), 4, 36);
     if (!("reviewLook" in saved)) {                      // first run of Review 2.0: start from the Ember look
       prefs.reviewLook = "laser"; prefs.reviewColor = "coral"; prefs.reviewFx = "none"; prefs.reviewBrush = "laser"; prefs.reviewSize = "m";
     }
@@ -1206,6 +1206,8 @@ function applyPrefs() {
   ensureFontReady(p.font);
   body.style.setProperty("--note-size", `${p.fontSize}px`);
   body.style.setProperty("--note-color", p.color);
+  { const hx = String(p.color).replace("#", ""), n = parseInt(hx.length === 3 ? hx.split("").map((ch) => ch + ch).join("") : hx, 16) || 0;
+    body.dataset.ink = ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114 > 170 ? "light" : "dark"; }
   body.style.setProperty("--effect-primary", effect.primary);
   body.style.setProperty("--effect-secondary", effect.secondary);
   body.style.setProperty("--effect-aura", effect.aura);
@@ -4566,7 +4568,7 @@ const REVIEW = {
     { id: "bcoral",   group: "milky",   label: "Beige coral", rgb: [230, 160, 136] },
     { id: "dusty",    group: "milky",   label: "Dusty rose",  rgb: [196, 120, 134] },
     { id: "soy",      group: "milky",   label: "Soy milk",    rgb: [238, 222, 204] },
-    { id: "scream",   group: "sweet",   label: "Strawberry cream", rgb: [255, 172, 192] },
+    { id: "scream",   group: "sweet",   label: "Strawberry cream", rgb: [255, 194, 208] },
     { id: "biscuit",  group: "sweet",   label: "Biscuit",   rgb: [210, 152, 86] },
     { id: "grape",    group: "sweet",   label: "Grape jelly", rgb: [148, 92, 210] },
     { id: "marsh",    group: "sweet",   label: "Marshmallow", rgb: [250, 232, 220] },
@@ -4636,11 +4638,13 @@ const REVIEW = {
       { R: 4.2, stops: [[0, 0.34], [1, 0]],                                          stride: 1, white: 0.72 }
     ] },
     jelly: { label: "Jelly", kind: "jelly", life: 2100, taper: [0.45, 0.6], speedW: 0.2, layers: [
-      { R: 9.4, stops: [[0, 0], [0.5, 0], [0.76, 0.46], [0.92, 0.56], [1, 0]],      stride: 1, white: 0, mix: [[40, 6, 64], 0.5] },
-      { R: 7.9, stops: [[0, 0.36], [0.78, 0.34], [0.95, 0.2], [1, 0]],              stride: 1, white: 0.02 },
-      { R: 5.0, stops: [[0, 0.5], [1, 0]],                                           stride: 1, white: 0.5 }
+      { R: 10.2, stops: [[0, 0], [0.5, 0], [0.76, 0.54], [0.92, 0.66], [1, 0]],     stride: 1, white: 0, mix: [[40, 6, 64], 0.5] },
+      { R: 8.6, stops: [[0, 0.34], [0.78, 0.32], [0.95, 0.2], [1, 0]],              stride: 1, white: 0.02 },
+      { R: 5.6, stops: [[0, 0.52], [1, 0]],                                          stride: 1, white: 0.52 }
     ] },
-    cream: { label: "Cream", kind: "cream", life: 2400, taper: [0.55, 0.5], speedW: 0, layers: [] },
+    cream: { label: "Cream", kind: "cream", life: 2400, taper: [0.55, 0.5], speedW: 0, layers: [
+      { R: 6.6, stops: [[0, 0.97], [0.85, 0.94], [1, 0]], stride: 1, white: 0.18, mix: [[190, 110, 130], 0.12] }
+    ] },
     puff: { label: "Marshmallow", kind: "puff", life: 2500, taper: [0.55, 0.5], speedW: 0, layers: [] },
     ganache: { label: "Ganache", kind: "ganache", life: 2300, taper: [0.45, 0.6], speedW: 0.18, layers: [
       { R: 8.6, stops: [[0, 0], [0.5, 0], [0.74, 0.55], [0.92, 0.72], [1, 0]],      stride: 1, white: 0, mix: [[16, 7, 5], 0.62] },
@@ -5444,48 +5448,98 @@ function rvGem(shape, rgb) {
   return cv;
 }
 
-// ---- whipped cream: a soft shaded ball (light top-left, shaded lower-right). Hundreds of them at random sizes and offsets
-// overlap into a puffy, irregular mass, so it reads as foam rather than as a repeated pattern.
-function rvCreamBall(rgb) {
-  const q = (v) => (v & 0xf0) | 8, col = [q(rgb[0]), q(rgb[1]), q(rgb[2])];
-  const key = `${col}:${review.dpr}`;
+// ---- Lit sprites. The sweet materials are baked once per colour from a height field and lit per pixel (light from the upper
+// left: diffuse + a little specular + ambient occlusion), so every blob has real volume instead of a flat gradient.
+function rvSmooth(a, b, x) { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+function rvVNoise(x, y, seed) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const h = (a, b) => rvHash(a * 127.1 + b * 311.7 + seed * 17.3);
+  return (h(xi, yi) * (1 - u) + h(xi + 1, yi) * u) * (1 - v) + (h(xi, yi + 1) * (1 - u) + h(xi + 1, yi + 1) * u) * v;
+}
+function rvFbm(x, y, seed) { return rvVNoise(x, y, seed) * 0.55 + rvVNoise(x * 2.1, y * 2.1, seed + 3) * 0.3 + rvVNoise(x * 4.3, y * 4.3, seed + 7) * 0.15; }
+const RV_LV = (() => { const v = [-0.52, -0.62, 0.58], m = Math.hypot(v[0], v[1], v[2]); return v.map((x) => x / m); })();
+const RV_HV = (() => { const v = [RV_LV[0], RV_LV[1], RV_LV[2] + 1], m = Math.hypot(v[0], v[1], v[2]); return v.map((x) => x / m); })();
+function rvLit(hf, u, v, e, k) {
+  const hx = ((hf(u + e, v) - hf(u - e, v)) / (2 * e)) * k, hy = ((hf(u, v + e) - hf(u, v - e)) / (2 * e)) * k;
+  const m = Math.hypot(hx, hy, 1), nx = -hx / m, ny = -hy / m, nz = 1 / m;
+  return [Math.max(0, nx * RV_LV[0] + ny * RV_LV[1] + nz * RV_LV[2]), Math.pow(Math.max(0, nx * RV_HV[0] + ny * RV_HV[1] + nz * RV_HV[2]), 30)];
+}
+function rvBake(S, fn) {
+  const dpr = review.dpr, px = Math.ceil(S * dpr), cv = document.createElement("canvas");
+  cv.width = cv.height = px;
+  const c = cv.getContext("2d"), img = c.createImageData(px, px);
+  if (!img || !img.data) return cv;
+  const d = img.data;
+  for (let y = 0; y < px; y++) for (let x = 0; x < px; x++) {
+    const o = fn(((x + 0.5) / px) * 2 - 1, ((y + 0.5) / px) * 2 - 1), i = (y * px + x) * 4;
+    d[i] = o[0]; d[i + 1] = o[1]; d[i + 2] = o[2]; d[i + 3] = o[3];
+  }
+  c.putImageData(img, 0, 0);
+  return cv;
+}
+// style: "rosette" = piped cream (a dome with spiralling flutes and a small peak), "pillow" = marshmallow (soft lumps, wrap
+// light, feathered edge, almost no specular), "sphere" = a glossy bead for pointer lamps
+function rvLitBall(rgb, style) {
+  const q = (v) => (v & 0xf0) | 8, col = [q(rgb[0]), q(rgb[1]), q(rgb[2])], key = `${style}:${col}:${review.dpr}`;
   let cv = review.dollops.get(key);
   if (cv) return cv;
-  const R = 12, S = R * 2 + 4, dpr = review.dpr;
-  cv = document.createElement("canvas");
-  cv.width = cv.height = Math.ceil(S * dpr);
-  const c = cv.getContext("2d");
-  c.scale(dpr, dpr); c.translate(S / 2, S / 2);
-  const light = rvMix(col, [255, 255, 255], 0.82), mid = rvMix(col, [255, 255, 255], 0.3), shade = rvMix(col, [150, 84, 110], 0.2);
-  const g = c.createRadialGradient(-R * 0.34, -R * 0.4, R * 0.05, 0, 0, R * 1.08);
-  g.addColorStop(0, `rgb(${light})`); g.addColorStop(0.38, `rgb(${mid})`); g.addColorStop(0.72, `rgb(${col})`); g.addColorStop(1, `rgb(${shade})`);
-  c.fillStyle = g; c.beginPath(); c.arc(0, 0, R, 0, 6.2832); c.fill();
-  c.strokeStyle = `rgba(${rvMix(col, [150, 80, 104], 0.5)},0.1)`; c.lineWidth = 0.7; c.beginPath(); c.arc(0, 0, R - 0.35, 0, 6.2832); c.stroke();
-  if (review.dollops.size > 200) review.dollops.clear();
+  const white = [255, 255, 255], pillow = style === "pillow";
+  const light = rvMix(col, white, pillow ? 0.5 : 0.62), shade = pillow ? rvMix(col, [160, 118, 108], 0.4) : rvMix(col, [176, 100, 124], 0.34);
+  const RN = 12 / 14;                                    // blob radius inside the 28px sprite
+  const hf = (u, v) => {
+    const rn = Math.hypot(u, v) / RN;
+    if (rn >= 1) return 0;
+    const dome = Math.sqrt(1 - rn * rn);
+    if (style === "rosette") return dome * 0.95 + 0.085 * Math.cos(8 * Math.atan2(v, u) + 6 * rn) * rvSmooth(0.12, 0.5, rn) * (1 - rn * 0.35) + 0.08 * Math.exp(-rn * rn * 30);
+    if (pillow) return dome * 0.8 + 0.14 * rvFbm(u * 2.6 + 4, v * 2.6 + 4, 11);
+    return dome;
+  };
+  cv = rvBake(28, (u, v) => {
+    const rn = Math.hypot(u, v) / RN;
+    if (rn >= 1) return [0, 0, 0, 0];
+    const edge = pillow ? rvSmooth(1, 0.68, rn) : rvSmooth(1, 0.94, rn);
+    const [d, sp] = rvLit(hf, u, v, 0.012, pillow ? 0.8 : 1);
+    const ao = 0.72 + 0.28 * Math.min(1, Math.sqrt(Math.max(0, 1 - rn * rn)) * 1.5);
+    let t = d * ao;
+    if (pillow) t = 0.5 + 0.78 * (t - 0.42);              // wrap light: soft, but enough to read the lumps
+    t = Math.min(1, Math.max(0, t));
+    let c = t < 0.5 ? rvMix(shade, col, t / 0.5) : rvMix(col, light, (t - 0.5) / 0.5);
+    const spec = pillow ? sp * 0.05 : style === "sphere" ? sp * 0.9 : sp * 0.42;
+    if (spec > 0.01) c = rvMix(c, white, Math.min(0.72, spec));
+    return [c[0], c[1], c[2], Math.round(255 * edge)];
+  });
+  if (review.dollops.size > 260) review.dollops.clear();
   review.dollops.set(key, cv);
   return cv;
 }
+function rvCreamBall(rgb) { return rvLitBall(rgb, "rosette"); }
+function rvPuffBall(rgb) { return rvLitBall(rgb, "pillow"); }
+function rvSphere(rgb) { return rvLitBall(rgb, "sphere"); }
 
-// ---- marshmallow puff: feathered edge, pillowy light, almost no contrast (airier and softer than cream)
-function rvPuffBall(rgb) {
-  const q = (v) => (v & 0xf0) | 8, col = [q(rgb[0]), q(rgb[1]), q(rgb[2])];
-  const key = `puff:${col}:${review.dpr}`;
-  let cv = review.dollops.get(key);
+// ---- cookie surface: a lit bumpy height field with pores and hairline cracks, coloured valley-brown -> golden -> toasted high
+// points. Three variants per colour, never rotated (the light would turn with them).
+function rvCookieTile(rgb, variant) {
+  const q = (v) => (v & 0xf0) | 8, col = [q(rgb[0]), q(rgb[1]), q(rgb[2])], key = `cookie${variant}:${col}:${review.dpr}`;
+  let cv = review.tiles.get(key);
   if (cv) return cv;
-  const R = 12, S = R * 2 + 4, dpr = review.dpr;
-  cv = document.createElement("canvas");
-  cv.width = cv.height = Math.ceil(S * dpr);
-  const c = cv.getContext("2d");
-  c.scale(dpr, dpr); c.translate(S / 2, S / 2);
-  const g = c.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.05, 0, 0, R * 1.05);
-  g.addColorStop(0, rvRgba(rvMix(col, [255, 255, 255], 0.7), 0.97)); g.addColorStop(0.42, rvRgba(rvMix(col, [255, 255, 255], 0.28), 0.94));
-  g.addColorStop(0.76, rvRgba(col, 0.7)); g.addColorStop(1, rvRgba(rvMix(col, [150, 110, 100], 0.2), 0));
-  c.fillStyle = g; c.beginPath(); c.arc(0, 0, R * 1.05, 0, 6.2832); c.fill();
-  const sh = rvMix(col, [150, 108, 104], 0.5), g2 = c.createRadialGradient(R * 0.3, R * 0.36, R * 0.1, R * 0.3, R * 0.36, R * 1.15);   // a soft underside
-  g2.addColorStop(0, rvRgba(sh, 0)); g2.addColorStop(0.7, rvRgba(sh, 0.12)); g2.addColorStop(1, rvRgba(sh, 0.34));
-  c.save(); c.beginPath(); c.arc(0, 0, R * 1.0, 0, 6.2832); c.clip(); c.fillStyle = g2; c.fillRect(-R * 1.1, -R * 1.1, R * 2.2, R * 2.2); c.restore();
-  if (review.dollops.size > 260) review.dollops.clear();
-  review.dollops.set(key, cv);
+  const dark = rvMix(col, [84, 40, 14], 0.68), light = rvMix(col, [250, 214, 148], 0.5), sd = variant * 7.3 + 2;
+  const hf = (u, v) => {
+    const x = u * 2.1 + sd, y = v * 2.1 + sd * 1.3, p = rvVNoise(x * 2.2, y * 2.2, sd + 11);
+    return rvFbm(x, y, sd) * 0.8 + 0.25 * rvFbm(x * 2.3 + 9, y * 2.3, sd + 5) - 0.35 * (p > 0.8 ? (p - 0.8) / 0.2 : 0);
+  };
+  cv = rvBake(34, (u, v) => {
+    const rn = Math.hypot(u, v) / 0.88;
+    if (rn >= 1.05) return [0, 0, 0, 0];
+    const mask = rvSmooth(1.0, 0.74, rn + 0.22 * (rvVNoise(u * 5, v * 5, sd + 2) - 0.5));
+    if (mask <= 0.01) return [0, 0, 0, 0];
+    const [d] = rvLit(hf, u, v, 0.02, 3.4), h = hf(u, v);
+    const crack = rvSmooth(0.04, 0, Math.abs(rvVNoise(u * 3 + 3, v * 3 + 3, sd + 4) - 0.5));
+    const t = Math.min(1, Math.max(0, 0.26 + 0.7 * d + 0.34 * (h - 0.5) - crack * 0.5));
+    const c = t < 0.5 ? rvMix(dark, col, t / 0.5) : rvMix(col, light, (t - 0.5) / 0.5);
+    return [c[0], c[1], c[2], Math.round(255 * mask)];
+  });
+  if (review.tiles.size > 260) review.tiles.clear();
+  review.tiles.set(key, cv);
   return cv;
 }
 // ---- a tongue of energy: bright at the base, thinning to a flickering tip
@@ -6080,10 +6134,15 @@ function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
       c.strokeStyle = "#fff"; c.globalAlpha = a * 0.6; c.lineWidth = 0.7; c.beginPath(); c.moveTo(0, -r * 0.4); c.lineTo(0, r * 0.4); c.stroke();
       break;
     }
-    case "chip": {                                   // chocolate chip: rounded triangle, matte, a soft highlight
-      c.rotate(rot); c.globalAlpha = a; c.fillStyle = "rgb(72,42,30)";
-      c.beginPath(); c.moveTo(0, -r * 1.05); c.quadraticCurveTo(r * 0.95, -r * 0.45, r * 0.95, r * 0.6); c.quadraticCurveTo(0, r * 1.0, -r * 0.95, r * 0.6); c.quadraticCurveTo(-r * 0.95, -r * 0.45, 0, -r * 1.05); c.closePath(); c.fill();
-      c.globalAlpha = a * 0.55; c.fillStyle = "rgb(150,100,70)"; c.beginPath(); c.ellipse(-r * 0.25, -r * 0.3, r * 0.32, r * 0.18, -0.5, 0, 6.283); c.fill();
+    case "chip": {                                   // chocolate chunk: faceted, dark, with a soft sheen on the top-left facet
+      c.rotate(rot);
+      const f = (poly, col, al) => { c.globalAlpha = a * al; c.fillStyle = `rgb(${col})`; rvPoly(c, poly); c.fill(); };
+      const P = [[-0.1, -1.05], [0.95, -0.55], [1.0, 0.55], [0.1, 1.05], [-0.95, 0.6], [-1.0, -0.4]].map(([x, y]) => [x * r, y * r]);
+      f(P, [66, 38, 26], 1);
+      f([P[0], P[1], [0.15 * r, 0], P[5]], [110, 70, 50], 0.95);
+      f([P[1], P[2], P[3], [0.15 * r, 0]], [48, 27, 18], 0.9);
+      c.globalAlpha = a * 0.5; c.strokeStyle = "rgb(30,16,10)"; c.lineWidth = 0.6; rvPoly(c, P); c.stroke();
+      c.globalAlpha = a * 0.6; c.fillStyle = "rgb(190,140,110)"; c.beginPath(); c.ellipse(-r * 0.32, -r * 0.4, r * 0.26, r * 0.12, -0.6, 0, 6.283); c.fill();
       break;
     }
     case "crumb": {
@@ -6410,101 +6469,111 @@ function paintGloss(S) {
   paintHighlights(S, { bodyR: 6.8, specR: 1.55, specA: 0.95, softK: 3.4, softA: 0.2, backA: 0.22 });
 }
 
-// jelly: plump and bouncy. A bulge travels along the body, the colour is deep with a glowing core, the lower edge catches
-// coloured light, and glossy "window" highlights sit on the shoulder
+// jelly: plump, glossy, translucent. A bulge travels along the body; colour is deep at the rim and glows through the core; it
+// throws coloured light onto the paper (not a grey shadow); trapped air bubbles; a sugar sanding; glossy "window" highlights.
 function paintJelly(S) {
-  paintShadow(S, 8, 0.16, 1.2, 2.8);
+  const { c, n, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK } = S;
+  const R = 8.6 * sizeMul * penK;
+  for (let i = 0; i < n; i += 2) {                       // coloured light pooling beneath
+    const I = vi[i];
+    if (I < 0.04) continue;
+    const r = 9.4 * sizeMul * penK * (0.5 + 0.5 * Math.pow(I, 0.6)) * vw[i];
+    c.globalAlpha = 0.3 * Math.pow(I, 0.8);
+    c.drawImage(reviewSprite(RV_SOFT, vc[i]), vx[i] + 1.8 * sizeMul - r * 1.15, vy[i] + 3.6 * sizeMul - r * 0.8, r * 2.3, r * 1.6);
+  }
+  paintShadow(S, 6.4, 0.1, 1.2, 2.8);
   stampLayers(S);
-  const { c, now, n, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK } = S;
-  const soft = reviewSprite(RV_SOFT, [255, 255, 255]), R = 7.9 * sizeMul * penK;
-  for (let i = 0; i < n; i += 2) {                    // coloured light bouncing up from the lower edge
+  for (let i = 0; i < n; i += 2) {                       // coloured light bouncing up from the lower edge
     const I = vi[i];
     if (I < 0.05) continue;
     const dot = vnx[i] * -0.62 + vny[i] * -0.78, off = -dot * R * 0.55 * vw[i], r = R * 0.42 * vw[i];
-    c.globalAlpha = 0.3 * Math.abs(dot) * Math.pow(I, 0.8);
+    c.globalAlpha = 0.32 * Math.abs(dot) * Math.pow(I, 0.8);
     c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [255, 255, 255], 0.4)), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
   }
-  paintHighlights(S, { bodyR: 7.9, specR: 1.5, specA: 0.9, softK: 4.8, softA: 0.5, backA: 0.4 });
-  rvWalk(S, 30 * sizeMul, (j, k) => {                 // glossy windows
+  paintHighlights(S, { bodyR: 8.6, specR: 1.6, specA: 0.92, softK: 4.8, softA: 0.5, backA: 0.4 });
+  rvWalk(S, 15 * sizeMul, (j, k) => {                    // trapped air bubbles
+    if (rvHash(k * 1.7) > 0.42) return;
+    const I = vi[j];
+    if (I < 0.06) return;
+    const off = (rvHash(k * 2.9) - 0.5) * R * 0.9 * vw[j], r = (0.9 + 1.3 * rvHash(k * 3.7)) * sizeMul, x = vx[j] + vnx[j] * off, y = vy[j] + vny[j] * off, al = Math.pow(I, 0.8);
+    c.globalAlpha = 0.3 * al; c.fillStyle = "#fff"; c.beginPath(); c.arc(x, y, r, 0, 6.283); c.fill();
+    c.globalAlpha = 0.5 * al; c.strokeStyle = `rgb(${rvMix(vc[j], [34, 0, 56], 0.5)})`; c.lineWidth = 0.5; c.stroke();
+    c.globalAlpha = 0.85 * al; c.fillStyle = "#fff"; c.beginPath(); c.arc(x - r * 0.3, y - r * 0.32, Math.max(0.3, r * 0.28), 0, 6.283); c.fill();
+  });
+  rvWalk(S, 30 * sizeMul, (j, k) => {                    // glossy windows
     const I = vi[j];
     if (I < 0.06) return;
     const dot = vnx[j] * -0.62 + vny[j] * -0.78, off = dot * R * 0.44 * vw[j];
     const tx = vny[j], ty = -vnx[j], half = (5 + 3.5 * rvHash(k * 1.3)) * sizeMul * vw[j];
     const cx = vx[j] + vnx[j] * off, cy = vy[j] + vny[j] * off;
-    c.globalAlpha = 0.88 * Math.pow(I, 0.8) * (0.5 + 0.5 * Math.abs(dot)); c.strokeStyle = "#fff"; c.lineCap = "round"; c.lineWidth = 2.4 * sizeMul;
+    c.globalAlpha = 0.9 * Math.pow(I, 0.8) * (0.5 + 0.5 * Math.abs(dot)); c.strokeStyle = "#fff"; c.lineCap = "round"; c.lineWidth = 2.5 * sizeMul;
     c.beginPath(); c.moveTo(cx - tx * half, cy - ty * half); c.lineTo(cx + tx * half, cy + ty * half); c.stroke();
-    c.globalAlpha *= 0.8; c.beginPath(); c.arc(cx + tx * (half + 3.6 * sizeMul), cy + ty * (half + 3.6 * sizeMul), 0.9 * sizeMul, 0, 6.283); c.fillStyle = "#fff"; c.fill();
+    c.globalAlpha *= 0.8; c.beginPath(); c.arc(cx + tx * (half + 3.6 * sizeMul), cy + ty * (half + 3.6 * sizeMul), 0.95 * sizeMul, 0, 6.283); c.fillStyle = "#fff"; c.fill();
   });
-  rvWalk(S, 3.4 * sizeMul, (j, k) => {                // a few sugar crystals
-    if (rvHash(k * 1.9) > 0.14) return;
+  rvWalk(S, 2.2 * sizeMul, (j, k) => {                   // sugar sanding: dense fine crystals, some clear, some tinted
+    if (rvHash(k * 1.9) > 0.5) return;
     const I = vi[j];
     if (I < 0.05) return;
-    const off = (rvHash(k * 2.7) - 0.5) * 11 * sizeMul * penK * vw[j];
-    c.globalAlpha = 0.55 * Math.pow(I, 0.8); c.fillStyle = "#fff";
-    c.beginPath(); c.arc(vx[j] + vnx[j] * off, vy[j] + vny[j] * off, 0.5 + 0.6 * rvHash(k * 3.1), 0, 6.283); c.fill();
+    const off = (rvHash(k * 2.7) - 0.5) * 2 * R * 0.95 * vw[j], h = rvHash(k * 3.1);
+    c.globalAlpha = 0.6 * Math.pow(I, 0.8); c.fillStyle = h > 0.5 ? "#fff" : `rgb(${rvMix(vc[j], [255, 255, 255], 0.65)})`;
+    c.beginPath(); c.arc(vx[j] + vnx[j] * off, vy[j] + vny[j] * off, 0.35 + 0.55 * h, 0, 6.283); c.fill();
   });
   c.globalAlpha = 1;
 }
 
-function paintCream(S) {                               // whipped cream: a puffy mass of soft shaded balls, with the occasional curled peak
+function paintCream(S) {                               // piped whipped cream: lit rosettes with spiral flutes, a stacked "kiss" now and then
   const { c, vx, vy, vnx, vny, vi, vc, sizeMul, penK } = S;
-  paintShadow(S, 7.6, 0.12, 1.0, 2.6);
-  rvWalk(S, 2.5 * sizeMul * penK, (j, k) => {
+  paintShadow(S, 7.8, 0.14, 1.0, 2.8);
+  stampLayers(S);                                       // a smooth underlay, so the rope never shows gaps between rosettes
+  rvWalk(S, 4.3 * sizeMul * penK, (j, k) => {
     const I = vi[j];
     if (I < 0.03) return;
-    const sc = (0.55 + 0.45 * Math.pow(I, 0.5)) * sizeMul * penK, big = rvHash(k * 3.1) > 0.9;
-    const rad = (4.4 + 4.8 * Math.pow(rvHash(k * 1.7 + 2), 1.4)) * (big ? 1.45 : 1) * sc;
-    const off = (rvHash(k * 2.9 + 5) - 0.5) * 2 * 4.4 * sc, x = vx[j] + vnx[j] * off, y = vy[j] + vny[j] * off;
+    const sc = (0.58 + 0.42 * Math.pow(I, 0.5)) * sizeMul * penK, peak = rvHash(k * 3.1) > 0.9;
+    const rad = (5.8 + 4 * Math.pow(rvHash(k * 1.7 + 2), 1.3)) * (peak ? 1.45 : 1) * sc;
+    const off = (rvHash(k * 2.9 + 5) - 0.5) * 2 * 2.6 * sc, x = vx[j] + vnx[j] * off, y = vy[j] + vny[j] * off;
     const ball = rvCreamBall(vc[j]), w = rad * 2 * (28 / 24), al = Math.min(1, Math.pow(I, 0.7));
-    c.globalAlpha = al; c.drawImage(ball, x - w / 2, y - w / 2, w, w);
-    if (big) {                                          // a peak: a smaller curl riding on top
-      const r2 = rad * 0.5, w2 = r2 * 2 * (28 / 24), tx = vny[j] * rad * 0.35, ty = -vnx[j] * rad * 0.35;
-      c.drawImage(ball, x + tx - w2 / 2, y + ty - rad * 0.62 - w2 / 2, w2, w2);
+    c.save(); c.translate(x, y); c.rotate((rvHash(k * 4.3) - 0.5) * 0.7); c.globalAlpha = al; c.drawImage(ball, -w / 2, -w / 2, w, w); c.restore();
+    if (peak) {
+      const r2 = rad * 0.62, w2 = r2 * 2 * (28 / 24);
+      c.globalAlpha = al; c.drawImage(ball, x + (rvHash(k * 5.1) - 0.5) * rad * 0.3 - w2 / 2, y - rad * 0.45 - w2 / 2, w2, w2);
     }
   });
   c.globalAlpha = 1;
 }
 
-function paintCrumb(S) {                               // cookie: baked dough with a browned rim, bumpy edge, matte crumbs and pores
-  const { c, n, va, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK, seed } = S;
+function paintCrumb(S) {                               // cookie: browned rim, a lit bumpy surface with pores and cracks
+  const { c, n, va, vx, vy, vi, vc, vw, sizeMul, penK, seed } = S;
   const wid = [];
   for (let i = 0; i < n; i++) wid.push(0.8 + 0.34 * rvNoise(va[i] / 8, seed + 1.3) + 0.1 * rvNoise(va[i] / 3, seed + 5.1));   // irregular, bumpy edge
   S.wid = wid;
-  paintShadow(S, 7.4, 0.14, 1.0, 2.2);
-  stampLayers(S);
-  const soft = reviewSprite(RV_SOFT, [255, 255, 255]), R = 6.4 * sizeMul * penK;
-  for (let i = 0; i < n; i += 2) {                     // matte golden top-light (volume, not shine)
-    const I = vi[i];
-    if (I < 0.05) continue;
-    const dot = vnx[i] * -0.62 + vny[i] * -0.78, off = dot * R * 0.3 * wid[i], r = R * 0.55 * wid[i] * vw[i];
-    c.globalAlpha = 0.22 * (0.5 + 0.5 * Math.abs(dot)) * Math.pow(I, 0.8);
-    c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [255, 222, 150], 0.55)), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
-  }
-  rvWalk(S, 4.8 * sizeMul * penK, (j, k) => {
+  paintShadow(S, 7.4, 0.16, 1.0, 2.4);
+  stampLayers(S);                                       // browned edge + dough underlay
+  rvWalk(S, 3.4 * sizeMul * penK, (j, k) => {
     const I = vi[j];
     if (I < 0.02) return;
-    const sc = (0.5 + 0.5 * Math.pow(I, 0.5)) * vw[j] * wid[j];
-    rvStamp(c, rvTile("crumb", vc[j]), vx[j], vy[j], 8.8 * sizeMul * penK * sc, rvHash(k * 1.7) * 6.283, Math.pow(I, 0.65));
+    const sc = (0.5 + 0.5 * Math.pow(I, 0.5)) * vw[j] * wid[j], rad = 8.6 * sizeMul * penK * sc;
+    c.globalAlpha = Math.pow(I, 0.65);
+    c.drawImage(rvCookieTile(vc[j], Math.floor(rvHash(k * 1.9) * 3)), vx[j] - rad, vy[j] - rad, rad * 2, rad * 2);
   });
   c.globalAlpha = 1;
 }
 
 function paintComet(S) { stampLayers(S); paintGlints(S, S.brush.dust); }
 
-// marshmallow / meringue: big, airy, feathered puffs with almost no contrast. They breathe slowly, rise into soft peaks, a
-// few peaks are torched golden at the tip, and a little powdered sugar dusts the surroundings
+// marshmallow / meringue: big, airy, lit pillows with a feathered edge and almost no contrast. They breathe slowly, rise into
+// soft peaks (a few torched golden at the tip) and a little powdered sugar dusts the surroundings
 function paintPuff(S) {
   const { c, now, vx, vy, vnx, vny, vi, vc, sizeMul, penK } = S;
   paintShadow(S, 9, 0.16, 0.8, 2.6);
-  rvWalk(S, 3.6 * sizeMul * penK, (j, k) => {
+  rvWalk(S, 3.8 * sizeMul * penK, (j, k) => {
     const I = vi[j];
     if (I < 0.03) return;
     const sc = (0.6 + 0.4 * Math.pow(I, 0.5)) * sizeMul * penK, breathe = reducedMotionQuery.matches ? 1 : 1 + 0.045 * Math.sin(now * 0.0028 + k * 0.7);
-    const rad = (6 + 5.6 * Math.pow(rvHash(k * 1.7 + 2), 1.2)) * sc * breathe;
+    const rad = (6.4 + 5.6 * Math.pow(rvHash(k * 1.7 + 2), 1.2)) * sc * breathe;
     const off = (rvHash(k * 2.9 + 5) - 0.5) * 2 * 4.8 * sc, x = vx[j] + vnx[j] * off, y = vy[j] + vny[j] * off, al = Math.min(1, Math.pow(I, 0.7));
     const ball = rvPuffBall(vc[j]), w = rad * 2 * (28 / 24);
     c.globalAlpha = al; c.drawImage(ball, x - w / 2, y - w / 2, w, w);
-    if (rvHash(k * 3.1) > 0.87) {                       // a soft peak: three shrinking puffs leaning to one side, the last one maybe toasted
+    if (rvHash(k * 3.1) > 0.87) {                       // a soft peak: three shrinking pillows leaning to one side, the last maybe toasted
       const lean = (rvHash(k * 4.7) - 0.5) * 2, toast = rvHash(k * 5.3) > 0.5;
       [[0, 0.7, 0.72], [lean * 0.3, 1.25, 0.52], [lean * 0.55, 1.68, 0.32]].forEach(([dx, dy, rs], q) => {
         const r2 = rad * rs, w2 = r2 * 2 * (28 / 24), b2 = q === 2 && toast ? rvPuffBall(rvMix(vc[j], [232, 176, 108], 0.5)) : ball;
@@ -6798,7 +6867,7 @@ function paintLamp(c, o, x, y, a, now) {
     case "jelly": drawGlyph(c, "bead", x, y, 5.8 * sizeMul * (0.96 + 0.06 * breath), 0, col, a, 0.5, 1); rvAdd(x, y, 14 * sizeMul); break;
     case "puff": case "matcha": { const rp = (kind === "puff" ? 8 : 7) * sizeMul * (0.96 + 0.07 * breath), wp = rp * 2 * (28 / 24); c.globalAlpha = a; c.drawImage(rvPuffBall(col), x - wp / 2, y - wp / 2, wp, wp); rvAdd(x, y, 14 * sizeMul); break; }
     case "ganache": case "chrome": {
-      const rg = 5.6 * sizeMul, wg = rg * 2 * (28 / 24); c.globalAlpha = a; c.drawImage(rvCreamBall(col), x - wg / 2, y - wg / 2, wg, wg);
+      const rg = 5.6 * sizeMul, wg = rg * 2 * (28 / 24); c.globalAlpha = a; c.drawImage(rvSphere(col), x - wg / 2, y - wg / 2, wg, wg);
       const rs = 1.6 * sizeMul; c.globalAlpha = a * 0.9; c.drawImage(reviewSprite(RV_SPEC, white), x - 1.8 * sizeMul - rs, y - 1.9 * sizeMul - rs, rs * 2, rs * 2);
       rvAdd(x, y, 12 * sizeMul); break;
     }

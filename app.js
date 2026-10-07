@@ -264,56 +264,12 @@ const EFFECT_PRESETS = {
     secondary: "#ffc36f",
     aura: "rgba(138, 167, 255, 0.2)"
   },
-  "neon-rain": {
-    label: "Neon Rain",
-    description: "Thin luminous drops scan directly through the typed glyph, tight and tactile.",
-    particles: 8,
-    life: 360,
-    core: 1.22,
-    spread: 13.8,
-    lift: 0.4,
-    glyphX: 0.3,
-    glyphY: 1.28,
-    glyphScale: 1.01,
-    glyphRotate: 0.12,
-    special: 0.28,
-    primary: "#54e5ff",
-    secondary: "#ff72d2",
-    aura: "rgba(84, 229, 255, 0.24)"
-  },
-  "velvet-smoke": {
-    label: "Velvet Smoke",
-    description: "A soft smoky bloom wraps the latest glyph, then dissolves into paper-like haze.",
-    particles: 6,
-    life: 820,
-    core: 1.08,
-    spread: 18.8,
-    lift: 3.8,
-    glyphX: -0.54,
-    glyphY: 0.9,
-    glyphScale: 1.018,
-    glyphRotate: -0.18,
-    special: 0.16,
-    primary: "#8d8092",
-    secondary: "#d7c7da",
-    aura: "rgba(141, 128, 146, 0.16)"
-  },
-  "ember-glow": {
-    label: "Comet Tail",
-    description: "A bright diagonal comet slash pulls a short warm tail off the glyph.",
-    particles: 8,
-    life: 520,
-    core: 1.34,
-    spread: 24.6,
-    lift: 4.2,
-    glyphX: 1.08,
-    glyphY: -0.72,
-    glyphScale: 1.022,
-    glyphRotate: 0.9,
-    special: 0.3,
-    primary: "#ff9b5c",
-    secondary: "#7de7ff",
-    aura: "rgba(255, 155, 92, 0.23)"
+  "neon-rain": {     // a lone neon tube in a rainy night: pink/cyan, rain falling through the glow at one angle, wet reflection, puddle ripples
+    own: [[84, 229, 255], [255, 114, 210]],
+    shimmer: null,
+    shed: { gap: 14, shape: "rain", size: [8, 13], speed: [420, 500], angle: -0.2, nodrag: true, upstream: [28, 84], life: [340, 470] },
+    rest: { count: 2, shape: "ripple", size: [6, 8], speed: [0, 0], life: [1000, 1300], scatter: 11 },
+    line: { halo: 2.5, core: 1.35, flicker: true, rim: [84, 229, 255], reflect: true }
   },
   "laser-etch": {
     label: "Laser Etch",
@@ -1032,9 +988,18 @@ const FONTS = {
   cafe24: fontDef("부드러운·귀여운", "카페24 써라운드", "Cafe24Ssurround"),
   hiMelody: fontDef("부드러운·귀여운", "하이멜로디", "Hi Melody", { css: G, adjust: 1.1 }),
   gamja: fontDef("부드러운·귀여운", "감자꽃", "Gamja Flower", { css: G, adjust: 1.1 }),
+  jua: fontDef("부드러운·귀여운", "주아", "Jua", { css: G }),
+  singleDay: fontDef("부드러운·귀여운", "싱글데이", "Single Day", { css: G, adjust: 1.05 }),
+  poorStory: fontDef("부드러운·귀여운", "푸어스토리", "Poor Story", { css: G, adjust: 1.08 }),
+  cuteFont: fontDef("부드러운·귀여운", "귀여운 폰트", "Cute Font", { css: G, adjust: 1.1 }),
+  omyu: fontDef("부드러운·귀여운", "오뮤 다예쁨체", "omyu_pretty", { adjust: 1.05 }),
+  binggrae: fontDef("부드러운·귀여운", "빙그레체", "Binggrae"),
   // 손글씨
   hand: fontDef("손글씨", "개구 Gaegu", "Gaegu", { css: G, adjust: 1.12 }),
   kyobo: fontDef("손글씨", "교보손글씨 2019", "KyoboHand"),
+  penScript: fontDef("손글씨", "나눔손글씨 펜", "Nanum Pen Script", { css: G, adjust: 1.3 }),
+  ownglyph: fontDef("손글씨", "온글잎 박다현체", "Ownglyph_ParkDaHyun", { adjust: 1.15 }),
+  leeSeoyun: fontDef("손글씨", "이서윤체", "LeeSeoyun", { adjust: 1.1 }),
   // 디스플레이
   gmarket: fontDef("디스플레이", "지마켓산스", "GmarketSans", { css: "GmarketSans" }),
   bagel: fontDef("디스플레이", "베이글팻원 Bagel Fat One", "Bagel Fat One", { css: G }),
@@ -1193,14 +1158,14 @@ function loadPrefs() {
     if (!FONTS[prefs.font]) prefs.font = defaultPrefs.font;
     prefs.volume = clamp01(Number(prefs.volume));
     prefs.intensity = clamp01(Number(prefs.intensity));
-    prefs.fontSize = clamp(Number(prefs.fontSize), 12, 36);
+    prefs.fontSize = clamp(Number(prefs.fontSize), 8, 36);
     if (!("reviewLook" in saved)) {                      // first run of Review 2.0: start from the Ember look
       prefs.reviewLook = "laser"; prefs.reviewColor = "coral"; prefs.reviewFx = "none"; prefs.reviewBrush = "laser"; prefs.reviewSize = "m";
     }
     if (typeof prefs.reviewLook !== "string") prefs.reviewLook = "laser";
     if (typeof prefs.reviewColor !== "string") prefs.reviewColor = defaultPrefs.reviewColor;
     if (typeof prefs.reviewFx !== "string") prefs.reviewFx = "none";
-    if (!["laser", "comet", "veil", "ribbon", "glitter", "dazzle", "gloss", "jelly", "cream", "crumb", "biscuit"].includes(prefs.reviewBrush)) prefs.reviewBrush = "laser";
+    if (!["laser", "comet", "veil", "ribbon", "glitter", "dazzle", "gloss", "jelly", "cream", "crumb", "puff", "ganache", "matcha", "aura", "slash", "magma", "chrome", "biscuit"].includes(prefs.reviewBrush)) prefs.reviewBrush = "laser";
     if (!["s", "m", "l"].includes(prefs.reviewSize)) prefs.reviewSize = "m";
     if (!["spot", "ruler", "off"].includes(prefs.reviewLens)) prefs.reviewLens = "spot";
     if (!["s", "m", "l"].includes(prefs.reviewLensSize)) prefs.reviewLensSize = "m";
@@ -4604,13 +4569,21 @@ const REVIEW = {
     { id: "scream",   group: "sweet",   label: "Strawberry cream", rgb: [255, 172, 192] },
     { id: "biscuit",  group: "sweet",   label: "Biscuit",   rgb: [210, 152, 86] },
     { id: "grape",    group: "sweet",   label: "Grape jelly", rgb: [148, 92, 210] },
+    { id: "marsh",    group: "sweet",   label: "Marshmallow", rgb: [250, 232, 220] },
+    { id: "ganache",  group: "sweet",   label: "Ganache",   rgb: [72, 42, 32] },
+    { id: "matcha",   group: "sweet",   label: "Matcha",    rgb: [156, 184, 114] },
     { id: "glam",     group: "shine",   label: "Glam pink", rgb: [232, 84, 158] },
     { id: "rosegold", group: "shine",   label: "Rose gold", rgb: [226, 146, 134] },
     { id: "champagne",group: "shine",   label: "Champagne", rgb: [232, 190, 104] },
     { id: "silver",   group: "shine",   label: "Silver",    rgb: [226, 235, 250] },
+    { id: "ki",       group: "game",    label: "Ki gold",   rgb: [255, 170, 44] },
+    { id: "lava",     group: "game",    label: "Lava",      rgb: [255, 104, 28] },
+    { id: "steel",    group: "game",    label: "Steel",     rgb: [184, 196, 214] },
+    { id: "ice",      group: "game",    label: "Ice blade", rgb: [132, 210, 255] },
     { id: "iris",  group: "flow", label: "Iris",  period: 4000, grad: [[255, 138, 138], [255, 211, 106], [147, 224, 143], [111, 202, 255], [182, 144, 255], [255, 138, 138]] },
     { id: "holo",  group: "flow", label: "Holo",  period: 5200, grad: [[255, 168, 214], [190, 170, 255], [140, 214, 255], [160, 240, 214], [255, 230, 160], [255, 168, 214]] },
     { id: "gems",  group: "flow", label: "Gemstones", period: 6000, scatter: true, grad: [[222, 38, 70], [236, 58, 160], [244, 168, 30], [150, 208, 50], [30, 168, 110], [30, 188, 220], [50, 100, 230], [140, 70, 210], [222, 38, 70]] },
+    { id: "flame", group: "flow", label: "Flame", period: 2600, grad: [[255, 236, 130], [255, 150, 40], [255, 72, 30], [255, 150, 40], [255, 236, 130]] },
     { id: "pearl", group: "flow", label: "Pearl", period: 7000, grad: [[255, 206, 222], [214, 206, 255], [176, 226, 255], [255, 244, 214], [255, 206, 222]] },
     { id: "auto",  group: "auto", label: "Auto — the accent's own colours" }
   ],
@@ -4639,8 +4612,7 @@ const REVIEW = {
       { R: 5.4, stops: [[0, 0.62], [0.6, 0.55], [0.9, 0.2], [1, 0]],    stride: 1, white: 0 },
       { R: 2.2, stops: [[0, 0.7], [0.6, 0.4], [1, 0]],                  stride: 1, white: 0.6 }
     ] },
-    glitter: { label: "Glitter", kind: "glitter", life: 2000, taper: [0.5, 0.5], speedW: 0.05,
-      flare: { shape: "glint", every: 22, prob: 0.9, size: [2.4, 9.5], life: 600, spread: 1.15 }, layers: [
+    glitter: { label: "Glitter", kind: "glitter", life: 2000, taper: [0.5, 0.5], speedW: 0.05, layers: [
       { R: 12,  stops: [[0, 0.05], [0.45, 0.03], [0.8, 0.008], [1, 0]], stride: 3, white: 0 },
       { R: 5.4, stops: [[0, 0.5], [0.75, 0.45], [0.95, 0.16], [1, 0]],   stride: 1, white: 0.08, mix: [[70, 18, 52], 0.1] }
     ] },
@@ -4653,19 +4625,43 @@ const REVIEW = {
       { R: 6.8, stops: [[0, 0.21], [0.7, 0.19], [0.93, 0.1], [1, 0]],               stride: 1, white: 0.36 },
       { R: 4.2, stops: [[0, 0.34], [1, 0]],                                          stride: 1, white: 0.72 }
     ] },
-    jelly: { label: "Jelly", kind: "jelly", life: 2100, taper: [0.4, 0.6], speedW: 0.2, layers: [
-      { R: 8.6, stops: [[0, 0], [0.5, 0], [0.74, 0.42], [0.92, 0.5], [1, 0]],       stride: 1, white: 0, mix: [[36, 6, 56], 0.5] },
-      { R: 7.2, stops: [[0, 0.3], [0.75, 0.28], [0.94, 0.16], [1, 0]],              stride: 1, white: 0.02 },
-      { R: 4.4, stops: [[0, 0.42], [1, 0]],                                          stride: 1, white: 0.52 }
+    jelly: { label: "Jelly", kind: "jelly", life: 2100, taper: [0.45, 0.6], speedW: 0.2, layers: [
+      { R: 9.4, stops: [[0, 0], [0.5, 0], [0.76, 0.46], [0.92, 0.56], [1, 0]],      stride: 1, white: 0, mix: [[40, 6, 64], 0.5] },
+      { R: 7.9, stops: [[0, 0.36], [0.78, 0.34], [0.95, 0.2], [1, 0]],              stride: 1, white: 0.02 },
+      { R: 5.0, stops: [[0, 0.5], [1, 0]],                                           stride: 1, white: 0.5 }
     ] },
-    cream: { label: "Cream", kind: "cream", life: 2400, taper: [0.55, 0.5], speedW: 0, layers: [], dollop: { step: 9.5, lx: 14, ly: 10.4 } },
-    crumb: { label: "Cookie", kind: "crumb", life: 2400, taper: [0.5, 0.5], speedW: 0.08,
-      flare: { shape: "sugar", every: 70, prob: 0.5, size: [1.6, 3.2], life: 900, spread: 1.0 }, layers: [
-      { R: 8.0, stops: [[0, 0], [0.5, 0], [0.72, 0.62], [0.93, 0.7], [1, 0]],        stride: 1, white: 0, mix: [[92, 48, 20], 0.62] },
-      { R: 6.2, stops: [[0, 0.9], [0.82, 0.84], [0.96, 0.4], [1, 0]],               stride: 1, white: 0.14, mix: [[236, 184, 108], 0.18] }
+    cream: { label: "Cream", kind: "cream", life: 2400, taper: [0.55, 0.5], speedW: 0, layers: [] },
+    puff: { label: "Marshmallow", kind: "puff", life: 2500, taper: [0.55, 0.5], speedW: 0, layers: [] },
+    ganache: { label: "Ganache", kind: "ganache", life: 2300, taper: [0.45, 0.6], speedW: 0.18, layers: [
+      { R: 8.6, stops: [[0, 0], [0.5, 0], [0.74, 0.55], [0.92, 0.72], [1, 0]],      stride: 1, white: 0, mix: [[16, 7, 5], 0.62] },
+      { R: 7.2, stops: [[0, 0.97], [0.82, 0.95], [0.96, 0.55], [1, 0]],             stride: 1, white: 0 },
+      { R: 4.6, stops: [[0, 0.36], [1, 0]],                                          stride: 1, white: 0.12, mix: [[196, 134, 98], 0.2] }
+    ] },
+    matcha: { label: "Matcha", kind: "matcha", life: 2300, taper: [0.5, 0.5], speedW: 0.1, layers: [
+      { R: 13,   stops: [[0, 0.26], [0.6, 0.18], [1, 0]],                           stride: 2, white: 0.62 },
+      { R: 8.2,  stops: [[0, 0.7], [0.72, 0.62], [0.94, 0.16], [1, 0]],             stride: 1, white: 0.02 },
+      { R: 4.2,  stops: [[0, 0.4], [1, 0]],                                          stride: 1, white: 0, mix: [[56, 88, 38], 0.4] }
+    ] },
+    aura: { label: "Aura", kind: "aura", life: 1500, taper: [0.2, 1], speedW: 0, alphaPow: 0.9, layers: [
+      { R: 22,  stops: [[0, 0.09], [0.4, 0.05], [0.8, 0.012], [1, 0]],              stride: 3, white: 0,    fade: 0.7, taper: [0.3, 0.8] },
+      { R: 7.5, stops: [[0, 0.5], [0.55, 0.35], [0.9, 0.1], [1, 0]],                stride: 1, white: 0.1,  fade: 1.0, taper: [0.2, 1.1] },
+      { R: 2.6, stops: [[0, 1], [0.7, 0.9], [1, 0]],                                stride: 1, white: 0.85, fade: 1.2, taper: [0.15, 1.2] }
+    ] },
+    slash: { label: "Slash", kind: "slash", life: 720, taper: [1, 1], speedW: 0, layers: [] },
+    magma: { label: "Magma", kind: "magma", life: 2200, taper: [0.45, 0.6], speedW: 0.12, layers: [
+      { R: 18,  stops: [[0, 0.08], [0.5, 0.04], [1, 0]],                            stride: 3, white: 0, fade: 0.9 },
+      { R: 7.6, stops: [[0, 0.9], [0.8, 0.86], [0.96, 0.5], [1, 0]],                stride: 1, white: 0, mix: [[28, 15, 15], 0.88] }
+    ] },
+    chrome: { label: "Chrome", kind: "chrome", life: 2000, taper: [0.4, 0.6], speedW: 0.2, layers: [
+      { R: 8.2, stops: [[0, 0], [0.52, 0], [0.74, 0.7], [0.93, 0.86], [1, 0]],      stride: 1, white: 0, mix: [[16, 20, 34], 0.72] },
+      { R: 6.8, stops: [[0, 0.95], [0.84, 0.92], [0.97, 0.5], [1, 0]],              stride: 1, white: 0 }
+    ] },
+    crumb: { label: "Cookie", kind: "crumb", life: 2400, taper: [0.5, 0.5], speedW: 0.06, layers: [
+      { R: 8.2, stops: [[0, 0], [0.5, 0], [0.72, 0.66], [0.93, 0.74], [1, 0]],      stride: 1, white: 0, mix: [[94, 50, 22], 0.62] },
+      { R: 6.4, stops: [[0, 0.92], [0.84, 0.88], [0.97, 0.42], [1, 0]],             stride: 1, white: 0.08, mix: [[226, 172, 98], 0.16] }
     ] }
   },
-  tabs: [["light", "Light"], ["shine", "Shine"], ["sweet", "Sweet"]],
+  tabs: [["light", "Light"], ["shine", "Shine"], ["sweet", "Sweet"], ["game", "Game"]],
   looks: [
     { id: "laser",  group: "light", label: "Laser",  title: "Laser pointer",  color: "coral",    fx: "none",         brush: "laser",   size: "m" },
     { id: "comet",  group: "light", label: "Comet",  title: "Comet",          color: "sky",      fx: "star-dust",    brush: "comet",   size: "m" },
@@ -4675,15 +4671,23 @@ const REVIEW = {
     { id: "neon",   group: "light", label: "Neon",   title: "Midnight neon",  color: "rose",     fx: "neon-rain",    brush: "laser",   size: "m" },
     { id: "pixel",  group: "light", label: "Pixel",  title: "Pixel",          color: "violet",   fx: "pixel",        brush: "laser",   size: "m" },
     { id: "soap",   group: "light", label: "Bubble", title: "Soap bubbles",   color: "sky",      fx: "bubble",       brush: "veil",    size: "m" },
-    { id: "glitter",  group: "shine", label: "Glitter",  title: "Glitter",       color: "glam",      fx: "glitter-dust", brush: "glitter", size: "m" },
-    { id: "rosegold", group: "shine", label: "Rose Gold",title: "Rose-gold glitter", color: "rosegold", fx: "star-dust",  brush: "glitter", size: "m" },
+    { id: "glitter",  group: "shine", label: "Glitter",  title: "Glitter",       color: "glam",      fx: "none", brush: "glitter", size: "m" },
+    { id: "rosegold", group: "shine", label: "Rose Gold",title: "Rose-gold glitter", color: "rosegold", fx: "none",  brush: "glitter", size: "m" },
     { id: "dazzle",   group: "shine", label: "Dazzling", title: "Dazzling gemstones", color: "gems",   fx: "crystal-glass", brush: "dazzle", size: "m" },
     { id: "diamond",  group: "shine", label: "Diamond",  title: "Diamond crystals",  color: "silver",    fx: "star-dust",  brush: "dazzle",  size: "m" },
-    { id: "lipoil",   group: "shine", label: "Lip Oil",  title: "Lip oil",       color: "nude",      fx: "oil-bead",    brush: "gloss",   size: "m" },
+    { id: "lipoil",   group: "shine", label: "Lip Oil",  title: "Lip oil",       color: "nude",      fx: "none",    brush: "gloss",   size: "m" },
     { id: "pearl",    group: "shine", label: "Pearl",    title: "Pearl gloss",   color: "pearl",     fx: "moon-pearl",  brush: "gloss",   size: "m" },
     { id: "cream",  group: "sweet", label: "Cream",  title: "Strawberry cream", color: "scream",  fx: "sw-berry",  brush: "cream", size: "m" },
     { id: "cookie", group: "sweet", label: "Cookie", title: "Choc-chip cookie", color: "biscuit", fx: "sw-crumbs", brush: "crumb", size: "m" },
-    { id: "jelly",  group: "sweet", label: "Jelly",  title: "Grape jelly",      color: "grape",   fx: "sw-sugar",  brush: "jelly", size: "m" }
+    { id: "jelly",  group: "sweet", label: "Jelly",  title: "Grape jelly",      color: "grape",   fx: "none",  brush: "jelly", size: "m" },
+    { id: "mallow", group: "sweet", label: "Mallow", title: "Marshmallow / meringue", color: "marsh", fx: "none", brush: "puff", size: "m" },
+    { id: "ganache",group: "sweet", label: "Ganache",title: "Chocolate ganache", color: "ganache", fx: "none",  brush: "ganache", size: "m" },
+    { id: "matcha", group: "sweet", label: "Matcha", title: "Matcha latte cream", color: "matcha", fx: "none", brush: "matcha", size: "m" },
+    { id: "aura",   group: "game", label: "Aura",   title: "Energy aura",   color: "ki",     fx: "firefly-glow", brush: "aura",   size: "m" },
+    { id: "slash",  group: "game", label: "Slash",  title: "Blade slash",   color: "ice",    fx: "none",         brush: "slash",  size: "m" },
+    { id: "magma",  group: "game", label: "Magma",  title: "Molten magma",  color: "lava",   fx: "ember-glow",   brush: "magma",  size: "m" },
+    { id: "chrome", group: "game", label: "Chrome", title: "Liquid metal",  color: "steel",  fx: "none",         brush: "chrome", size: "m" },
+    { id: "storm",  group: "game", label: "Storm",  title: "Thunder",       color: "violet", fx: "electric",     brush: "comet",  size: "m" }
   ],
   penLife: 3200, pingLife: 760
 };
@@ -5096,7 +5100,7 @@ function onReviewDown(event) {
   feedTrail(event.clientX, event.clientY, now);
   review.mx = event.clientX; review.my = event.clientY;
   if (!review.inside) { review.inside = true; review.lensReady = false; if (state.prefs.reviewLens !== "off") refs.reviewLens.classList.add("on"); }
-  review.pings.push({ x: event.clientX, y: event.clientY, t0: now });
+  review.pings.push({ x: event.clientX, y: event.clientY, t0: now, seed: Math.random() * 100 });
   review.lensPulseT = now;
   review.lastMoveT = now; review.restFired = true;
   const st = reviewStyle(state.prefs.reviewFx);
@@ -5117,7 +5121,7 @@ function feedTrail(x, y, t) {
     review.hasFilter = true; review.breakNext = false;
     review.curPen = review.down;
     review.curL = reducedMotionQuery.matches ? 700 : review.down ? REVIEW.penLife : reviewBrush().life;
-    review.pts.push({ x, y, t, b: true, l: review.curL, pen: review.curPen });
+    review.pts.push({ x, y, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997 });
     return;
   }
   stepTrailFilter(x, y, t);
@@ -5131,7 +5135,7 @@ function stepTrailFilter(x, y, t) {
   review.sx += (x - review.sx) * a; review.sy += (y - review.sy) * a;
   review.st = t; review.prx = review.rx = x; review.pry = review.ry = y;
   const last = review.pts[review.pts.length - 1];
-  if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen }); return; }
+  if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997 }); return; }
   if (Math.hypot(review.sx - last.x, review.sy - last.y) >= 0.7) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen });
 }
 
@@ -5146,8 +5150,8 @@ function pruneTrail(now) {
     while (j < e && now - pts[j].t > pts[j].l) j++;
     let removed = 0;                                   // arc length of the expired tail: keeps arc-anchored materials from sliding
     for (let k = i; k < j && k + 1 < e; k++) removed += Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
-    const baseArc = (pts[i].arc || 0) + removed;
-    for (let k = j; k < e; k++) { const p = pts[k]; if (k === j && j > i) { p.b = true; p.arc = baseArc; } pts[w++] = p; }
+    const baseArc = (pts[i].arc || 0) + removed, sid = pts[i].sid;
+    for (let k = j; k < e; k++) { const p = pts[k]; if (k === j && j > i) { p.b = true; p.arc = baseArc; p.sid = sid; } pts[w++] = p; }
     i = e;
   }
   pts.length = w;
@@ -5311,13 +5315,13 @@ function rvTile(kind, rgb) {
   let seed = 7 + kind.length * 131 + col[0] * 3 + col[1] * 5 + col[2] * 7;
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const hi = kind === "glitterHi", crumb = kind === "crumb";
-  const n = crumb ? 74 : hi ? 70 : 150;
+  const n = crumb ? 56 : hi ? 70 : 150;
   for (let i = 0; i < n; i++) {
     const ang = rnd() * 6.2832, rad = Math.sqrt(rnd()) * 14.5;
     const x = Math.cos(ang) * rad, y = Math.sin(ang) * rad;
     const fall = Math.min(1, Math.max(0, (1 - rad / 14.5) * 2.6));
     let t, size;
-    if (crumb) { t = -0.7 + 1.25 * rnd(); size = 1.0 + 2.3 * Math.pow(rnd(), 1.5); }
+    if (crumb) { t = -0.62 + 0.95 * rnd(); size = 1.3 + 2.4 * Math.pow(rnd(), 1.6); }
     else { t = -0.34 + 1.45 * Math.pow(rnd(), 1.1); size = 0.45 + 1.6 * Math.pow(rnd(), 2.1); if (hi && t < 0.5) continue; }
     const tone = hi ? rvMix(col, [255, 255, 255], 0.9) : t < 0 ? rvMix(col, [18, 6, 14], -t * 0.78) : rvMix(col, [255, 255, 255], Math.min(1, t * 0.92));
     c.globalAlpha = fall * (0.6 + 0.4 * rnd());
@@ -5328,11 +5332,18 @@ function rvTile(kind, rgb) {
       const m = 5 + Math.floor(rnd() * 2);
       for (let k = 0; k < m; k++) { const a = (k / m) * 6.2832, r = size * (0.62 + 0.62 * rnd()); k ? c.lineTo(Math.cos(a) * r, Math.sin(a) * r) : c.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
       c.closePath(); c.fill();
-      if (rnd() < 0.45) { c.globalAlpha *= 0.55; c.fillStyle = "rgba(255,236,196,1)"; c.fillRect(-size * 0.5, -size * 0.5, size * 0.55, size * 0.3); }
+      c.globalAlpha *= 0.4; c.strokeStyle = `rgb(${rvMix(col, [50, 24, 10], 0.6)})`; c.lineWidth = 0.5; c.stroke();
     } else {
       c.fillRect(-size * 0.5, -size * (0.25 + 0.3 * rnd()), size, size * (0.5 + 0.6 * rnd()));
     }
     c.restore();
+  }
+  if (crumb) {                                         // pores: tiny dark pits in the dough
+    for (let i = 0; i < 40; i++) {
+      const ang = rnd() * 6.2832, rad = Math.sqrt(rnd()) * 13.5, fall = Math.min(1, (1 - rad / 14.5) * 2.6);
+      c.globalAlpha = 0.5 * fall; c.fillStyle = `rgb(${rvMix(col, [44, 20, 8], 0.72)})`;
+      c.beginPath(); c.arc(Math.cos(ang) * rad, Math.sin(ang) * rad, 0.35 + 0.5 * rnd(), 0, 6.2832); c.fill();
+    }
   }
   if (review.tiles.size > 260) review.tiles.clear();
   review.tiles.set(key, cv);
@@ -5423,32 +5434,68 @@ function rvGem(shape, rgb) {
   return cv;
 }
 
-// ---- piped cream dollops: soft rounded rosettes with nozzle ridges, a gentle shadow side and a rim tone so they read on white
-function rvDollop(rgb) {
+// ---- whipped cream: a soft shaded ball (light top-left, shaded lower-right). Hundreds of them at random sizes and offsets
+// overlap into a puffy, irregular mass, so it reads as foam rather than as a repeated pattern.
+function rvCreamBall(rgb) {
   const q = (v) => (v & 0xf0) | 8, col = [q(rgb[0]), q(rgb[1]), q(rgb[2])];
   const key = `${col}:${review.dpr}`;
   let cv = review.dollops.get(key);
   if (cv) return cv;
-  const D = REVIEW.brushes.cream.dollop, dpr = review.dpr, lx = D.lx, ly = D.ly;
+  const R = 12, S = R * 2 + 4, dpr = review.dpr;
   cv = document.createElement("canvas");
-  cv.width = Math.ceil((lx * 2 + 4) * dpr); cv.height = Math.ceil((ly * 2 + 4) * dpr);
+  cv.width = cv.height = Math.ceil(S * dpr);
   const c = cv.getContext("2d");
-  c.scale(dpr, dpr); c.translate(lx + 2, ly + 2);
-  const light = rvMix(col, [255, 255, 255], 0.72), shade = rvMix(col, [150, 82, 104], 0.3), rim = rvMix(col, [150, 78, 100], 0.5);
-  const g = c.createRadialGradient(-lx * 0.3, -ly * 0.45, 1, 0, 0, lx * 1.05);
-  g.addColorStop(0, `rgb(${light})`); g.addColorStop(0.45, `rgb(${col})`); g.addColorStop(1, `rgb(${shade})`);
-  c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, lx, ly, 0, 0, 6.2832); c.fill();
-  c.save(); c.beginPath(); c.ellipse(0, 0, lx, ly, 0, 0, 6.2832); c.clip();
-  for (let m = -1; m <= 1; m++) {                       // nozzle ridges
-    const x = m * lx * 0.46;
-    c.strokeStyle = `rgba(${rim},0.16)`; c.lineWidth = 1.2;
-    c.beginPath(); c.moveTo(x * 0.8, -ly); c.quadraticCurveTo(x * 1.35, 0, x * 0.8, ly); c.stroke();
-    c.strokeStyle = "rgba(255,255,255,0.4)"; c.lineWidth = 0.9;
-    c.beginPath(); c.moveTo(x * 0.8 + 1.4, -ly); c.quadraticCurveTo(x * 1.35 + 1.4, 0, x * 0.8 + 1.4, ly); c.stroke();
-  }
-  c.restore();
-  c.strokeStyle = `rgba(${rim},0.5)`; c.lineWidth = 0.9; c.beginPath(); c.ellipse(0, 0, lx - 0.4, ly - 0.4, 0, 0, 6.2832); c.stroke();
+  c.scale(dpr, dpr); c.translate(S / 2, S / 2);
+  const light = rvMix(col, [255, 255, 255], 0.82), mid = rvMix(col, [255, 255, 255], 0.3), shade = rvMix(col, [150, 84, 110], 0.2);
+  const g = c.createRadialGradient(-R * 0.34, -R * 0.4, R * 0.05, 0, 0, R * 1.08);
+  g.addColorStop(0, `rgb(${light})`); g.addColorStop(0.38, `rgb(${mid})`); g.addColorStop(0.72, `rgb(${col})`); g.addColorStop(1, `rgb(${shade})`);
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, R, 0, 6.2832); c.fill();
+  c.strokeStyle = `rgba(${rvMix(col, [150, 80, 104], 0.5)},0.1)`; c.lineWidth = 0.7; c.beginPath(); c.arc(0, 0, R - 0.35, 0, 6.2832); c.stroke();
   if (review.dollops.size > 200) review.dollops.clear();
+  review.dollops.set(key, cv);
+  return cv;
+}
+
+// ---- marshmallow puff: feathered edge, pillowy light, almost no contrast (airier and softer than cream)
+function rvPuffBall(rgb) {
+  const q = (v) => (v & 0xf0) | 8, col = [q(rgb[0]), q(rgb[1]), q(rgb[2])];
+  const key = `puff:${col}:${review.dpr}`;
+  let cv = review.dollops.get(key);
+  if (cv) return cv;
+  const R = 12, S = R * 2 + 4, dpr = review.dpr;
+  cv = document.createElement("canvas");
+  cv.width = cv.height = Math.ceil(S * dpr);
+  const c = cv.getContext("2d");
+  c.scale(dpr, dpr); c.translate(S / 2, S / 2);
+  const g = c.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.05, 0, 0, R * 1.05);
+  g.addColorStop(0, rvRgba(rvMix(col, [255, 255, 255], 0.7), 0.97)); g.addColorStop(0.42, rvRgba(rvMix(col, [255, 255, 255], 0.28), 0.94));
+  g.addColorStop(0.76, rvRgba(col, 0.7)); g.addColorStop(1, rvRgba(rvMix(col, [150, 110, 100], 0.2), 0));
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, R * 1.05, 0, 6.2832); c.fill();
+  const sh = rvMix(col, [150, 108, 104], 0.5), g2 = c.createRadialGradient(R * 0.3, R * 0.36, R * 0.1, R * 0.3, R * 0.36, R * 1.15);   // a soft underside
+  g2.addColorStop(0, rvRgba(sh, 0)); g2.addColorStop(0.7, rvRgba(sh, 0.12)); g2.addColorStop(1, rvRgba(sh, 0.34));
+  c.save(); c.beginPath(); c.arc(0, 0, R * 1.0, 0, 6.2832); c.clip(); c.fillStyle = g2; c.fillRect(-R * 1.1, -R * 1.1, R * 2.2, R * 2.2); c.restore();
+  if (review.dollops.size > 260) review.dollops.clear();
+  review.dollops.set(key, cv);
+  return cv;
+}
+// ---- a tongue of energy: bright at the base, thinning to a flickering tip
+function rvFlame(rgb) {
+  const q = (v) => (v & 0xf0) | 8, col = [q(rgb[0]), q(rgb[1]), q(rgb[2])];
+  const key = `fl:${col}:${review.dpr}`;
+  let cv = review.dollops.get(key);
+  if (cv) return cv;
+  const W = 28, H = 56, dpr = review.dpr;
+  cv = document.createElement("canvas");
+  cv.width = Math.ceil(W * dpr); cv.height = Math.ceil(H * dpr);
+  const c = cv.getContext("2d");
+  c.scale(dpr, dpr);
+  const g = c.createLinearGradient(0, H, 0, 0);
+  g.addColorStop(0, rvRgba(rvMix(col, [255, 255, 255], 0.45), 0.9)); g.addColorStop(0.3, rvRgba(col, 0.78)); g.addColorStop(0.75, rvRgba(col, 0.26)); g.addColorStop(1, rvRgba(col, 0));
+  c.fillStyle = g; c.beginPath(); c.moveTo(14, 56); c.bezierCurveTo(1, 52, 3, 30, 14, 2); c.bezierCurveTo(25, 30, 27, 52, 14, 56); c.fill();
+  const g2 = c.createLinearGradient(0, H, 0, 10);
+  g2.addColorStop(0, "rgba(255,255,255,0.7)"); g2.addColorStop(1, "rgba(255,255,255,0)");
+  c.fillStyle = g2; c.beginPath(); c.moveTo(14, 56); c.bezierCurveTo(7, 53, 9, 38, 14, 14); c.bezierCurveTo(19, 38, 21, 53, 14, 56); c.fill();
+  if (review.dollops.size > 260) review.dollops.clear();
   review.dollops.set(key, cv);
   return cv;
 }
@@ -5524,13 +5571,12 @@ function buildPath(pts, i0, i1, spacing, arcBase) {
 const RV_META = {
   "moon-pearl":    { primary: "#ead9ee", secondary: "#bfe3f2" },
   "crystal-glass": { primary: "#cfe3fa", secondary: "#f2e6ff" },
-  "neon-rain":     { primary: "#ff3fa4", secondary: "#3fe0ff" },
+  "neon-rain":     { primary: "#ff72d2", secondary: "#54e5ff" },
   "paper-fiber":   { primary: "#e4d6bd", secondary: "#faf4e8" },
   "bubble":        { primary: "#9fd8ff", secondary: "#ffc2e8" },
-  "electric":      { primary: "#5cc8ff", secondary: "#ffffff" },
+  "electric":      { primary: "#906fff", secondary: "#ffe45f" },
   "cyber-pink":    { primary: "#ff3fa4", secondary: "#3fe0ff" },
   "glitter-dust":  { label: "Glitter Dust",  primary: "#e8549e", secondary: "#ffe4f2" },
-  "oil-bead":      { label: "Oil Beads",     primary: "#e8b0b0", secondary: "#fff0ee" },
   "sw-crumbs":     { label: "Cookie Crumbs", primary: "#d29856", secondary: "#5c3a26" },
   "sw-sprinkles":  { label: "Sprinkles",     primary: "#ff80a0", secondary: "#ffc454" },
   "sw-berry":      { label: "Berries",       primary: "#e83e56", secondary: "#ffd2dc" },
@@ -5541,7 +5587,7 @@ const RV_ACCENT_GROUPS = [
   ["Light & sparkle", ["soft-spark", "star-dust", "constellation", "moon-pearl", "crystal-glass", "firefly-glow", "ember-glow", "aurora-veil"]],
   ["Soft & playful", ["bubble", "candy-pop", "petal-bloom", "ink", "paper-fiber"]],
   ["Pixel & neon", ["pixel", "cyber-pink", "electric", "neon-rain", "laser-etch"]],
-  ["Shine", ["glitter-dust", "oil-bead"]],
+  ["Shine", ["glitter-dust"]],
   ["Sweet", ["sw-crumbs", "sw-sprinkles", "sw-berry", "sw-sugar", "sw-honey"]]
 ];
 const RV_ALIAS = { "velvet-smoke": "aurora-veil", "keycap-pop": "pixel", "magnetic-flip": "pixel", "mosaic-shift": "pixel", "ripple-lens": "bubble",
@@ -5649,10 +5695,13 @@ const RV_FX = {
     rest: { count: 5, shape: "glitchdash", size: [6, 10], speed: [20, 60], life: [300, 520] },
     line: { halo: 1.6, core: 1.2 }
   },
-  "electric": {      // jagged lightning arcs off the beam, white-hot core
-    shimmer: { shape: "arc", every: 62, prob: 0.58, size: [12, 21], life: 320, spread: 4 },
-    shed: { gap: 34, shape: "arc", size: [8, 14], speed: [0, 8], dir: "normal", life: [180, 320] },
-    rest: { count: 4, shape: "arc", size: [12, 22], speed: [0, 6], life: [220, 380] },
+  "electric": {      // the typing Electric, carried over: a glowing core, lightning-bolt snaps that spin and shrink, a thin flash line
+    elec: true,
+    shimmer: { shape: "ecore", every: 54, prob: 0.55, size: [2.6, 3.4], life: 380, spread: 0.45, raw: true },
+    shed: { gap: 15, shape: "bolt", size: [22, 28], speed: [120, 200], dir: "normal", spin: 7, life: [300, 400], raw: true },
+    shedExtra: { prob: 0.24, spec: { shape: "eflash", size: [1.7, 2.2], speed: [0, 0], dir: "normal", life: [240, 320], raw: true } },
+    rest: { count: 7, shape: "bolt", size: [22, 28], speed: [130, 210], spin: 7, life: [320, 420], raw: true },
+    restExtra: { shape: "eflash", size: [2, 2.4], speed: [0, 0], life: [260, 340], raw: true },
     line: { halo: 1.9, core: 1.4 }
   },
   "neon-rain": {     // one lone neon tube in the night: rain falling at one angle, puddle ripples when still
@@ -5672,12 +5721,6 @@ const RV_FX = {
     shed: { gap: 13, shape: "flake", size: [1.4, 3], speed: [14, 50], dir: "normal", grav: 30, life: [620, 1100], flicker: true },
     rest: { count: 10, shape: "flake", size: [1.6, 3.2], speed: [30, 90], grav: 30, life: [650, 1000], flicker: true },
     line: { halo: 1.1, core: 1.1 }
-  },
-  "oil-bead": {      // glossy beads of oil
-    shimmer: { shape: "bead", every: 78, prob: 0.42, size: [3, 5.4], life: 1000 },
-    shed: { gap: 26, shape: "bead", size: [2.6, 5], speed: [8, 26], dir: "down", grav: 70, life: [700, 1200] },
-    rest: { count: 5, shape: "bead", size: [3, 5], speed: [18, 48], grav: 70, life: [760, 1200] },
-    line: { halo: 0.8, core: 1 }
   },
   "sw-crumbs": {     // chocolate chips set in the line, crumbs falling
     shimmer: { shape: "chip", every: 92, prob: 0.32, size: [3.4, 5], life: 1700 },
@@ -5902,20 +5945,6 @@ function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
       c.globalAlpha = a * 0.9; c.fillStyle = "#fff"; c.fillRect(-L * 0.18, -h * 0.22, L * 0.34, h * 0.44);
       break;
     }
-    case "arc": {                                    // lightning: re-rolled a few times through its short life
-      const L = r * 2.2, m = 7, flick = Math.floor(prog * 7), pts = [];
-      c.rotate(rot);
-      for (let i = 0; i <= m; i++) pts.push([-L / 2 + (L * i) / m, i === 0 || i === m ? 0 : (rvHash(seed * 1.3 + i * 5.1 + flick * 17.7) - 0.5) * r * 0.9]);
-      const path = (list) => { c.beginPath(); list.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); c.stroke(); };
-      c.lineJoin = "round"; c.lineCap = "round";
-      c.strokeStyle = solid; c.globalAlpha = a * 0.22; c.lineWidth = r * 0.6; path(pts);
-      c.globalAlpha = a * 0.95; c.strokeStyle = `rgb(${rvMix(rgb, [255, 255, 255], 0.4)})`; c.lineWidth = 1.5; path(pts);
-      c.globalAlpha = a; c.strokeStyle = "#fff"; c.lineWidth = 0.75; path(pts);
-      const b = pts[3], side = rvHash(seed + 4) < 0.5 ? 1 : -1;
-      c.globalAlpha = a * 0.8; c.strokeStyle = `rgb(${rvMix(rgb, [255, 255, 255], 0.4)})`; c.lineWidth = 1;
-      path([b, [b[0] + L * 0.14, b[1] + side * r * 0.45], [b[0] + L * 0.26, b[1] + side * r * 0.95]]);
-      break;
-    }
     case "crystal": {                                // cut shard: bright table, light and dark facets, prism edge flash
       c.rotate(rot);
       const f = (poly, col, al) => { c.globalAlpha = a * al; c.fillStyle = `rgb(${col})`; rvPoly(c, poly); c.fill(); };
@@ -5961,20 +5990,63 @@ function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
       c.globalAlpha = a * 0.28; c.fillStyle = `rgb(${rvMix(rgb, [120, 96, 70], 0.5)})`; c.fillRect(r * 0.1, r * 0.1, r * 0.5, r * 0.4);
       break;
     }
-    case "rain": {                                   // neon rain streak: glow, coloured core, white filament, bright head
+    case "rain": {                                   // a neon-lit raindrop: tapering tail, bright head, soft bloom
       c.rotate(rot); c.lineCap = "round";
-      c.strokeStyle = solid; c.globalAlpha = a * 0.25; c.lineWidth = r * 0.75; c.beginPath(); c.moveTo(0, 0); c.lineTo(-r * 2.2, 0); c.stroke();
-      c.globalAlpha = a * 0.9; c.lineWidth = 1.5; c.beginPath(); c.moveTo(0, 0); c.lineTo(-r * 2.2, 0); c.stroke();
-      c.strokeStyle = "#fff"; c.globalAlpha = a * 0.85; c.lineWidth = 0.7; c.beginPath(); c.moveTo(0, 0); c.lineTo(-r * 1.4, 0); c.stroke();
-      c.fillStyle = "#fff"; c.beginPath(); c.arc(0, 0, 1, 0, 6.283); c.fill();
+      const L = r * 2.8;
+      const tail = c.createLinearGradient(-L, 0, 0, 0);
+      tail.addColorStop(0, rvRgba(rgb, 0)); tail.addColorStop(1, rvRgba(rgb, (a * 0.95).toFixed(3)));
+      c.strokeStyle = tail; c.lineWidth = 1.3; c.beginPath(); c.moveTo(-L, 0); c.lineTo(0, 0); c.stroke();
+      const wide = c.createLinearGradient(-L, 0, 0, 0);
+      wide.addColorStop(0, rvRgba(rgb, 0)); wide.addColorStop(1, rvRgba(rgb, (a * 0.28).toFixed(3)));
+      c.strokeStyle = wide; c.lineWidth = r * 0.7; c.beginPath(); c.moveTo(-L, 0); c.lineTo(0, 0); c.stroke();
+      c.globalAlpha = a * 0.5; c.drawImage(reviewSprite(RV_SOFT, rgb), -r * 0.7, -r * 0.7, r * 1.4, r * 1.4);
+      c.globalAlpha = a; c.fillStyle = "#fff"; c.beginPath(); c.arc(0, 0, 1.05, 0, 6.283); c.fill();
       break;
     }
-    case "ripple": {                                 // puddle ripple: a flattened ring, twice
-      const u = prog, e1 = 1 - Math.pow(1 - u, 2);
-      c.strokeStyle = solid; c.lineWidth = 1.2;
-      c.globalAlpha = 0.85 * Math.pow(1 - u, 1.3); c.beginPath(); c.ellipse(0, 0, r * (0.4 + 2.6 * e1), r * (0.4 + 2.6 * e1) * 0.36, 0, 0, 6.283); c.stroke();
-      const u2 = Math.max(0, u - 0.18);
-      if (u2 > 0) { c.globalAlpha = 0.55 * Math.pow(1 - u2, 1.3); c.beginPath(); c.ellipse(0, 0, r * (0.3 + 1.9 * u2), r * (0.3 + 1.9 * u2) * 0.36, 0, 0, 6.283); c.stroke(); }
+    case "ripple": {                                 // puddle ripples: three flattened rings, each lit and softly glowing
+      const u = prog;
+      c.strokeStyle = solid;
+      for (let m = 0; m < 3; m++) {
+        const um = (u - m * 0.15) / (1 - m * 0.15);
+        if (um <= 0) continue;
+        const rr = r * (0.3 + 3.2 * (1 - Math.pow(1 - um, 2))), al = Math.pow(1 - um, 1.4) * (m ? 0.62 : 0.9);
+        c.globalAlpha = al * 0.25; c.lineWidth = 3.6; c.beginPath(); c.ellipse(0, 0, rr, rr * 0.34, 0, 0, 6.283); c.stroke();
+        c.globalAlpha = al; c.lineWidth = 1.2 - m * 0.25; c.beginPath(); c.ellipse(0, 0, rr, rr * 0.34, 0, 0, 6.283); c.stroke();
+      }
+      if (u < 0.3) { c.globalAlpha = (1 - u / 0.3) * 0.7; c.drawImage(reviewSprite(RV_SOFT, rgb), -r * 1.4, -r * 0.6, r * 2.8, r * 1.2); }
+      break;
+    }
+    case "bolt": case "ecore": case "eflash": {      // the typing Electric, carried over (see the Electric keyframes): palette = violet + yellow
+      const e = typeof EFFECT_PRESETS !== "undefined" && EFFECT_PRESETS.electric ? EFFECT_PRESETS.electric : { primary: "#906fff", secondary: "#ffe45f" };
+      const P = hexToRgbArray(e.primary), Sx = hexToRgbArray(e.secondary);
+      if (shape === "bolt") {
+        // 7x12 box clipped to polygon(46% 0, 100% 0, 62% 42%, 100% 42%, 28% 100%, 48% 55%, 0 55%), gradient 180deg secondary -> primary;
+        // opacity 0 -> alpha at 12% -> 0; scale .32 -> .2 while it flies and spins
+        const sc = 0.32 - 0.12 * prog, al = prog < 0.12 ? prog / 0.12 : 1 - (prog - 0.12) / 0.88;
+        const w = r * 1.17, h = r * 2;
+        c.rotate(rot); c.scale(sc, sc);
+        c.globalAlpha = a * al * 0.55; c.drawImage(reviewSprite(RV_SOFT, P), -h * 0.9, -h * 0.9, h * 1.8, h * 1.8);
+        const g = c.createLinearGradient(0, -h / 2, 0, h / 2);
+        g.addColorStop(0, `rgb(${Sx})`); g.addColorStop(1, `rgb(${P})`);
+        c.globalAlpha = a * al; c.fillStyle = g;
+        rvPoly(c, [[0.46, 0], [1, 0], [0.62, 0.42], [1, 0.42], [0.28, 1], [0.48, 0.55], [0, 0.55]].map(([px, py]) => [(px - 0.5) * w, (py - 0.5) * h]));
+        c.fill();
+      } else if (shape === "ecore") {
+        // 10px core: colour-mix(secondary 62%, white), glows in secondary and the violet aura; scale .32 -> 1.416 (38%) -> 1.7 while it fades
+        const sc = prog < 0.38 ? 0.32 + (1.416 - 0.32) * (prog / 0.38) : 1.416 + 0.284 * ((prog - 0.38) / 0.62);
+        const al = prog < 0.38 ? 1 : 1 - (prog - 0.38) / 0.62, R0 = r * sc;
+        c.globalAlpha = a * al * 0.42; c.drawImage(reviewSprite(RV_SOFT, P), -R0 * 2.8, -R0 * 2.8, R0 * 5.6, R0 * 5.6);
+        c.globalAlpha = a * al * 0.75; c.drawImage(reviewSprite(RV_SOFT, Sx), -R0 * 1.7, -R0 * 1.7, R0 * 3.4, R0 * 3.4);
+        c.globalAlpha = a * al; c.fillStyle = `rgb(${rvMix(Sx, [255, 255, 255], 0.38)})`; c.beginPath(); c.arc(0, 0, R0, 0, 6.283); c.fill();
+      } else {
+        // the special flash: a 32px x 1px line, transparent -> secondary -> primary -> transparent, with an aura glow
+        const half = 16 * r * 0.8 * (0.4 + 0.75 * prog), al = (prog < 0.1 ? prog / 0.1 : Math.pow(1 - (prog - 0.1) / 0.9, 1.2));
+        const g = c.createLinearGradient(-half, 0, half, 0);
+        g.addColorStop(0, rvRgba(Sx, 0)); g.addColorStop(0.35, `rgb(${Sx})`); g.addColorStop(0.65, `rgb(${P})`); g.addColorStop(1, rvRgba(P, 0));
+        c.lineCap = "round"; c.strokeStyle = g;
+        c.globalAlpha = a * al * 0.3; c.lineWidth = 6; c.beginPath(); c.moveTo(-half, 0); c.lineTo(half, 0); c.stroke();
+        c.globalAlpha = a * al; c.lineWidth = 1.3; c.beginPath(); c.moveTo(-half, 0); c.lineTo(half, 0); c.stroke();
+      }
       break;
     }
     case "flake": {                                  // glitter confetti: a tiny faceted flake that flashes
@@ -6061,8 +6133,8 @@ function drawShimmer(c, st, now, vx, vy, vt, vl, n, sz) {
     const nx = -dy / dl, ny = dx / dl, off = (rvHash(k + 31) - 0.5) * (sp.spread != null ? sp.spread * 10 : 5) * sz;
     const x = vx[lo] + dx * f + nx * off, y = vy[lo] + dy * f + ny * off;
     const u = age / sp.life, env = rvEnvelope(u);
-    const a = env.a * (0.25 + 0.75 * rvIntensity(tc, vl[lo]));
-    const r = (sp.size[0] + (sp.size[1] - sp.size[0]) * rvHash(k + 57)) * sz * env.s;
+    const a = (sp.raw ? 1 : env.a) * (0.25 + 0.75 * rvIntensity(tc, vl[lo]));
+    const r = (sp.size[0] + (sp.size[1] - sp.size[0]) * rvHash(k + 57)) * sz * (sp.raw ? 1 : env.s);
     const shape = rvPick(sp.shape, rvHash(k + 13));
     const rot = shape === "tick" ? Math.atan2(ny, nx) + Math.PI / 2 : rvHash(k + 5) * 1.57 + age * 0.0012;
     const col = rvColor(st, tc, k);
@@ -6088,13 +6160,15 @@ function spawnReviewParticle(spec, st, x, y, t, travelAng, tvx, tvy, burst) {
   else if (spec.dir === "back") ang = travelAng + Math.PI + (R() - 0.5) * 0.7;
   else ang = travelAng + (R() < 0.5 ? 1 : -1) * 1.5708 + (R() - 0.5) * 1.0;
   const sp = (spec.speed[0] + (spec.speed[1] - spec.speed[0]) * R()) * (burst ? 1.3 : 1);
+  if (spec.upstream) { const back = spec.upstream[0] + (spec.upstream[1] - spec.upstream[0]) * R(); x -= Math.cos(ang) * back; y -= Math.sin(ang) * back; }   // rain starts above the beam and falls through it
+  if (spec.scatter) { x += (R() - 0.5) * 2 * spec.scatter; y += (R() - 0.5) * 2 * spec.scatter * 0.5; }
   if (review.parts.length >= 170) review.parts.splice(0, review.parts.length - 169);
   const seed = R() * 1000;
   review.parts.push({
     x, y, t0: t, life: (spec.life[0] + (spec.life[1] - spec.life[0]) * R()) * (burst ? 0.92 : 1),
     vx: Math.cos(ang) * sp + (spec.nodrag ? 0 : tvx * 0.12), vy: Math.sin(ang) * sp + (spec.nodrag ? 0 : tvy * 0.12), ay: (spec.grav || 0) + (spec.lift || 0),
     drag: spec.nodrag ? 0 : 2.4, size: spec.size[0] + (spec.size[1] - spec.size[0]) * R(), shape: rvPick(spec.shape, R()), rot: R() * 6.283,
-    spin: (spec.spin || 0) * (R() - 0.5) * 2, seed, alpha: spec.alpha || 1, flicker: !!spec.flicker, snap: spec.snap || 0, rgb: rvColor(st, t, seed)
+    spin: (spec.spin || 0) * (R() - 0.5) * 2, seed, alpha: spec.alpha || 1, flicker: !!spec.flicker, snap: spec.snap || 0, raw: !!spec.raw, rgb: rvColor(st, t, seed)
   });
 }
 
@@ -6121,6 +6195,7 @@ function emitAlongLine(now) {
         review.gap = st.shed.gap * (0.7 + Math.random() * 0.6);
         const t = q.t + (p.t - q.t) * (d / len);
         spawnReviewParticle(st.shed, st, q.x + dx * d, q.y + dy * d, Math.min(t, now), Math.atan2(dy, dx), dx * len / dtm * 1000, dy * len / dtm * 1000, false);
+        if (st.shedExtra && Math.random() < st.shedExtra.prob) spawnReviewParticle(st.shedExtra.spec, st, q.x + dx * d, q.y + dy * d, Math.min(t, now), Math.atan2(dy, dx), 0, 0, false);
         spawned++;
       }
     }
@@ -6131,6 +6206,7 @@ function emitAlongLine(now) {
     review.restFired = true;
     const head = pts[pts.length - 1];
     for (let i = 0; i < st.rest.count; i++) spawnReviewParticle(st.rest, st, head.x, head.y, now, 0, 0, 0, true);
+    if (st.restExtra) spawnReviewParticle(st.restExtra, st, head.x, head.y, now, 0, 0, 0, true);
   }
 }
 
@@ -6144,10 +6220,10 @@ function drawReviewParticles(c, st, now, sz) {
     let x = p.x + p.vx * f, y = p.y + p.vy * f + 0.5 * p.ay * s * s;
     if (p.snap) { x = Math.round(x / p.snap) * p.snap; y = Math.round(y / p.snap) * p.snap; }
     const env = rvEnvelope(u);
-    let a = env.a * p.alpha;
+    let a = p.raw ? p.alpha : env.a * p.alpha;            // raw shapes run their own timeline (the typing Electric's keyframes)
     if (p.flicker) a *= 0.75 + 0.25 * Math.sin(ageMs * 0.03 + p.seed);
-    if (p.shape === "ripple" || p.shape === "arc") a = Math.min(1, a * 1.4);
-    const r = p.size * sz * env.s;
+    if (p.shape === "ripple") a = Math.min(1, a * 1.4);
+    const r = p.size * sz * (p.raw ? 1 : env.s);
     const rot = p.shape === "streak" || p.shape === "rain" ? Math.atan2(p.vy * e + p.ay * s, p.vx * e) : p.rot + p.spin * s;
     drawGlyph(c, p.shape, x, y, r, rot, p.rgb, a, u, p.seed);
     rvAdd(x, y, r * 3.4 + (p.shape === "rain" ? r * 2.4 : 0) + (p.shape === "ripple" ? r * 3 : 0));
@@ -6164,11 +6240,12 @@ function rvWalk(S, step, cb) {                        // visit the path at fixed
   const end = va[n - 1];
   while (a <= end) { while (j < n - 1 && va[j] < a) j++; cb(j, Math.round(a / step)); a += step; }
 }
+function rvNoise(x, seed) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return rvHash(i + seed * 13.1) * (1 - u) + rvHash(i + 1 + seed * 13.1) * u; }
 function rvStamp(c, cv, x, y, rad, rot, alpha) {
   c.save(); c.translate(x, y); c.rotate(rot); c.globalAlpha = alpha; c.drawImage(cv, -rad, -rad, rad * 2, rad * 2); c.restore();
 }
 function stampLayers(S) {
-  const { c, n, vx, vy, vi, vc, vw, brush, sizeMul, penK, flick, gain } = S;
+  const { c, n, vx, vy, vi, vc, vw, brush, sizeMul, penK, flick, gain, cov, wid } = S;
   const layers = brush.layers;
   for (let li = 0; li < layers.length; li++) {
     const L = layers[li], R = L.R * sizeMul * penK, tp = L.taper || brush.taper;
@@ -6176,21 +6253,25 @@ function stampLayers(S) {
     for (let i = 0; i < n; i += L.stride) {
       const I = vi[i];
       if (I < 0.015) continue;
-      const r = R * (tp[0] + (1 - tp[0]) * Math.pow(I, tp[1])) * vw[i];
-      c.globalAlpha = Math.min(1, Math.pow(I, fade) * flick);
+      const cv = cov ? cov[i] : 1;
+      if (cv < 0.03) continue;
+      const r = R * (tp[0] + (1 - tp[0]) * Math.pow(I, tp[1])) * vw[i] * (wid ? wid[i] : 1);
+      c.globalAlpha = Math.min(1, Math.pow(I, fade) * flick * cv);
       c.drawImage(reviewSprite(L, vc[i], g), vx[i] - r, vy[i] - r, r * 2, r * 2);
     }
   }
   c.globalAlpha = 1;
 }
 function paintShadow(S, R, alpha, dx, dy) {           // a soft contact shadow so wet / solid materials sit on the page
-  const { c, n, vx, vy, vi, vw, sizeMul, penK } = S;
+  const { c, n, vx, vy, vi, vw, sizeMul, penK, cov, wid } = S;
   const dark = reviewSprite(RV_DARK, [0, 0, 0]);
   for (let i = 0; i < n; i += 2) {
     const I = vi[i];
     if (I < 0.03) continue;
-    const r = R * sizeMul * penK * (0.45 + 0.55 * Math.pow(I, 0.6)) * vw[i];
-    c.globalAlpha = alpha * Math.pow(I, 0.8);
+    const cv = cov ? cov[i] : 1;
+    if (cv < 0.04) continue;
+    const r = R * sizeMul * penK * (0.45 + 0.55 * Math.pow(I, 0.6)) * vw[i] * (wid ? wid[i] : 1);
+    c.globalAlpha = alpha * Math.pow(I, 0.8) * cv;
     c.drawImage(dark, vx[i] + dx * sizeMul - r, vy[i] + dy * sizeMul - r, r * 2, r * 2);
   }
   c.globalAlpha = 1;
@@ -6201,20 +6282,16 @@ function paintGlints(S, spec) {                       // a brush's own flares / 
   drawShimmer(S.c, spec.__st, S.now, S.vx, S.vy, S.vt, S.vl, S.n, S.sz);
 }
 
-function paintGlitter(S) {                            // dense micro-grain tiles + a travelling sheen that lights the grains
+function paintGlitter(S) {                            // dense micro-grain tiles: pure material, no flashing
   stampLayers(S);
-  const { c, now, vi, vt, vc, vw, sizeMul, penK } = S;
+  const { c, vi, vc, vw, sizeMul, penK } = S;
   rvWalk(S, 5.2 * sizeMul * penK, (j, k) => {
     const I = vi[j];
     if (I < 0.02) return;
-    const sc = (0.5 + 0.5 * Math.pow(I, 0.5)) * vw[j], rad = 9.6 * sizeMul * penK * sc, rot = rvHash(k * 1.3) * 6.283;
-    const col = vc[j], x = S.vx[j], y = S.vy[j];
-    rvStamp(c, rvTile("glitter", col), x, y, rad, rot, Math.pow(I, 0.6));
-    const sh = (reducedMotionQuery.matches ? 0.4 : Math.pow(Math.max(0, Math.sin(vt[j] * 0.0075 - now * 0.0062 + rvHash(k) * 1.4)), 2.2)) * Math.pow(I, 0.7);
-    if (sh > 0.04) rvStamp(c, rvTile("glitterHi", col), x, y, rad, rot, Math.min(1, sh));
+    const sc = (0.5 + 0.5 * Math.pow(I, 0.5)) * vw[j], rad = 9.6 * sizeMul * penK * sc;
+    rvStamp(c, rvTile("glitter", vc[j]), S.vx[j], S.vy[j], rad, rvHash(k * 1.3) * 6.283, Math.pow(I, 0.6));
   });
   c.globalAlpha = 1;
-  paintGlints(S, S.brush.flare);
 }
 
 function paintGems(S) {                               // a chain of cut stones: mixed sizes and cuts, each catching light on its own beat
@@ -6263,16 +6340,16 @@ function paintGems(S) {                               // a chain of cut stones: 
 // wet highlights shared by lip oil and jelly: a crisp specular line on the side facing the light (upper-left), a broad soft
 // sheen, a faint counter-reflection on the far side; a bright band travels along the stroke over time
 function paintHighlights(S, o) {
-  const { c, now, n, vx, vy, vt, vnx, vny, vi, vw, sizeMul, penK } = S;
+  const { c, now, n, vx, vy, vt, vnx, vny, vi, vw, sizeMul, penK, cov, wid } = S;
   const spec = reviewSprite(RV_SPEC, [255, 255, 255]), soft = reviewSprite(RV_SOFT, [255, 255, 255]);
   const R = o.bodyR * sizeMul * penK;
   for (let i = 0; i < n; i++) {
-    const I = vi[i];
-    if (I < 0.03) continue;
-    const k = (0.35 + 0.65 * Math.pow(I, 0.6)) * vw[i], dot = vnx[i] * -0.62 + vny[i] * -0.78, off = dot * R * 0.5 * k;
+    const I = vi[i], cv = cov ? cov[i] : 1;
+    if (I < 0.03 || cv < 0.05) continue;
+    const k = (0.35 + 0.65 * Math.pow(I, 0.6)) * vw[i] * (wid ? wid[i] : 1), dot = vnx[i] * -0.62 + vny[i] * -0.78, off = dot * R * 0.5 * k;
     const x = vx[i] + vnx[i] * off, y = vy[i] + vny[i] * off;
     const sheen = reducedMotionQuery.matches ? 0.7 : 0.5 + 0.5 * Math.sin(vt[i] * 0.0065 - now * 0.0042);
-    const face = 0.55 + 0.45 * Math.abs(dot), al = Math.pow(I, 0.8) * (0.4 + 0.6 * sheen) * face;
+    const face = 0.55 + 0.45 * Math.abs(dot), al = Math.pow(I, 0.8) * (0.4 + 0.6 * sheen) * face * cv;
     const rr = o.specR * sizeMul * penK * k * (0.6 + 0.4 * face);
     c.globalAlpha = al * o.specA; c.drawImage(spec, x - rr, y - rr, rr * 2, rr * 2);
     if (i % 2 === 0) { const rs = rr * o.softK; c.globalAlpha = al * o.softA; c.drawImage(soft, x - rs, y - rs, rs * 2, rs * 2); }
@@ -6280,60 +6357,319 @@ function paintHighlights(S, o) {
   }
   c.globalAlpha = 1;
 }
-function paintGloss(S) {                               // lip oil: thin glassy film, milky body, crisp reflections
-  paintShadow(S, 6.6, 0.1, 1.0, 2.2);
+
+// lip oil is swiped on, not drawn: product comes and goes in patches (some stretches are simply bare), the width swells and
+// thins like pressure on an applicator, fine streaks run along the swipe, and the glassy highlight only shows where there is product
+function paintGloss(S) {
+  const { c, n, va, vi, vc, vw, vx, vy, vnx, vny, sizeMul, penK, seed } = S;
+  const cov = [], wid = [];
+  for (let i = 0; i < n; i++) {
+    const a = va[i], m = rvNoise(a / 46, seed) * 0.7 + rvNoise(a / 15, seed + 3.3) * 0.3;
+    const q = Math.min(1, Math.max(0, (m - 0.31) / 0.2));
+    cov.push(q * q * (3 - 2 * q));
+    wid.push(0.6 + 0.75 * rvNoise(a / 27, seed + 7.7));
+  }
+  S.cov = cov; S.wid = wid;
+  paintShadow(S, 6.6, 0.09, 1.0, 2.2);
   stampLayers(S);
-  paintHighlights(S, { bodyR: 6.8, specR: 1.5, specA: 0.95, softK: 3.2, softA: 0.2, backA: 0.22 });
+  const spec = reviewSprite(RV_SPEC, [255, 255, 255]), R = 6.8 * sizeMul * penK;
+  for (let j = 0; j < 3; j++) {                       // streaks along the swipe, each with its own patchy coverage
+    const off = (j - 1) * 0.52;
+    for (let i = 0; i < n; i++) {
+      const I = vi[i];
+      if (I < 0.03 || cov[i] < 0.08) continue;
+      const q = rvNoise(va[i] / 10, seed + 20 + j), sa = Math.min(1, Math.max(0, (q - 0.42) / 0.25));
+      if (sa < 0.05) continue;
+      const o = off * R * wid[i] * vw[i], r = 0.85 * sizeMul;
+      c.globalAlpha = sa * 0.42 * cov[i] * Math.pow(I, 0.8);
+      c.drawImage(spec, vx[i] + vnx[i] * o - r, vy[i] + vny[i] * o - r, r * 2, r * 2);
+    }
+  }
+  c.globalAlpha = 1;
+  paintHighlights(S, { bodyR: 6.8, specR: 1.55, specA: 0.95, softK: 3.4, softA: 0.2, backA: 0.22 });
 }
-function paintJelly(S) {                               // jelly: deeper colour, bright core, bouncy highlights, sugar crystals on top
-  paintShadow(S, 7.4, 0.14, 1.2, 2.6);
+
+// jelly: plump and bouncy. A bulge travels along the body, the colour is deep with a glowing core, the lower edge catches
+// coloured light, and glossy "window" highlights sit on the shoulder
+function paintJelly(S) {
+  paintShadow(S, 8, 0.16, 1.2, 2.8);
   stampLayers(S);
-  paintHighlights(S, { bodyR: 7.2, specR: 1.4, specA: 0.9, softK: 4.2, softA: 0.42, backA: 0.34 });
-  const { c, vx, vy, vnx, vny, vi, vw, sizeMul, penK } = S;
-  rvWalk(S, 3.1 * sizeMul, (j, k) => {
-    if (rvHash(k * 1.9) > 0.3) return;
+  const { c, now, n, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK } = S;
+  const soft = reviewSprite(RV_SOFT, [255, 255, 255]), R = 7.9 * sizeMul * penK;
+  for (let i = 0; i < n; i += 2) {                    // coloured light bouncing up from the lower edge
+    const I = vi[i];
+    if (I < 0.05) continue;
+    const dot = vnx[i] * -0.62 + vny[i] * -0.78, off = -dot * R * 0.55 * vw[i], r = R * 0.42 * vw[i];
+    c.globalAlpha = 0.3 * Math.abs(dot) * Math.pow(I, 0.8);
+    c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [255, 255, 255], 0.4)), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+  }
+  paintHighlights(S, { bodyR: 7.9, specR: 1.5, specA: 0.9, softK: 4.8, softA: 0.5, backA: 0.4 });
+  rvWalk(S, 30 * sizeMul, (j, k) => {                 // glossy windows
+    const I = vi[j];
+    if (I < 0.06) return;
+    const dot = vnx[j] * -0.62 + vny[j] * -0.78, off = dot * R * 0.44 * vw[j];
+    const tx = vny[j], ty = -vnx[j], half = (5 + 3.5 * rvHash(k * 1.3)) * sizeMul * vw[j];
+    const cx = vx[j] + vnx[j] * off, cy = vy[j] + vny[j] * off;
+    c.globalAlpha = 0.88 * Math.pow(I, 0.8) * (0.5 + 0.5 * Math.abs(dot)); c.strokeStyle = "#fff"; c.lineCap = "round"; c.lineWidth = 2.4 * sizeMul;
+    c.beginPath(); c.moveTo(cx - tx * half, cy - ty * half); c.lineTo(cx + tx * half, cy + ty * half); c.stroke();
+    c.globalAlpha *= 0.8; c.beginPath(); c.arc(cx + tx * (half + 3.6 * sizeMul), cy + ty * (half + 3.6 * sizeMul), 0.9 * sizeMul, 0, 6.283); c.fillStyle = "#fff"; c.fill();
+  });
+  rvWalk(S, 3.4 * sizeMul, (j, k) => {                // a few sugar crystals
+    if (rvHash(k * 1.9) > 0.14) return;
     const I = vi[j];
     if (I < 0.05) return;
     const off = (rvHash(k * 2.7) - 0.5) * 11 * sizeMul * penK * vw[j];
-    c.globalAlpha = 0.6 * Math.pow(I, 0.8); c.fillStyle = "#fff";
-    c.beginPath(); c.arc(vx[j] + vnx[j] * off, vy[j] + vny[j] * off, 0.5 + 0.7 * rvHash(k * 3.1), 0, 6.283); c.fill();
+    c.globalAlpha = 0.55 * Math.pow(I, 0.8); c.fillStyle = "#fff";
+    c.beginPath(); c.arc(vx[j] + vnx[j] * off, vy[j] + vny[j] * off, 0.5 + 0.6 * rvHash(k * 3.1), 0, 6.283); c.fill();
   });
   c.globalAlpha = 1;
 }
 
-function paintCream(S) {                               // whipped cream piped as soft rosettes, each slightly turned
-  const { c, vx, vy, vnx, vny, vi, vc, brush, sizeMul, penK } = S;
-  const D = brush.dollop, soft = reviewSprite(RV_SOFT, [255, 255, 255]), dark = reviewSprite(RV_DARK, [0, 0, 0]);
-  rvWalk(S, D.step * sizeMul * penK, (j, k) => {
+function paintCream(S) {                               // whipped cream: a puffy mass of soft shaded balls, with the occasional curled peak
+  const { c, vx, vy, vnx, vny, vi, vc, sizeMul, penK } = S;
+  paintShadow(S, 7.6, 0.12, 1.0, 2.6);
+  rvWalk(S, 2.5 * sizeMul * penK, (j, k) => {
     const I = vi[j];
     if (I < 0.03) return;
-    const sc = (0.62 + 0.38 * Math.pow(I, 0.5)) * sizeMul * penK * (0.9 + 0.22 * rvHash(k * 2.3)), lx = D.lx * sc, ly = D.ly * sc;
-    const ang = Math.atan2(-vnx[j], vny[j]) + (rvHash(k * 1.9) - 0.5) * 0.7, off = (rvHash(k * 3.1) - 0.5) * 3 * sizeMul;
-    const x = vx[j] + vnx[j] * off, y = vy[j] + vny[j] * off, al = Math.min(1, Math.pow(I, 0.7));
-    c.globalAlpha = 0.16 * al; c.drawImage(dark, x + 1.2 * sc - ly * 1.7, y + 2.8 * sc - ly * 1.7, ly * 3.4, ly * 3.4);
-    c.save(); c.translate(x, y); c.rotate(ang); c.globalAlpha = al;
-    c.drawImage(rvDollop(vc[j]), -(lx + 2 * sc), -(ly + 2 * sc), (lx + 2 * sc) * 2, (ly + 2 * sc) * 2);
-    c.restore();
-    c.globalAlpha = 0.36 * al; c.drawImage(soft, x - ly * 0.35 - ly * 0.6, y - ly * 0.5 - ly * 0.5, ly * 1.2, ly);
+    const sc = (0.55 + 0.45 * Math.pow(I, 0.5)) * sizeMul * penK, big = rvHash(k * 3.1) > 0.9;
+    const rad = (4.4 + 4.8 * Math.pow(rvHash(k * 1.7 + 2), 1.4)) * (big ? 1.45 : 1) * sc;
+    const off = (rvHash(k * 2.9 + 5) - 0.5) * 2 * 4.4 * sc, x = vx[j] + vnx[j] * off, y = vy[j] + vny[j] * off;
+    const ball = rvCreamBall(vc[j]), w = rad * 2 * (28 / 24), al = Math.min(1, Math.pow(I, 0.7));
+    c.globalAlpha = al; c.drawImage(ball, x - w / 2, y - w / 2, w, w);
+    if (big) {                                          // a peak: a smaller curl riding on top
+      const r2 = rad * 0.5, w2 = r2 * 2 * (28 / 24), tx = vny[j] * rad * 0.35, ty = -vnx[j] * rad * 0.35;
+      c.drawImage(ball, x + tx - w2 / 2, y + ty - rad * 0.62 - w2 / 2, w2, w2);
+    }
   });
   c.globalAlpha = 1;
 }
 
-function paintCrumb(S) {                               // cookie: baked edge + dough, then dense angular crumbs and sugar glints
-  paintShadow(S, 7, 0.12, 1.0, 2.0);
+function paintCrumb(S) {                               // cookie: baked dough with a browned rim, bumpy edge, matte crumbs and pores
+  const { c, n, va, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK, seed } = S;
+  const wid = [];
+  for (let i = 0; i < n; i++) wid.push(0.8 + 0.34 * rvNoise(va[i] / 8, seed + 1.3) + 0.1 * rvNoise(va[i] / 3, seed + 5.1));   // irregular, bumpy edge
+  S.wid = wid;
+  paintShadow(S, 7.4, 0.14, 1.0, 2.2);
   stampLayers(S);
-  const { c, vi, vc, vw, sizeMul, penK } = S;
-  rvWalk(S, 4.6 * sizeMul * penK, (j, k) => {
+  const soft = reviewSprite(RV_SOFT, [255, 255, 255]), R = 6.4 * sizeMul * penK;
+  for (let i = 0; i < n; i += 2) {                     // matte golden top-light (volume, not shine)
+    const I = vi[i];
+    if (I < 0.05) continue;
+    const dot = vnx[i] * -0.62 + vny[i] * -0.78, off = dot * R * 0.3 * wid[i], r = R * 0.55 * wid[i] * vw[i];
+    c.globalAlpha = 0.22 * (0.5 + 0.5 * Math.abs(dot)) * Math.pow(I, 0.8);
+    c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [255, 222, 150], 0.55)), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+  }
+  rvWalk(S, 4.8 * sizeMul * penK, (j, k) => {
     const I = vi[j];
     if (I < 0.02) return;
-    const sc = (0.5 + 0.5 * Math.pow(I, 0.5)) * vw[j];
-    rvStamp(c, rvTile("crumb", vc[j]), S.vx[j], S.vy[j], 8.6 * sizeMul * penK * sc, rvHash(k * 1.7) * 6.283, Math.pow(I, 0.65));
+    const sc = (0.5 + 0.5 * Math.pow(I, 0.5)) * vw[j] * wid[j];
+    rvStamp(c, rvTile("crumb", vc[j]), vx[j], vy[j], 8.8 * sizeMul * penK * sc, rvHash(k * 1.7) * 6.283, Math.pow(I, 0.65));
   });
   c.globalAlpha = 1;
-  paintGlints(S, S.brush.flare);
 }
 
 function paintComet(S) { stampLayers(S); paintGlints(S, S.brush.dust); }
+
+// marshmallow / meringue: big, airy, feathered puffs with almost no contrast. They breathe slowly, rise into soft peaks, a
+// few peaks are torched golden at the tip, and a little powdered sugar dusts the surroundings
+function paintPuff(S) {
+  const { c, now, vx, vy, vnx, vny, vi, vc, sizeMul, penK } = S;
+  paintShadow(S, 9, 0.16, 0.8, 2.6);
+  rvWalk(S, 3.6 * sizeMul * penK, (j, k) => {
+    const I = vi[j];
+    if (I < 0.03) return;
+    const sc = (0.6 + 0.4 * Math.pow(I, 0.5)) * sizeMul * penK, breathe = reducedMotionQuery.matches ? 1 : 1 + 0.045 * Math.sin(now * 0.0028 + k * 0.7);
+    const rad = (6 + 5.6 * Math.pow(rvHash(k * 1.7 + 2), 1.2)) * sc * breathe;
+    const off = (rvHash(k * 2.9 + 5) - 0.5) * 2 * 4.8 * sc, x = vx[j] + vnx[j] * off, y = vy[j] + vny[j] * off, al = Math.min(1, Math.pow(I, 0.7));
+    const ball = rvPuffBall(vc[j]), w = rad * 2 * (28 / 24);
+    c.globalAlpha = al; c.drawImage(ball, x - w / 2, y - w / 2, w, w);
+    if (rvHash(k * 3.1) > 0.87) {                       // a soft peak: three shrinking puffs leaning to one side, the last one maybe toasted
+      const lean = (rvHash(k * 4.7) - 0.5) * 2, toast = rvHash(k * 5.3) > 0.5;
+      [[0, 0.7, 0.72], [lean * 0.3, 1.25, 0.52], [lean * 0.55, 1.68, 0.32]].forEach(([dx, dy, rs], q) => {
+        const r2 = rad * rs, w2 = r2 * 2 * (28 / 24), b2 = q === 2 && toast ? rvPuffBall(rvMix(vc[j], [232, 176, 108], 0.5)) : ball;
+        c.drawImage(b2, x + dx * rad - w2 / 2, y - dy * rad - w2 / 2, w2, w2);
+      });
+    }
+  });
+  rvWalk(S, 4.2 * sizeMul, (j, k) => {                  // powdered sugar
+    if (rvHash(k * 1.3) > 0.4) return;
+    const I = vi[j];
+    if (I < 0.05) return;
+    const off = (rvHash(k * 2.1) - 0.5) * 2 * 15 * sizeMul;
+    c.globalAlpha = 0.5 * Math.pow(I, 0.8); c.fillStyle = "#fff";
+    c.beginPath(); c.arc(vx[j] + vnx[j] * off, vy[j] + vny[j] * off, 0.5 + 0.6 * rvHash(k * 3.7), 0, 6.283); c.fill();
+  });
+  c.globalAlpha = 1;
+}
+
+// ganache / chocolate glaze: dense, opaque, dark; a broad satin sheen (never a hard white glint), a thin rim light on the lit
+// edge, warm bounce light on the shadow edge. The width undulates slowly like something viscous.
+function paintGanache(S) {
+  const { c, now, n, va, vt, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK } = S;
+  const wid = [];
+  for (let i = 0; i < n; i++) wid.push(1 + 0.08 * Math.sin(va[i] * 0.06) + 0.05 * Math.sin(va[i] * 0.17 + 1.3));
+  S.wid = wid;
+  paintShadow(S, 8, 0.24, 1.2, 3.0);
+  stampLayers(S);
+  const R = 7.2 * sizeMul * penK, spec = reviewSprite(RV_SPEC, [255, 255, 255]);
+  for (let i = 0; i < n; i++) {
+    const I = vi[i];
+    if (I < 0.04) continue;
+    const k = (0.4 + 0.6 * Math.pow(I, 0.6)) * vw[i] * wid[i], dot = vnx[i] * -0.62 + vny[i] * -0.78, face = 0.5 + 0.5 * Math.abs(dot), a = Math.pow(I, 0.8);
+    const sheen = reducedMotionQuery.matches ? 0.7 : 0.6 + 0.4 * Math.sin(vt[i] * 0.003 - now * 0.002);
+    let r = R * 0.58 * k, off = dot * R * 0.36 * k;
+    c.globalAlpha = 0.4 * face * a * sheen;
+    c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [214, 156, 118], 0.42)), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+    r = 0.95 * sizeMul; off = dot * R * 0.8 * k;
+    c.globalAlpha = 0.34 * face * a; c.drawImage(spec, vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+    if (i % 2 === 0) {
+      r = R * 0.24 * k; off = -dot * R * 0.72 * k;
+      c.globalAlpha = 0.26 * Math.abs(dot) * a; c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [210, 124, 82], 0.5)), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+    }
+  }
+  c.globalAlpha = 1;
+}
+
+// matcha latte / matcha cream: matte and milky together. Milk-white edge melting into a calm green body, marbled with
+// slow ribbons of deeper green and milk, a faint dusting of powder. No gloss anywhere.
+function paintMatcha(S) {
+  const { c, now, n, va, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK, seed } = S;
+  const wid = [];
+  for (let i = 0; i < n; i++) wid.push(0.82 + 0.3 * rvNoise(va[i] / 30, seed + 1));
+  S.wid = wid;
+  paintShadow(S, 7, 0.05, 0.6, 1.6);
+  stampLayers(S);
+  const R = 8.2 * sizeMul * penK, drift = reducedMotionQuery.matches ? 0 : now;
+  for (let j = 0; j < 2; j++) {                          // marbling
+    for (let i = 0; i < n; i++) {
+      const I = vi[i];
+      if (I < 0.04) continue;
+      const q = rvNoise(va[i] / 20 + (j ? 1 : -1) * drift * 0.0005, seed + 9 + j * 4), sa = Math.min(1, Math.max(0, (q - 0.45) / 0.3));
+      if (sa < 0.05) continue;
+      const off = Math.sin(va[i] * 0.05 + j * 2.1 + drift * 0.0008) * R * 0.45 * wid[i] * vw[i], r = 2.5 * sizeMul;
+      const col = j ? rvMix(vc[i], [64, 98, 44], 0.5) : rvMix(vc[i], [255, 255, 255], 0.72);
+      c.globalAlpha = sa * 0.5 * Math.pow(I, 0.8);
+      c.drawImage(reviewSprite(RV_SOFT, col), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+    }
+  }
+  rvWalk(S, 3.6 * sizeMul, (j, k) => {                   // matcha powder
+    if (rvHash(k * 1.9) > 0.3) return;
+    const I = vi[j];
+    if (I < 0.05) return;
+    const off = (rvHash(k * 2.3) - 0.5) * 2 * 13 * sizeMul;
+    c.globalAlpha = 0.5 * Math.pow(I, 0.8); c.fillStyle = `rgb(${rvMix(vc[j], [52, 84, 36], 0.55)})`;
+    c.beginPath(); c.arc(vx[j] + vnx[j] * off, vy[j] + vny[j] * off, 0.45 + 0.6 * rvHash(k * 3.3), 0, 6.283); c.fill();
+  });
+  c.globalAlpha = 1;
+}
+
+// energy aura: a white-hot core and a coloured glow, with tongues of energy that lick upward and never repeat
+function paintAura(S) {
+  stampLayers(S);
+  const { c, now, vx, vy, vi, vc, sizeMul, penK, seed } = S;
+  const t = reducedMotionQuery.matches ? 0 : now * 0.0042;
+  rvWalk(S, 5.4 * sizeMul * penK, (j, k) => {
+    const I = vi[j];
+    if (I < 0.04) return;
+    const h = (14 + 30 * rvNoise(k * 0.3 - t, seed)) * Math.pow(I, 0.8) * sizeMul * penK * (0.6 + 0.8 * rvHash(k * 2.3));
+    const w = (6.2 + 4 * rvHash(k * 1.7)) * sizeMul * penK * (0.5 + 0.5 * Math.pow(I, 0.5));
+    const sway = (rvNoise(k * 0.45 + t * 1.5, seed + 4) - 0.5) * 12 * sizeMul;
+    c.save(); c.translate(vx[j], vy[j]); c.rotate(sway / Math.max(8, h) * 0.9);
+    c.globalAlpha = Math.min(1, Math.pow(I, 0.7)) * 0.78; c.drawImage(rvFlame(vc[j]), -w, -h, w * 2, h * 1.08);
+    c.restore();
+  });
+  c.globalAlpha = 1;
+}
+
+// blade slash: a crisp crescent, razor-sharp at the head and tapering away behind it, a white cutting edge on one side, a
+// ghosted afterimage and a few speed lines. Hard-edged by design: it reads as a cut of light, not a glow.
+function paintSlash(S) {
+  const { c, n, va, vt, vx, vy, vnx, vny, vi, sizeMul, penK, pal } = S;
+  if (n < 3) return;
+  const sm = (a, b, x) => { const q = Math.min(1, Math.max(0, (x - a) / (b - a))); return q * q * (3 - 2 * q); };
+  const Dmax = Math.min(520, Math.max(150, va[n - 1] - va[0])), Wmax = 13 * sizeMul * penK, w = [];
+  for (let i = 0; i < n; i++) { const d = va[n - 1] - va[i]; w.push(Wmax * sm(0, 42, d) * Math.pow(1 - sm(50, Dmax, d), 1.2) * Math.pow(Math.max(0, vi[i]), 0.5)); }
+  const col = rvMix(rvAt(pal, vt[n - 1]), [14, 46, 120], 0.3), light = rvMix(col, [255, 255, 255], 0.45);
+  const aH = 0.98 * Math.pow(vi[n - 1], 0.5), aT = 0.7 * Math.pow(vi[0], 0.5);
+  if (Math.hypot(vx[n - 1] - vx[0], vy[n - 1] - vy[0]) < 2) return;
+  const fill = c.createLinearGradient(vx[0], vy[0], vx[n - 1], vy[n - 1]);
+  fill.addColorStop(0, rvRgba(col, 0)); fill.addColorStop(0.35, rvRgba(col, aT.toFixed(3))); fill.addColorStop(0.85, rvRgba(light, (aH * 0.85).toFixed(3))); fill.addColorStop(1, rvRgba([255, 255, 255], aH.toFixed(3)));
+  const edge = c.createLinearGradient(vx[0], vy[0], vx[n - 1], vy[n - 1]);
+  edge.addColorStop(0, "rgba(255,255,255,0)"); edge.addColorStop(1, rvRgba([255, 255, 255], aH.toFixed(3)));
+  const ribbon = (scale, shift) => {
+    c.beginPath(); c.moveTo(vx[0] + vnx[0] * shift, vy[0] + vny[0] * shift);
+    for (let i = 1; i < n; i++) c.lineTo(vx[i] + vnx[i] * shift, vy[i] + vny[i] * shift);
+    for (let i = n - 1; i >= 0; i--) c.lineTo(vx[i] + vnx[i] * (shift + w[i] * 2 * scale), vy[i] + vny[i] * (shift + w[i] * 2 * scale));
+    c.closePath();
+  };
+  const soft = reviewSprite(RV_SOFT, col);
+  for (let i = 0; i < n; i += 4) {                         // faint bloom hugging the blade
+    const r = (7 + w[i] * 1.4); if (w[i] < 0.5) continue;
+    c.globalAlpha = 0.16 * Math.pow(vi[i], 0.8); c.drawImage(soft, vx[i] + vnx[i] * w[i] - r, vy[i] + vny[i] * w[i] - r, r * 2, r * 2);
+  }
+  c.globalAlpha = 0.4; c.fillStyle = fill; ribbon(0.5, -5 * sizeMul); c.fill();   // afterimage
+  c.globalAlpha = 1; c.fillStyle = fill; ribbon(1, 0); c.fill();                   // the blade
+  c.lineJoin = "round"; c.lineCap = "round"; c.strokeStyle = edge; c.lineWidth = 1.7 * sizeMul;
+  c.beginPath(); c.moveTo(vx[0], vy[0]); for (let i = 1; i < n; i++) c.lineTo(vx[i], vy[i]); c.stroke();   // cutting edge
+  c.lineWidth = 0.9;
+  for (let j = 0; j < 3; j++) {                            // speed lines trailing behind the blade
+    const off = (0.7 + 0.55 * j) * Wmax * 2; let open = false;
+    c.beginPath();
+    for (let i = 0; i < n; i++) {
+      const on = rvNoise(va[i] / 34, S.seed + j * 5) > 0.52 && w[i] > 0.8;
+      if (on) { const x = vx[i] + vnx[i] * off, y = vy[i] + vny[i] * off; open ? c.lineTo(x, y) : c.moveTo(x, y); open = true; } else open = false;
+    }
+    c.globalAlpha = 0.5; c.strokeStyle = edge; c.stroke();
+  }
+  c.globalAlpha = 1;
+}
+
+// molten magma: a dark, irregular crust with glowing veins breaking through it; the glow breathes with the heat
+function paintMagma(S) {
+  const { c, now, n, va, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK, seed } = S;
+  const wid = [];
+  for (let i = 0; i < n; i++) wid.push(0.76 + 0.42 * rvNoise(va[i] / 10, seed + 2.1));
+  S.wid = wid;
+  paintShadow(S, 7, 0.16, 1, 2.2);
+  stampLayers(S);
+  const R = 7 * sizeMul * penK, heat = reducedMotionQuery.matches ? 0 : now;
+  for (let j = 0; j < 3; j++) {
+    const off = (j - 1) * 0.5;
+    for (let i = 0; i < n; i++) {
+      const I = vi[i];
+      if (I < 0.04) continue;
+      const q = rvNoise(va[i] / (j === 1 ? 20 : 13), seed + j * 5), lo = j === 1 ? 0.28 : 0.46, cov = Math.min(1, Math.max(0, (q - lo) / 0.22));
+      if (cov < 0.05) continue;
+      const pulse = 0.75 + 0.25 * Math.sin(heat * 0.004 + va[i] * 0.08), o = off * R * wid[i] * vw[i], r = (2.8 + 1.5 * cov) * sizeMul;
+      c.globalAlpha = 0.8 * cov * Math.pow(I, 0.8) * pulse * (j === 1 ? 1 : 0.72);
+      c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [255, 218, 120], 0.35)), vx[i] + vnx[i] * o - r, vy[i] + vny[i] * o - r, r * 2, r * 2);
+      if (j === 1 && cov > 0.7) { const r2 = 1.1 * sizeMul; c.globalAlpha = 0.8 * Math.pow(I, 0.8) * pulse; c.drawImage(reviewSprite(RV_SPEC, [255, 255, 255]), vx[i] - r2, vy[i] - r2, r2 * 2, r2 * 2); }
+    }
+  }
+  c.globalAlpha = 1;
+}
+
+// liquid chrome: very high contrast. A dark horizon reflection, a bright sky reflection, a thin hard specular, and the bands
+// undulate slowly along the body like mercury
+function paintChrome(S) {
+  const { c, now, n, va, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK } = S;
+  paintShadow(S, 7.4, 0.2, 1.1, 2.6);
+  stampLayers(S);
+  const R = 6.8 * sizeMul * penK, spec = reviewSprite(RV_SPEC, [255, 255, 255]), dark = reviewSprite(RV_SOFT, [16, 22, 40]);
+  for (let i = 0; i < n; i++) {
+    const I = vi[i];
+    if (I < 0.04) continue;
+    const k = (0.4 + 0.6 * Math.pow(I, 0.6)) * vw[i], dot = vnx[i] * -0.62 + vny[i] * -0.78, face = 0.5 + 0.5 * Math.abs(dot), a = Math.pow(I, 0.8);
+    const wob = reducedMotionQuery.matches ? 1 : 1 + 0.22 * Math.sin(va[i] * 0.11 - now * 0.003);
+    let r = 2.6 * sizeMul * k, off = -dot * R * 0.3 * k * wob;
+    c.globalAlpha = 0.88 * face * a; c.drawImage(dark, vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+    r = 3.2 * sizeMul * k; off = dot * R * 0.42 * k * wob;
+    c.globalAlpha = 0.92 * face * a; c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [205, 232, 255], 0.66)), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+    r = 1.05 * sizeMul * k; off = dot * R * 0.66 * k;
+    c.globalAlpha = 0.95 * face * a; c.drawImage(spec, vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+  }
+  c.globalAlpha = 1;
+}
 
 function paintStrokes(c, pts, now, o) {
   const brush = o.brush, kind = brush.kind || "stamp", pal = o.pal, sizeMul = o.sizeMul;
@@ -6360,7 +6696,30 @@ function paintStrokes(c, pts, now, o) {
         if (kind === "jelly") wf *= 1 + 0.07 * Math.sin(va[i] * 0.32 - now * 0.0045);
         vw.push(wf < 0.35 ? 0.35 : wf);
       }
-      const S = { c, now, n, vx: review.vx, vy: review.vy, vt, vl, vs, va, vnx: review.vnx, vny: review.vny, vi, vc, vw, brush, kind, sizeMul, penK, sz, pal, st, flick, gain };
+      const S = { c, now, n, vx: review.vx, vy: review.vy, vt, vl, vs, va, vnx: review.vnx, vny: review.vny, vi, vc, vw, brush, kind, sizeMul, penK, sz, pal, st, flick, gain, seed: pts[s].sid || 0 };
+      if (st && st.line) {                               // neon: a coloured haze around the tube and its wet-street reflection, drawn beneath
+        const { rim, reflect } = st.line;
+        if (rim) {
+          const soft = reviewSprite(RV_SOFT, rim);
+          for (let i = 0; i < n; i += 3) {
+            const I = vi[i];
+            if (I < 0.03) continue;
+            const r = 17 * sizeMul * penK * (0.4 + 0.6 * Math.pow(I, 0.6));
+            c.globalAlpha = 0.34 * Math.pow(I, 0.9) * flick;
+            c.drawImage(soft, S.vx[i] - r, S.vy[i] - r, r * 2, r * 2);
+          }
+        }
+        if (reflect) {
+          for (let i = 0; i < n; i += 2) {
+            const I = vi[i];
+            if (I < 0.04) continue;
+            const w = 10 * sizeMul * (0.5 + 0.5 * Math.pow(I, 0.6)), h = 34 * sizeMul, x = S.vx[i] + Math.sin(now * 0.004 + va[i] * 0.2) * 1.4;
+            c.globalAlpha = 0.3 * Math.pow(I, 0.9) * flick;
+            c.drawImage(reviewSprite(RV_SOFT, vc[i]), x - w, S.vy[i] + 8 * sizeMul, w * 2, h);
+          }
+        }
+        c.globalAlpha = 1;
+      }
       switch (kind) {
         case "glitter": paintGlitter(S); break;
         case "gems": paintGems(S); break;
@@ -6369,6 +6728,13 @@ function paintStrokes(c, pts, now, o) {
         case "cream": paintCream(S); break;
         case "crumb": paintCrumb(S); break;
         case "comet": paintComet(S); break;
+        case "puff": paintPuff(S); break;
+        case "ganache": paintGanache(S); break;
+        case "matcha": paintMatcha(S); break;
+        case "aura": paintAura(S); break;
+        case "slash": paintSlash(S); break;
+        case "magma": paintMagma(S); break;
+        case "chrome": paintChrome(S); break;
         default: stampLayers(S);
       }
       c.globalAlpha = 1;
@@ -6399,9 +6765,32 @@ function paintLamp(c, o, x, y, a, now) {
       break;
     }
     case "gems": drawGlyph(c, "prism", x, y, 9 * sizeMul * (0.9 + 0.15 * breath), 0, rvMix(col, white, 0.5), a * 0.9, 0.5, 3); rvAdd(x, y, 40 * sizeMul); break;
-    case "glitter": drawGlyph(c, "glint", x, y, 6.5 * sizeMul * (0.85 + 0.25 * breath), 0, col, a, 0.5, 1); rvAdd(x, y, 24 * sizeMul); break;
-    case "gloss": case "jelly": drawGlyph(c, "bead", x, y, (kind === "jelly" ? 5.6 : 4.8) * sizeMul * (0.96 + 0.06 * breath), 0, col, a, 0.5, 1); rvAdd(x, y, 14 * sizeMul); break;
-    case "cream": c.globalAlpha = a; c.drawImage(rvDollop(col), x - 9 * sizeMul, y - 7 * sizeMul, 18 * sizeMul, 14 * sizeMul); rvAdd(x, y, 14 * sizeMul); break;
+    case "gloss": {                                     // the applicator tip: a soft wet dot with one clean reflection
+      const rg = 8 * sizeMul;
+      c.globalAlpha = a * 0.55; c.drawImage(reviewSprite(RV_SOFT, rvMix(col, white, 0.3)), x - rg, y - rg, rg * 2, rg * 2);
+      const rs = 2.3 * sizeMul; c.globalAlpha = a * 0.9; c.drawImage(reviewSprite(RV_SPEC, white), x - 1.8 * sizeMul - rs, y - 2 * sizeMul - rs, rs * 2, rs * 2);
+      rvAdd(x, y, 14 * sizeMul);
+      break;
+    }
+    case "jelly": drawGlyph(c, "bead", x, y, 5.8 * sizeMul * (0.96 + 0.06 * breath), 0, col, a, 0.5, 1); rvAdd(x, y, 14 * sizeMul); break;
+    case "puff": case "matcha": { const rp = (kind === "puff" ? 8 : 7) * sizeMul * (0.96 + 0.07 * breath), wp = rp * 2 * (28 / 24); c.globalAlpha = a; c.drawImage(rvPuffBall(col), x - wp / 2, y - wp / 2, wp, wp); rvAdd(x, y, 14 * sizeMul); break; }
+    case "ganache": case "chrome": {
+      const rg = 5.6 * sizeMul, wg = rg * 2 * (28 / 24); c.globalAlpha = a; c.drawImage(rvCreamBall(col), x - wg / 2, y - wg / 2, wg, wg);
+      const rs = 1.6 * sizeMul; c.globalAlpha = a * 0.9; c.drawImage(reviewSprite(RV_SPEC, white), x - 1.8 * sizeMul - rs, y - 1.9 * sizeMul - rs, rs * 2, rs * 2);
+      rvAdd(x, y, 12 * sizeMul); break;
+    }
+    case "aura": {
+      const fh = (16 + 4 * breath) * sizeMul; c.globalAlpha = a * 0.85; c.drawImage(rvFlame(col), x - 6 * sizeMul, y - fh, 12 * sizeMul, fh * 1.08);
+      const rb = 11 * sizeMul; c.globalAlpha = a * 0.5; c.drawImage(bloom, x - rb, y - rb, rb * 2, rb * 2);
+      const rn = 3.4 * sizeMul; c.globalAlpha = a; c.drawImage(reviewSprite(RV_SPEC, white), x - rn, y - rn, rn * 2, rn * 2); rvAdd(x, y, 30 * sizeMul); break;
+    }
+    case "slash": drawGlyph(c, "star4", x, y, 6.2 * sizeMul, 0.79, rvMix(col, white, 0.55), a, 0.5, 1); rvAdd(x, y, 18 * sizeMul); break;
+    case "magma": {
+      const rb = 11 * sizeMul * (0.92 + 0.14 * breath); c.globalAlpha = a * 0.6; c.drawImage(reviewSprite(RV_SOFT, col), x - rb, y - rb, rb * 2, rb * 2);
+      const rn = 4 * sizeMul; c.globalAlpha = a; c.drawImage(reviewSprite(RV_SOFT, rvMix(col, [255, 226, 140], 0.6)), x - rn, y - rn, rn * 2, rn * 2);
+      const rs = 1.5 * sizeMul; c.globalAlpha = a * 0.9; c.drawImage(reviewSprite(RV_SPEC, white), x - rs, y - rs, rs * 2, rs * 2); rvAdd(x, y, 16 * sizeMul); break;
+    }
+    case "cream": { const rc2 = 6.2 * sizeMul, wc = rc2 * 2 * (28 / 24); c.globalAlpha = a; c.drawImage(rvCreamBall(col), x - wc / 2, y - wc / 2, wc, wc); rvAdd(x, y, 12 * sizeMul); break; }
     case "crumb": drawGlyph(c, "crumb", x, y, 3.6 * sizeMul, 0.4, col, a, 0.5, 2); rvAdd(x, y, 12 * sizeMul); break;
     default: {
       const precise = brush === REVIEW.brushes.laser, Lb = L[Math.min(1, nl - 1)], Lc = L[nl - 1];
@@ -6413,6 +6802,93 @@ function paintLamp(c, o, x, y, a, now) {
     }
   }
   c.restore();
+}
+
+// ---- click responses: rings for light, a burst of bits for grain / crumb / gems, a plop for soft things, a spreading
+// puddle for oil and chocolate, ripples in milk for matcha, a shock ring and flames for aura, crossed cuts for the blade
+function paintPing(c, p, now, o) {
+  const { brush, pal, sizeMul } = o, kind = brush.kind || "stamp";
+  const age = now - p.t0, T = REVIEW.pingLife, u = age / T, t = age / 1000, k = Math.sqrt(sizeMul);
+  const col = rvAt(pal, p.t0), solid = `rgb(${col[0]},${col[1]},${col[2]})`, white = [255, 255, 255];
+  const spring = (x) => 1 - Math.exp(-7 * x) * Math.cos(18 * x), fade = u < 0.55 ? 1 : 1 - (u - 0.55) / 0.45, e = 1 - Math.exp(-6 * t);
+  const soft = reviewSprite(RV_SOFT, col);
+  if (kind === "cream" || kind === "puff" || kind === "ganache" && false) {
+    const R = (kind === "puff" ? 11 : 9) * k * Math.max(0.01, spring(t)), w = R * 2 * (28 / 24);
+    c.globalAlpha = fade; c.drawImage(kind === "puff" ? rvPuffBall(col) : rvCreamBall(col), p.x - w / 2, p.y - w / 2, w, w); rvAdd(p.x, p.y, R * 2.6);
+  } else if (kind === "jelly") {
+    const sx = 1 + 0.38 * Math.exp(-5 * t) * Math.cos(22 * t), R = 10 * k * Math.min(1, t * 9 + 0.2);
+    c.save(); c.translate(p.x, p.y); c.scale(sx, 1 / sx); c.globalAlpha = fade; drawGlyph(c, "bead", 0, 0, R, 0, col, 1, 0.5, 1); c.restore(); rvAdd(p.x, p.y, R * 2.4);
+  } else if (kind === "gloss" || kind === "ganache") {
+    const rx = (8 + 24 * e) * k, ry = rx * 0.38, dark = kind === "ganache";
+    c.globalAlpha = (dark ? 0.92 : 0.38) * fade; c.fillStyle = dark ? `rgb(${rvMix(col, [10, 5, 4], 0.15)})` : solid;
+    c.beginPath(); c.ellipse(p.x, p.y, rx, ry, 0, 0, 6.283); c.fill();
+    c.globalAlpha = 0.4 * fade; c.strokeStyle = `rgb(${rvMix(col, [30, 12, 12], 0.5)})`; c.lineWidth = 0.9; c.stroke();
+    const rs = 2.2 * k * (0.4 + 0.6 * e); c.globalAlpha = 0.85 * fade; c.drawImage(reviewSprite(RV_SPEC, white), p.x - rx * 0.3 - rs, p.y - ry * 0.35 - rs, rs * 2, rs * 2);
+    rvAdd(p.x, p.y, rx * 1.4);
+  } else if (kind === "matcha") {
+    for (let m = 0; m < 3; m++) {
+      const um = (u - m * 0.14) / (1 - m * 0.14);
+      if (um <= 0) continue;
+      const rr = (6 + 40 * (1 - Math.pow(1 - um, 2))) * k;
+      c.strokeStyle = m % 2 ? `rgb(${rvMix(col, [64, 98, 44], 0.5)})` : `rgb(${rvMix(col, white, 0.72)})`;
+      c.globalAlpha = 0.5 * Math.pow(1 - um, 1.3); c.lineWidth = 4.5 - m; c.beginPath(); c.arc(p.x, p.y, rr, 0, 6.283); c.stroke();
+    }
+    rvAdd(p.x, p.y, 52 * k);
+  } else if (kind === "glitter" || kind === "crumb" || kind === "gems") {
+    const N = kind === "gems" ? 9 : 16, d0 = (1 - Math.exp(-4.5 * t)) / 4.5;
+    for (let i = 0; i < N; i++) {
+      const ang = rvHash(p.seed + i * 1.7) * 6.283, sp = (26 + 78 * rvHash(p.seed + i * 3.1)) * k, x = p.x + Math.cos(ang) * sp * d0, y = p.y + Math.sin(ang) * sp * d0 + (kind === "crumb" ? 60 * t * t : 0);
+      const al = fade * Math.pow(1 - u, 0.8), h = rvHash(p.seed + i * 5.3);
+      if (kind === "glitter") { c.globalAlpha = al; c.fillStyle = `rgb(${rvMix(col, white, h * 0.8)})`; const sz2 = 1 + 1.8 * h; c.fillRect(x - sz2 / 2, y - sz2 / 2, sz2, sz2); }
+      else if (kind === "crumb") drawGlyph(c, i % 5 === 0 ? "chip" : "crumb", x, y, 2 + 1.6 * h, ang, rvMix(col, [150, 96, 52], h * 0.4), al, 0.5, p.seed + i);
+      else { const r = (3 + 4 * h) * k, w = 34 * (r / 14); c.save(); c.translate(x, y); c.rotate(ang); c.globalAlpha = al; c.drawImage(rvGem(i % 3 ? "round" : "heart", pal.scatter ? rvGrad(pal.grad, h) : col), -w / 2, -w / 2, w, w); c.restore(); }
+      rvAdd(x, y, 10);
+    }
+  } else if (kind === "aura") {
+    const rr = (8 + 52 * e) * k;
+    c.strokeStyle = solid; c.globalAlpha = 0.8 * Math.pow(1 - u, 1.4); c.lineWidth = 2.6 * (1 - u) + 0.6; c.beginPath(); c.arc(p.x, p.y, rr, 0, 6.283); c.stroke();
+    for (let i = 0; i < 10; i++) {
+      const ang = (i / 10) * 6.283 + rvHash(p.seed + i) * 0.4, fh = (10 + 12 * rvHash(p.seed + i * 2.3)) * k * (1 - u * 0.7), rad = rr * 0.7;
+      c.save(); c.translate(p.x + Math.cos(ang) * rad, p.y + Math.sin(ang) * rad); c.rotate(ang + 1.5708); c.globalAlpha = 0.85 * (1 - u);
+      c.drawImage(rvFlame(col), -4 * k, -fh, 8 * k, fh * 1.08); c.restore();
+    }
+    rvAdd(p.x, p.y, rr * 1.5);
+  } else if (kind === "slash") {
+    const L = (24 + 44 * e) * k, a = 0.95 * Math.pow(1 - u, 1.2);
+    for (let m = 0; m < 2; m++) {
+      const dx = m ? -L : L, g = c.createLinearGradient(p.x - dx, p.y - L, p.x + dx, p.y + L);
+      g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(0.5, `rgba(255,255,255,${a.toFixed(3)})`); g.addColorStop(1, "rgba(255,255,255,0)");
+      c.strokeStyle = solid; c.lineCap = "round"; c.globalAlpha = a * 0.4; c.lineWidth = 6 * (1 - u * 0.5); c.beginPath(); c.moveTo(p.x - dx, p.y - L); c.lineTo(p.x + dx, p.y + L); c.stroke();
+      c.strokeStyle = g; c.globalAlpha = 1; c.lineWidth = 1.8 * (1 - u * 0.5); c.beginPath(); c.moveTo(p.x - dx, p.y - L); c.lineTo(p.x + dx, p.y + L); c.stroke();
+    }
+    rvAdd(p.x, p.y, L * 1.6);
+  } else if (kind === "magma") {
+    const rr = (8 + 36 * e) * k;
+    c.strokeStyle = solid; c.globalAlpha = 0.7 * Math.pow(1 - u, 1.3); c.lineWidth = 3 * (1 - u) + 0.6; c.beginPath(); c.arc(p.x, p.y, rr, 0, 6.283); c.stroke();
+    for (let i = 0; i < 8; i++) {
+      const ang = rvHash(p.seed + i * 1.9) * 6.283, d = (10 + 26 * rvHash(p.seed + i * 2.7)) * k * e, r = (1.6 + 2.2 * rvHash(p.seed + i)) * k;
+      c.globalAlpha = (1 - u) * 0.9; c.drawImage(reviewSprite(RV_SOFT, rvMix(col, [255, 226, 140], 0.5)), p.x + Math.cos(ang) * d - r * 2, p.y + Math.sin(ang) * d - 22 * t * k - r * 2, r * 4, r * 4);
+    }
+    rvAdd(p.x, p.y, rr * 1.4 + 30);
+  } else if (kind === "chrome") {
+    for (let m = 0; m < 3; m++) {
+      const um = (u - m * 0.12) / (1 - m * 0.12);
+      if (um <= 0) continue;
+      const rr = (5 + 42 * (1 - Math.pow(1 - um, 2.4))) * k;
+      c.strokeStyle = `rgb(${rvMix(col, [20, 26, 44], 0.5)})`; c.globalAlpha = 0.7 * Math.pow(1 - um, 1.2); c.lineWidth = 2.2; c.beginPath(); c.arc(p.x, p.y, rr, 0, 6.283); c.stroke();
+      c.strokeStyle = "#fff"; c.globalAlpha = 0.8 * Math.pow(1 - um, 1.2); c.lineWidth = 0.9; c.beginPath(); c.arc(p.x - 0.7, p.y - 0.7, rr, 3.6, 5.2); c.stroke();
+    }
+    rvAdd(p.x, p.y, 52 * k);
+  } else {
+    const e1 = 1 - Math.pow(1 - u, 3), gr = 30 * k * (1 - 0.35 * u);
+    c.globalAlpha = 0.4 * Math.pow(1 - u, 1.3); c.drawImage(soft, p.x - gr, p.y - gr, gr * 2, gr * 2);
+    c.strokeStyle = solid; c.globalAlpha = 0.85 * Math.pow(1 - u, 1.5); c.lineWidth = 0.7 + 2 * (1 - u);
+    c.beginPath(); c.arc(p.x, p.y, (6 + 46 * e1) * k, 0, 6.283); c.stroke();
+    const u2 = Math.max(0, (age - 120) / (REVIEW.pingLife - 120));
+    if (u2 > 0) { c.globalAlpha = 0.5 * Math.pow(1 - u2, 1.5); c.lineWidth = 0.6 + 1.2 * (1 - u2); c.beginPath(); c.arc(p.x, p.y, (4 + 32 * (1 - Math.pow(1 - u2, 3))) * k, 0, 6.283); c.stroke(); }
+    rvAdd(p.x, p.y, 62 * k);
+  }
+  c.globalAlpha = 1;
 }
 
 function drawTrail(now) {
@@ -6437,23 +6913,11 @@ function drawTrail(now) {
   if (lampOn) paintLamp(c, { brush, pal, sizeMul, st }, review.lampX, review.lampY, review.lampA, now);
   if (st) drawReviewParticles(c, st, now, sz);
 
-  // pings: a click sends two soft rings outward from the spot
+  // pings: a click is answered in the material's own language
   for (let i = review.pings.length - 1; i >= 0; i--) {
-    const p = review.pings[i], age = now - p.t0;
-    if (age > REVIEW.pingLife) { review.pings.splice(i, 1); continue; }
-    const col = rvAt(pal, p.t0), solid = `rgb(${col[0]},${col[1]},${col[2]})`;
-    const u = age / REVIEW.pingLife, e1 = 1 - Math.pow(1 - u, 3), k = Math.sqrt(sizeMul), gr = 30 * k * (1 - 0.35 * u);
-    c.globalAlpha = 0.4 * Math.pow(1 - u, 1.3);
-    c.drawImage(reviewSprite(RV_SOFT, col), p.x - gr, p.y - gr, gr * 2, gr * 2);
-    c.strokeStyle = solid;
-    c.globalAlpha = 0.85 * Math.pow(1 - u, 1.5); c.lineWidth = 0.7 + 2 * (1 - u);
-    c.beginPath(); c.arc(p.x, p.y, (6 + 46 * e1) * k, 0, 6.283); c.stroke();
-    const u2 = Math.max(0, (age - 120) / (REVIEW.pingLife - 120));
-    if (u2 > 0) {
-      c.globalAlpha = 0.5 * Math.pow(1 - u2, 1.5); c.lineWidth = 0.6 + 1.2 * (1 - u2);
-      c.beginPath(); c.arc(p.x, p.y, (4 + 32 * (1 - Math.pow(1 - u2, 3))) * k, 0, 6.283); c.stroke();
-    }
-    rvAdd(p.x, p.y, 62 * k);
+    const p = review.pings[i];
+    if (now - p.t0 > REVIEW.pingLife) { review.pings.splice(i, 1); continue; }
+    paintPing(c, p, now, { brush, pal, sizeMul });
   }
   c.globalAlpha = 1;
 

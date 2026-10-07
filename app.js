@@ -1165,7 +1165,7 @@ function loadPrefs() {
     if (typeof prefs.reviewLook !== "string") prefs.reviewLook = "laser";
     if (typeof prefs.reviewColor !== "string") prefs.reviewColor = defaultPrefs.reviewColor;
     if (typeof prefs.reviewFx !== "string") prefs.reviewFx = "none";
-    if (!["laser", "comet", "veil", "ribbon", "glitter", "dazzle", "gloss", "jelly", "cream", "crumb", "puff", "ganache", "matcha", "aura", "slash", "magma", "chrome", "biscuit"].includes(prefs.reviewBrush)) prefs.reviewBrush = "laser";
+    if (!["laser", "comet", "veil", "ribbon", "glitter", "sparkle", "dazzle", "gloss", "glossy", "jelly", "cream", "crumb", "puff", "ganache", "matcha", "aura", "slash", "magma", "chrome", "biscuit"].includes(prefs.reviewBrush)) prefs.reviewBrush = "laser";
     if (!["s", "m", "l"].includes(prefs.reviewSize)) prefs.reviewSize = "m";
     if (!["spot", "ruler", "off"].includes(prefs.reviewLens)) prefs.reviewLens = "spot";
     if (!["s", "m", "l"].includes(prefs.reviewLensSize)) prefs.reviewLensSize = "m";
@@ -4616,11 +4616,21 @@ const REVIEW = {
       { R: 12,  stops: [[0, 0.05], [0.45, 0.03], [0.8, 0.008], [1, 0]], stride: 3, white: 0 },
       { R: 5.4, stops: [[0, 0.5], [0.75, 0.45], [0.95, 0.16], [1, 0]],   stride: 1, white: 0.08, mix: [[70, 18, 52], 0.1] }
     ] },
+    sparkle: { label: "Sparkle", kind: "glitter", flash: true, life: 2000, taper: [0.5, 0.5], speedW: 0.05,
+      flare: { shape: "glint", every: 22, prob: 0.9, size: [2.4, 9.5], life: 600, spread: 1.15 }, layers: [
+      { R: 12,  stops: [[0, 0.05], [0.45, 0.03], [0.8, 0.008], [1, 0]], stride: 3, white: 0 },
+      { R: 5.4, stops: [[0, 0.5], [0.75, 0.45], [0.95, 0.16], [1, 0]],   stride: 1, white: 0.08, mix: [[70, 18, 52], 0.1] }
+    ] },
     dazzle: { label: "Dazzling", kind: "gems", life: 2100, taper: [0.35, 0.6], speedW: 0,
       flare: { shape: "prism", every: 64, prob: 0.42, size: [5.5, 10], life: 720, spread: 0.9 }, layers: [
       { R: 12,  stops: [[0, 0.04], [0.5, 0.02], [1, 0]], stride: 4, white: 0 }
     ] },
     gloss: { label: "Lip Oil", kind: "gloss", life: 2000, taper: [0.35, 0.6], speedW: 0.25, layers: [
+      { R: 8.2, stops: [[0, 0], [0.55, 0], [0.76, 0.3], [0.92, 0.36], [1, 0]],      stride: 1, white: 0, mix: [[104, 58, 66], 0.34] },
+      { R: 6.8, stops: [[0, 0.21], [0.7, 0.19], [0.93, 0.1], [1, 0]],               stride: 1, white: 0.36 },
+      { R: 4.2, stops: [[0, 0.34], [1, 0]],                                          stride: 1, white: 0.72 }
+    ] },
+    glossy: { label: "Gloss", kind: "gloss", smooth: true, life: 2000, taper: [0.35, 0.6], speedW: 0.25, layers: [
       { R: 8.2, stops: [[0, 0], [0.55, 0], [0.76, 0.3], [0.92, 0.36], [1, 0]],      stride: 1, white: 0, mix: [[104, 58, 66], 0.34] },
       { R: 6.8, stops: [[0, 0.21], [0.7, 0.19], [0.93, 0.1], [1, 0]],               stride: 1, white: 0.36 },
       { R: 4.2, stops: [[0, 0.34], [1, 0]],                                          stride: 1, white: 0.72 }
@@ -4672,11 +4682,11 @@ const REVIEW = {
     { id: "pixel",  group: "light", label: "Pixel",  title: "Pixel",          color: "violet",   fx: "pixel",        brush: "laser",   size: "m" },
     { id: "soap",   group: "light", label: "Bubble", title: "Soap bubbles",   color: "sky",      fx: "bubble",       brush: "veil",    size: "m" },
     { id: "glitter",  group: "shine", label: "Glitter",  title: "Glitter",       color: "glam",      fx: "none", brush: "glitter", size: "m" },
-    { id: "rosegold", group: "shine", label: "Rose Gold",title: "Rose-gold glitter", color: "rosegold", fx: "none",  brush: "glitter", size: "m" },
+    { id: "rosegold", group: "shine", label: "Rose Gold",title: "Rose-gold glitter", color: "rosegold", fx: "star-dust",  brush: "sparkle", size: "m" },
     { id: "dazzle",   group: "shine", label: "Dazzling", title: "Dazzling gemstones", color: "gems",   fx: "crystal-glass", brush: "dazzle", size: "m" },
     { id: "diamond",  group: "shine", label: "Diamond",  title: "Diamond crystals",  color: "silver",    fx: "star-dust",  brush: "dazzle",  size: "m" },
     { id: "lipoil",   group: "shine", label: "Lip Oil",  title: "Lip oil",       color: "nude",      fx: "none",    brush: "gloss",   size: "m" },
-    { id: "pearl",    group: "shine", label: "Pearl",    title: "Pearl gloss",   color: "pearl",     fx: "moon-pearl",  brush: "gloss",   size: "m" },
+    { id: "pearl",    group: "shine", label: "Pearl",    title: "Pearl gloss",   color: "pearl",     fx: "moon-pearl",  brush: "glossy",   size: "m" },
     { id: "cream",  group: "sweet", label: "Cream",  title: "Strawberry cream", color: "scream",  fx: "sw-berry",  brush: "cream", size: "m" },
     { id: "cookie", group: "sweet", label: "Cookie", title: "Choc-chip cookie", color: "biscuit", fx: "sw-crumbs", brush: "crumb", size: "m" },
     { id: "jelly",  group: "sweet", label: "Jelly",  title: "Grape jelly",      color: "grape",   fx: "none",  brush: "jelly", size: "m" },
@@ -6282,16 +6292,21 @@ function paintGlints(S, spec) {                       // a brush's own flares / 
   drawShimmer(S.c, spec.__st, S.now, S.vx, S.vy, S.vt, S.vl, S.n, S.sz);
 }
 
-function paintGlitter(S) {                            // dense micro-grain tiles: pure material, no flashing
+function paintGlitter(S) {                            // dense micro-grain tiles. Glitter = pure material; Sparkle also shines
   stampLayers(S);
-  const { c, vi, vc, vw, sizeMul, penK } = S;
+  const { c, now, vi, vt, vc, vw, sizeMul, penK, brush } = S;
   rvWalk(S, 5.2 * sizeMul * penK, (j, k) => {
     const I = vi[j];
     if (I < 0.02) return;
-    const sc = (0.5 + 0.5 * Math.pow(I, 0.5)) * vw[j], rad = 9.6 * sizeMul * penK * sc;
-    rvStamp(c, rvTile("glitter", vc[j]), S.vx[j], S.vy[j], rad, rvHash(k * 1.3) * 6.283, Math.pow(I, 0.6));
+    const sc = (0.5 + 0.5 * Math.pow(I, 0.5)) * vw[j], rad = 9.6 * sizeMul * penK * sc, rot = rvHash(k * 1.3) * 6.283;
+    rvStamp(c, rvTile("glitter", vc[j]), S.vx[j], S.vy[j], rad, rot, Math.pow(I, 0.6));
+    if (brush.flash) {                                  // a travelling sheen that lights the brightest grains
+      const sh = (reducedMotionQuery.matches ? 0.4 : Math.pow(Math.max(0, Math.sin(vt[j] * 0.0075 - now * 0.0062 + rvHash(k) * 1.4)), 2.2)) * Math.pow(I, 0.7);
+      if (sh > 0.04) rvStamp(c, rvTile("glitterHi", vc[j]), S.vx[j], S.vy[j], rad, rot, Math.min(1, sh));
+    }
   });
   c.globalAlpha = 1;
+  if (brush.flash) paintGlints(S, brush.flare);
 }
 
 function paintGems(S) {                               // a chain of cut stones: mixed sizes and cuts, each catching light on its own beat
@@ -6361,6 +6376,12 @@ function paintHighlights(S, o) {
 // lip oil is swiped on, not drawn: product comes and goes in patches (some stretches are simply bare), the width swells and
 // thins like pressure on an applicator, fine streaks run along the swipe, and the glassy highlight only shows where there is product
 function paintGloss(S) {
+  if (S.brush.smooth) {                                 // continuous glossy film (Pearl): no gaps, even coating
+    paintShadow(S, 6.6, 0.1, 1.0, 2.2);
+    stampLayers(S);
+    paintHighlights(S, { bodyR: 6.8, specR: 1.5, specA: 0.95, softK: 3.2, softA: 0.2, backA: 0.22 });
+    return;
+  }
   const { c, n, va, vi, vc, vw, vx, vy, vnx, vny, sizeMul, penK, seed } = S;
   const cov = [], wid = [];
   for (let i = 0; i < n; i++) {
@@ -6749,7 +6770,8 @@ function paintStrokes(c, pts, now, o) {
 
 // the pointer lamp takes the material's character: a precise dot, a comet's coma, a glint, a gem flash, a drop of oil...
 function paintLamp(c, o, x, y, a, now) {
-  const brush = o.brush, kind = brush.kind || "stamp", sizeMul = o.sizeMul, pal = o.pal;
+  const brush = o.brush, sizeMul = o.sizeMul, pal = o.pal;
+  const kind = brush.kind === "glitter" && !brush.flash ? "stamp" : (brush.kind || "stamp");
   const col = rvAt(pal, now), white = [255, 255, 255];
   const breath = reducedMotionQuery.matches ? 1 : 0.5 + 0.5 * Math.sin(now / 520);
   const L = brush.layers.length >= 2 ? brush.layers : REVIEW.brushes.laser.layers, nl = L.length;
@@ -6765,6 +6787,7 @@ function paintLamp(c, o, x, y, a, now) {
       break;
     }
     case "gems": drawGlyph(c, "prism", x, y, 9 * sizeMul * (0.9 + 0.15 * breath), 0, rvMix(col, white, 0.5), a * 0.9, 0.5, 3); rvAdd(x, y, 40 * sizeMul); break;
+    case "glitter": drawGlyph(c, "glint", x, y, 6.5 * sizeMul * (0.85 + 0.25 * breath), 0, col, a, 0.5, 1); rvAdd(x, y, 24 * sizeMul); break;
     case "gloss": {                                     // the applicator tip: a soft wet dot with one clean reflection
       const rg = 8 * sizeMul;
       c.globalAlpha = a * 0.55; c.drawImage(reviewSprite(RV_SOFT, rvMix(col, white, 0.3)), x - rg, y - rg, rg * 2, rg * 2);

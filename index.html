@@ -221,7 +221,7 @@
         </label>
         <label class="field">
           <span>Size</span>
-          <input id="fontSizeRange" type="range" min="8" max="36" step="1">
+          <input id="fontSizeRange" type="range" min="4" max="36" step="1">
           <output id="fontSizeReadout">18 px</output>
         </label>
         <div class="field">
@@ -232,6 +232,271 @@
             <button class="swatch" type="button" data-color="#b32b2b" style="--c:#b32b2b" aria-label="Red ink"></button>
             <button class="swatch" type="button" data-color="#1f6e4a" style="--c:#1f6e4a" aria-label="Green ink"></button>
             <button class="swatch" type="button" data-color="#6a3fb0" style="--c:#6a3fb0" aria-label="Violet ink"></button>
+            <button class="swatch" type="button" data-color="#ffffff" style="--c:#ffffff" aria-label="White ink"></button>
+          </span>
+        </div>
+      </section>
+
+      <details class="setting-group more">
+        <summary>More</summary>
+        <label class="field field-select">
+          <span>Spark style</span>
+          <select id="effectModeSelect"></select>
+        </label>
+        <label class="field field-select">
+          <span>Key sound</span>
+          <select id="soundPackSelect"></select>
+        </label>
+      </details>
+    </aside>
+
+    <canvas class="review-lens" id="reviewLens" aria-hidden="true"></canvas>
+    <canvas class="review-trail" id="reviewTrail" aria-hidden="true"></canvas>
+    <div class="feedback-layer" id="inkLayer" aria-hidden="true">
+      <canvas class="fx-canvas" id="fxCanvas"></canvas>
+      <span class="caret-glow" id="caretGlow"></span>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html><!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Primary SEO -->
+    <title>chaeyununu | 귀여운 PDF 타이핑 노트</title>
+    <meta name="description" content="chaeyununu의 귀여운 PDF 타이핑 노트. PDF 위에 바로 글을 쓰고 키보드 소리와 반짝이는 typing effects를 즐기며 공부하고 복습하세요.">
+    <meta name="author" content="chaeyununu">
+    <meta name="creator" content="chaeyununu">
+    <meta name="application-name" content="StudyTypingNote by chaeyununu">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="theme-color" content="#2b2d33">
+
+    <!-- Canonical identity -->
+    <link rel="canonical" href="https://chaeyununu.github.io/StudyTypingNote/">
+    <link rel="me" href="https://github.com/chaeyununu">
+
+    <!-- Social / share metadata -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ko_KR">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta property="og:site_name" content="StudyTypingNote by chaeyununu">
+    <meta property="og:title" content="chaeyununu | 귀여운 PDF 타이핑 노트">
+    <meta property="og:description" content="PDF 위에 바로 쓰고, 키보드 소리와 반짝이는 typing effects를 즐겨보세요 ✨">
+    <meta property="og:url" content="https://chaeyununu.github.io/StudyTypingNote/">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="chaeyununu | 귀여운 PDF 타이핑 노트">
+    <meta name="twitter:description" content="PDF 위에 바로 쓰고 반짝이는 typing effects로 복습하는 StudyTypingNote ">
+
+    <!-- Structured data: connect the app, site and chaeyununu identity -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://chaeyununu.github.io/StudyTypingNote/#website",
+          "url": "https://chaeyununu.github.io/StudyTypingNote/",
+          "name": "StudyTypingNote by chaeyununu",
+          "alternateName": [
+            "chaeyununu PDF 타이핑 노트",
+            "StudyTypingNote",
+            "Ink Over PDF"
+          ],
+          "description": "chaeyununu가 만든 귀여운 PDF 타이핑 메모 및 복습 웹앱.",
+          "inLanguage": ["ko-KR", "en"],
+          "creator": {
+            "@id": "https://chaeyununu.github.io/StudyTypingNote/#creator"
+          }
+        },
+        {
+          "@type": "Person",
+          "@id": "https://chaeyununu.github.io/StudyTypingNote/#creator",
+          "name": "chaeyununu",
+          "url": "https://github.com/chaeyununu",
+          "sameAs": [
+            "https://github.com/chaeyununu",
+            "https://github.com/chaeyununu/StudyTypingNote"
+          ]
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://chaeyununu.github.io/StudyTypingNote/#app",
+          "name": "StudyTypingNote",
+          "alternateName": [
+            "chaeyununu PDF 타이핑 노트",
+            "Ink Over PDF"
+          ],
+          "url": "https://chaeyununu.github.io/StudyTypingNote/",
+          "description": "PDF 위에 바로 글을 쓰고, 키보드 소리와 반짝이는 typing effects를 즐기며 공부 메모와 복습을 할 수 있는 무료 브라우저 기반 PDF 타이핑 노트.",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Any",
+          "browserRequirements": "JavaScript를 지원하는 최신 웹 브라우저",
+          "isAccessibleForFree": true,
+          "inLanguage": ["ko-KR", "en"],
+          "dateModified": "2026-10-04",
+          "author": {
+            "@id": "https://chaeyununu.github.io/StudyTypingNote/#creator"
+          },
+          "creator": {
+            "@id": "https://chaeyununu.github.io/StudyTypingNote/#creator"
+          },
+          "featureList": [
+            "PDF 위에 직접 타이핑 메모",
+            "PDF 공부 및 복습 노트",
+            "키보드 타이핑 사운드",
+            "반짝이는 typing effects",
+            "다양한 타이핑 mood와 글꼴",
+            "브라우저에서 바로 실행되는 무료 웹앱"
+          ]
+        }
+      ]
+    }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Hahmlet:wght@400;600&family=Diphylleia&family=Orbit&family=Gaegu:wght@400;700&family=Dongle:wght@400;700&family=Bagel+Fat+One&family=Nanum+Myeongjo:wght@400;700&family=Song+Myung&family=Grandiflora+One&family=Gasoek+One&family=Hi+Melody&family=Gamja+Flower&family=JetBrains+Mono:wght@400;500&family=Nanum+Gothic+Coding:wght@400;700&family=Jua&family=Single+Day&family=Poor+Story&family=Cute+Font&family=Nanum+Pen+Script&display=swap">
+    <!-- Extra Korean faces (CDN). Full-file or variable fonts, so no mid-typing slice swaps. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/spoqa/spoqa-han-sans@latest/css/SpoqaHanSansNeo.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquareRound@2.0/nanumsquareround.css">
+    <link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/maru-buri.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/webfontworld/ridi/RIDIBatang.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/webfontworld/gmarket/GmarketSans.css">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body data-effect="soft-spark">
+    <!-- Upload screen -->
+    <section class="upload-stage" id="uploadStage" aria-label="PDF 위에 타이핑 메모하기">
+      <div class="upload-card">
+        <h1>PDF 위에 귀엽게 타이핑하고<br>복습하세요</h1>
+        <div style="margin:0 0 10px;color:#e9b99f;font-size:13px;font-weight:600;letter-spacing:.02em;">
+          StudyTypingNote · by
+          <a href="https://github.com/chaeyununu" rel="author me" style="color:inherit;text-decoration:none;">chaeyununu</a>
+        </div>
+        <p>PDF 위에 바로 쓰고, 키보드 소리와 반짝이는 typing effects를 즐겨보세요 ✨</p>
+        <label class="upload-drop" id="uploadDrop">
+          <input type="file" id="pdfInput" accept="application/pdf" hidden>
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M12 16V5m0 0-4 4m4-4 4 4M5 15v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="upload-drop-title">PDF 선택하기</span>
+          <span class="upload-drop-sub">or drop your PDF here </span>
+        </label>
+      </div>
+    </section>
+
+    <!-- PDF stage -->
+    <main class="pdf-stage" id="pdfStage" hidden>
+      <div class="pdf-scroll" id="pdfScroll"></div>
+    </main>
+
+    <!-- Toolbar -->
+    <header class="ink-toolbar" id="inkToolbar" hidden aria-label="Tools">
+      <div class="toolbar-cluster toolbar-file">
+        <button class="round-icon" id="changePdfBtn" type="button" aria-label="Open a different PDF" title="Open another PDF">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm7 0v5h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="pdf-name" id="pdfNameLabel">document.pdf</span>
+      </div>
+
+      <div class="toolbar-cluster">
+        <button class="round-icon" id="zoomOutBtn" type="button" aria-label="Zoom out">−</button>
+        <span class="zoom-readout" id="zoomReadout">100%</span>
+        <button class="round-icon" id="zoomInBtn" type="button" aria-label="Zoom in">+</button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button class="round-icon" id="prevPageBtn" type="button" aria-label="Previous page">‹</button>
+        <span class="page-readout" id="pageReadout">1 / 1</span>
+        <button class="round-icon" id="nextPageBtn" type="button" aria-label="Next page">›</button>
+      </div>
+
+      <div class="toolbar-cluster">
+        <button class="round-icon" id="typeToolBtn" type="button" aria-pressed="false" aria-label="Type tool (T)" title="Type tool (T)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6V4h14v2M12 4v16m-3 0h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="tool-pill" id="reviewBtn" type="button" aria-pressed="false" aria-label="Review mode (R)" title="Review — laser pointer &amp; focus lens (R)">
+          <span class="pill-dot" aria-hidden="true"></span><span class="pill-label">REVIEW</span>
+        </button>
+        <label class="switch-row" title="Typing sparks">
+          <span>FX</span>
+          <input id="effectEnabled" type="checkbox">
+        </label>
+        <label class="switch-row" title="Key sounds">
+          <span>Sound</span>
+          <input id="soundEnabled" type="checkbox">
+        </label>
+        <button class="round-icon" id="settingsToggleBtn" type="button" aria-label="Open settings" aria-controls="settingsPanel" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="8" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+        </button>
+        <button class="round-icon" id="fullscreenBtn" type="button" aria-label="Toggle full screen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="review-dock" id="reviewDock" inert></div>
+    <p class="place-hint" id="placeHint" hidden>페이지 아무 곳이나 클릭해서 typing start ✍️</p>
+
+    <div class="drawer-overlay" id="drawerOverlay" aria-hidden="true"></div>
+
+    <!-- Settings: one mood picker + a few basics. Everything else is under "More". -->
+    <aside class="settings-panel" id="settingsPanel" aria-label="Settings" inert>
+      <div class="settings-header">
+        <h2>Studio</h2>
+        <button class="round-icon" id="closeSettingsBtn" type="button" aria-label="Close settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <section class="setting-group">
+        <h3>Mood</h3>
+        <p class="micro-copy">Picks the sparks, key sound and font together.</p>
+        <div class="mood-grid" id="moodGrid"></div>
+        <div class="try-note" id="tryNote" contenteditable="true" spellcheck="false" data-placeholder="Try typing here"></div>
+      </section>
+
+      <section class="setting-group">
+        <h3>Typing</h3>
+        <label class="field">
+          <span>Effect strength</span>
+          <input id="intensityRange" type="range" min="0" max="100" step="5">
+          <output id="intensityReadout">80%</output>
+        </label>
+        <label class="field">
+          <span>Volume</span>
+          <input id="volumeRange" type="range" min="0" max="100" step="1">
+          <output id="volumeReadout">38%</output>
+        </label>
+      </section>
+
+      <section class="setting-group">
+        <h3>Ink</h3>
+        <label class="field field-select">
+          <span>Font</span>
+          <select id="fontSelect"></select>
+        </label>
+        <label class="field">
+          <span>Size</span>
+          <input id="fontSizeRange" type="range" min="4" max="36" step="1">
+          <output id="fontSizeReadout">18 px</output>
+        </label>
+        <div class="field">
+          <span>Color</span>
+          <span class="swatch-row" id="inkColorRow">
+            <button class="swatch" type="button" data-color="#2c2420" style="--c:#2c2420" aria-label="Dark ink"></button>
+            <button class="swatch" type="button" data-color="#1f3a8f" style="--c:#1f3a8f" aria-label="Blue ink"></button>
+            <button class="swatch" type="button" data-color="#b32b2b" style="--c:#b32b2b" aria-label="Red ink"></button>
+            <button class="swatch" type="button" data-color="#1f6e4a" style="--c:#1f6e4a" aria-label="Green ink"></button>
+            <button class="swatch" type="button" data-color="#6a3fb0" style="--c:#6a3fb0" aria-label="Violet ink"></button>
+            <button class="swatch" type="button" data-color="#ffffff" style="--c:#ffffff" aria-label="White ink"></button>
           </span>
         </div>
       </section>

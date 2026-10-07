@@ -235,3 +235,10 @@ select {
   src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/2411-3@1.0/Ownglyph_ParkDaHyun.woff2") format("woff2"); }
 @font-face { font-family: "LeeSeoyun"; font-display: swap;
   src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/2202-2@1.0/LeeSeoyun.woff") format("woff"); }
+
+/* white ink: visible swatch, and a dark backing wherever the ink would otherwise vanish on light paper */
+.swatch[data-color="#ffffff"] { box-shadow: 0 0 0 1px rgba(38,39,44,.32); }
+.swatch[data-color="#ffffff"][aria-pressed="true"] { box-shadow: 0 0 0 2px var(--chrome-ink); }
+body[data-ink="light"] .try-note { background: #2b2d33; border-color: rgba(255,255,255,.28); }
+body[data-ink="light"] .try-note:empty::before { color: #8f9199; }
+body[data-ink="light"] .note-wrap.is-editing .ink-note { background: rgba(28,30,36,.62); }

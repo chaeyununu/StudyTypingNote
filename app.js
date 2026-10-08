@@ -4251,28 +4251,71 @@ function toast(message) {
   toastTimer = window.setTimeout(() => refs.toast.classList.remove("show"), 2800);
 }
 
+function ensurePdfWorkspaceGuard() {
+  let style = document.getElementById("pdfWorkspaceGuard");
+  if (style) return;
+  style = document.createElement("style");
+  style.id = "pdfWorkspaceGuard";
+  style.textContent = `
+    body.pdf-ready #uploadStage {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      z-index: -9999 !important;
+    }
+    body.pdf-ready #pdfStage {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 1 !important;
+    }
+    body.pdf-ready #inkToolbar {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 20 !important;
+    }
+  `;
+  document.head.append(style);
+}
+
 function showPdfWorkspace(fileName = "document.pdf") {
-  // Be deliberately redundant here. The app used to rely only on the HTML `hidden`
-  // attribute; if a later stylesheet or injected REVIEW rule wins the display cascade,
-  // a successfully loaded PDF can remain visually trapped behind the upload screen.
-  // Attribute + inline display makes the transition deterministic without touching the
-  // PDF, note, REVIEW, FX or settings logic.
+  ensurePdfWorkspaceGuard();
+
+  // Use a persistent page-state class as the source of truth. This is deliberately
+  // stronger than the HTML hidden attribute so an overlay can never remain above a
+  // successfully loaded PDF because of a stale/injected stylesheet.
+  document.body.classList.add("pdf-ready");
+
   refs.uploadStage.hidden = true;
   refs.uploadStage.setAttribute("hidden", "");
+  refs.uploadStage.setAttribute("aria-hidden", "true");
+  refs.uploadStage.inert = true;
   refs.uploadStage.style.setProperty("display", "none", "important");
+  refs.uploadStage.style.setProperty("visibility", "hidden", "important");
+  refs.uploadStage.style.setProperty("opacity", "0", "important");
+  refs.uploadStage.style.setProperty("pointer-events", "none", "important");
+  refs.uploadStage.style.setProperty("z-index", "-9999", "important");
 
   refs.pdfStage.hidden = false;
   refs.pdfStage.removeAttribute("hidden");
+  refs.pdfStage.removeAttribute("aria-hidden");
   refs.pdfStage.style.setProperty("display", "block", "important");
+  refs.pdfStage.style.setProperty("visibility", "visible", "important");
+  refs.pdfStage.style.setProperty("opacity", "1", "important");
+  refs.pdfStage.style.setProperty("z-index", "1", "important");
 
   refs.inkToolbar.hidden = false;
   refs.inkToolbar.removeAttribute("hidden");
   refs.inkToolbar.style.setProperty("display", "flex", "important");
+  refs.inkToolbar.style.setProperty("visibility", "visible", "important");
+  refs.inkToolbar.style.setProperty("opacity", "1", "important");
+  refs.inkToolbar.style.setProperty("z-index", "20", "important");
 
   refs.pdfNameLabel.textContent = fileName;
 
-  // Force one layout read so buildPages() measures the visible PDF viewport, not the
-  // former hidden stage. This also gives the browser a clean screen-state boundary.
+  // Force layout after the workspace is unquestionably visible.
   void refs.pdfStage.offsetWidth;
 }
 
@@ -4303,6 +4346,10 @@ async function openPdf(file) {
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
     await buildPages();
+
+    // Re-assert the workspace after page construction. If any late-running UI code
+    // touched visibility while pages were being built, the loaded PDF still wins.
+    showPdfWorkspace(file.name);
 
     // Do not wait only for IntersectionObserver to decide when the first page should
     // paint. Render page 1 explicitly so a loaded document can never open to an empty
@@ -7170,6 +7217,9 @@ function handleGlobalKeys(event) {
 
 function init() {
   cacheRefs();
+  ensurePdfWorkspaceGuard();
+  window.__STUDY_TYPING_NOTE_BUILD__ = "pdf-ui-fix-20261008-2";
+  console.info("StudyTypingNote build: pdf-ui-fix-20261008-2");
   if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
   fillSelect(refs.effectModeSelect, EFFECT_PRESETS, (d) => d.label);
   fillSelect(refs.soundPackSelect, SOUND_PACKS, (d) => d.label);

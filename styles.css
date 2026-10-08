@@ -242,3 +242,12 @@ select {
 body[data-ink="light"] .try-note { background: #2b2d33; border-color: rgba(255,255,255,.28); }
 body[data-ink="light"] .try-note:empty::before { color: #8f9199; }
 body[data-ink="light"] .note-wrap.is-editing .ink-note { background: rgba(28,30,36,.62); }
+
+/* Prevent the REVIEW dock from flashing during the first paint before app.js injects REVIEW_CSS. */
+.review-dock {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+body.review-mode .review-dock { pointer-events: auto; }
+

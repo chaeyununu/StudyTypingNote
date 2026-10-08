@@ -4251,6 +4251,31 @@ function toast(message) {
   toastTimer = window.setTimeout(() => refs.toast.classList.remove("show"), 2800);
 }
 
+function showPdfWorkspace(fileName = "document.pdf") {
+  // Be deliberately redundant here. The app used to rely only on the HTML `hidden`
+  // attribute; if a later stylesheet or injected REVIEW rule wins the display cascade,
+  // a successfully loaded PDF can remain visually trapped behind the upload screen.
+  // Attribute + inline display makes the transition deterministic without touching the
+  // PDF, note, REVIEW, FX or settings logic.
+  refs.uploadStage.hidden = true;
+  refs.uploadStage.setAttribute("hidden", "");
+  refs.uploadStage.style.setProperty("display", "none", "important");
+
+  refs.pdfStage.hidden = false;
+  refs.pdfStage.removeAttribute("hidden");
+  refs.pdfStage.style.setProperty("display", "block", "important");
+
+  refs.inkToolbar.hidden = false;
+  refs.inkToolbar.removeAttribute("hidden");
+  refs.inkToolbar.style.setProperty("display", "flex", "important");
+
+  refs.pdfNameLabel.textContent = fileName;
+
+  // Force one layout read so buildPages() measures the visible PDF viewport, not the
+  // former hidden stage. This also gives the browser a clean screen-state boundary.
+  void refs.pdfStage.offsetWidth;
+}
+
 async function openPdf(file) {
   if (!file) return;
   if (!(file.type === "application/pdf" || /\.pdf$/i.test(file.name))) {
@@ -4265,23 +4290,33 @@ async function openPdf(file) {
     toast("Opening…");
     const data = new Uint8Array(await file.arrayBuffer());
     const doc = await pdfjsLib.getDocument({ data }).promise;
+
     flushNotes();
     state.doc = doc;
     state.fileName = file.name;
     state.noteKey = `${NOTES_PREFIX}${file.name}:${file.size}:${doc.numPages}`;
     state.notes = loadNotes();
     state.zoom = 1;
-    // Show the stage first: the fit-to-width math needs a real, measurable width.
-    refs.uploadStage.hidden = true;
-    refs.pdfStage.hidden = false;
-    refs.inkToolbar.hidden = false;
-    refs.pdfNameLabel.textContent = file.name;
+
+    // Switch away from the upload screen immediately after PDF.js has accepted the file.
+    showPdfWorkspace(file.name);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
     await buildPages();
+
+    // Do not wait only for IntersectionObserver to decide when the first page should
+    // paint. Render page 1 explicitly so a loaded document can never open to an empty
+    // workspace because an observer callback was delayed.
+    if (state.pages[0]) {
+      state.pages[0].visible = true;
+      await renderPage(state.pages[0]);
+    }
+
     refs.pdfScroll.scrollTop = 0;
     updatePageReadout();
     toast(state.notes.length ? "Welcome back — your notes are restored." : "Press T, then click the page to type.");
   } catch (error) {
-    console.error(error);
+    console.error("PDF open/render failed", error);
     toast(error && error.name === "PasswordException" ? "This PDF is password-protected." : "Couldn't open that PDF. It may be damaged.");
   } finally {
     refs.pdfInput.value = "";

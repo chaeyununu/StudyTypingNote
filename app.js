@@ -5841,14 +5841,14 @@ const RV_FX = {
     rest: { count: 5, shape: "glitchdash", size: [6, 10], speed: [20, 60], life: [300, 520] },
     line: { halo: 1.6, core: 1.2 }
   },
-  "electric": {      // the typing Electric, carried over: a glowing core, lightning-bolt snaps that spin and shrink, a thin flash line
+  "electric": {      // faithful to the older Electric CSS: tiny 7x12 bolt cuts, a 10px violet/yellow core, and a thin 32px flash
     elec: true,
-    shimmer: { shape: "ecore", every: 54, prob: 0.55, size: [2.6, 3.4], life: 380, spread: 0.45, raw: true },
-    shed: { gap: 15, shape: "bolt", size: [22, 28], speed: [120, 200], dir: "normal", spin: 7, life: [300, 400], raw: true },
-    shedExtra: { prob: 0.24, spec: { shape: "eflash", size: [1.7, 2.2], speed: [0, 0], dir: "normal", life: [240, 320], raw: true } },
-    rest: { count: 7, shape: "bolt", size: [22, 28], speed: [130, 210], spin: 7, life: [320, 420], raw: true },
-    restExtra: { shape: "eflash", size: [2, 2.4], speed: [0, 0], life: [260, 340], raw: true },
-    line: { halo: 1.9, core: 1.4 }
+    shimmer: { shape: "ecore", every: 58, prob: 0.52, size: [5, 5], life: 350, spread: 0.38, raw: true },
+    shed: { gap: 17, shape: "bolt", size: [6, 6], speed: [118, 190], dir: "normal", spin: 7, life: [330, 370], raw: true },
+    shedExtra: { prob: 0.2, spec: { shape: "eflash", size: [1, 1], speed: [0, 0], dir: "normal", life: [300, 350], raw: true } },
+    rest: { count: 7, shape: "bolt", size: [6, 6], speed: [125, 205], spin: 7, life: [330, 390], raw: true },
+    restExtra: { shape: "eflash", size: [1, 1], speed: [0, 0], life: [320, 360], raw: true },
+    line: { halo: 1.35, core: 1.12 }
   },
   "neon-rain": {     // one lone neon tube in the night: rain falling at one angle, puddle ripples when still
     own: [[255, 63, 164], [63, 224, 255]],
@@ -6162,36 +6162,53 @@ function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
       if (u < 0.3) { c.globalAlpha = (1 - u / 0.3) * 0.7; c.drawImage(reviewSprite(RV_SOFT, rgb), -r * 1.4, -r * 0.6, r * 2.8, r * 1.2); }
       break;
     }
-    case "bolt": case "ecore": case "eflash": {      // the typing Electric, carried over (see the Electric keyframes): palette = violet + yellow
+    case "bolt": case "ecore": case "eflash": {      // REVIEW Accent / Electric: mirror the older Electric CSS proportions and timing
       const e = typeof EFFECT_PRESETS !== "undefined" && EFFECT_PRESETS.electric ? EFFECT_PRESETS.electric : { primary: "#906fff", secondary: "#ffe45f" };
       const P = hexToRgbArray(e.primary), Sx = hexToRgbArray(e.secondary);
       if (shape === "bolt") {
-        // 7x12 box clipped to polygon(46% 0, 100% 0, 62% 42%, 100% 42%, 28% 100%, 48% 55%, 0 55%), gradient 180deg secondary -> primary;
-        // opacity 0 -> alpha at 12% -> 0; scale .32 -> .2 while it flies and spins
-        const sc = 0.32 - 0.12 * prog, al = prog < 0.12 ? prog / 0.12 : 1 - (prog - 0.12) / 0.88;
-        const w = r * 1.17, h = r * 2;
+        // Original .typing-particle was 7x12px with the lightning clip-path. r=6 is that exact base box.
+        // electric-snap: scale .32 -> .2, invisible at 0%, full by 12%, then a hard fade while translating/spinning.
+        const k = r / 6, sc = 0.32 - 0.12 * prog;
+        const al = prog < 0.12 ? prog / 0.12 : Math.max(0, 1 - (prog - 0.12) / 0.88);
+        const w = 7 * k, h = 12 * k;
         c.rotate(rot); c.scale(sc, sc);
-        c.globalAlpha = a * al * 0.55; c.drawImage(reviewSprite(RV_SOFT, P), -h * 0.9, -h * 0.9, h * 1.8, h * 1.8);
+        c.globalAlpha = a * al * 0.34;
+        c.drawImage(reviewSprite(RV_SOFT, P), -h * 0.95, -h * 0.95, h * 1.9, h * 1.9);
         const g = c.createLinearGradient(0, -h / 2, 0, h / 2);
-        g.addColorStop(0, `rgb(${Sx})`); g.addColorStop(1, `rgb(${P})`);
+        g.addColorStop(0, `rgb(${Sx})`);
+        g.addColorStop(1, `rgb(${P})`);
         c.globalAlpha = a * al; c.fillStyle = g;
         rvPoly(c, [[0.46, 0], [1, 0], [0.62, 0.42], [1, 0.42], [0.28, 1], [0.48, 0.55], [0, 0.55]].map(([px, py]) => [(px - 0.5) * w, (py - 0.5) * h]));
         c.fill();
       } else if (shape === "ecore") {
-        // 10px core: colour-mix(secondary 62%, white), glows in secondary and the violet aura; scale .32 -> 1.416 (38%) -> 1.7 while it fades
-        const sc = prog < 0.38 ? 0.32 + (1.416 - 0.32) * (prog / 0.38) : 1.416 + 0.284 * ((prog - 0.38) / 0.62);
-        const al = prog < 0.38 ? 1 : 1 - (prog - 0.38) / 0.62, R0 = r * sc;
-        c.globalAlpha = a * al * 0.42; c.drawImage(reviewSprite(RV_SOFT, P), -R0 * 2.8, -R0 * 2.8, R0 * 5.6, R0 * 5.6);
-        c.globalAlpha = a * al * 0.75; c.drawImage(reviewSprite(RV_SOFT, Sx), -R0 * 1.7, -R0 * 1.7, R0 * 3.4, R0 * 3.4);
-        c.globalAlpha = a * al; c.fillStyle = `rgb(${rvMix(Sx, [255, 255, 255], 0.38)})`; c.beginPath(); c.arc(0, 0, R0, 0, 6.283); c.fill();
+        // Original core was 10x10px. electric-core: .32 -> 1.416 at 38%, then 1.7 while fading out.
+        const k = r / 5;
+        const sc = prog < 0.38 ? 0.32 + (1.416 - 0.32) * (prog / 0.38) : 1.416 + (1.7 - 1.416) * ((prog - 0.38) / 0.62);
+        const al = prog < 0.38 ? 1 : Math.max(0, 1 - (prog - 0.38) / 0.62);
+        const R0 = 5 * k * sc;
+        // CSS box-shadow order: yellow inner glow, violet/aura outer glow.
+        c.globalAlpha = a * al * 0.28;
+        c.drawImage(reviewSprite(RV_SOFT, P), -R0 * 3.1, -R0 * 3.1, R0 * 6.2, R0 * 6.2);
+        c.globalAlpha = a * al * 0.58;
+        c.drawImage(reviewSprite(RV_SOFT, Sx), -R0 * 2.0, -R0 * 2.0, R0 * 4.0, R0 * 4.0);
+        c.globalAlpha = a * al;
+        c.fillStyle = `rgb(${rvMix(Sx, [255, 255, 255], 0.38)})`;
+        c.beginPath(); c.arc(0, 0, R0, 0, 6.283); c.fill();
       } else {
-        // the special flash: a 32px x 1px line, transparent -> secondary -> primary -> transparent, with an aura glow
-        const half = 16 * r * 0.8 * (0.4 + 0.75 * prog), al = (prog < 0.1 ? prog / 0.1 : Math.pow(1 - (prog - 0.1) / 0.9, 1.2));
+        // Original special flash was 32x1px: transparent -> yellow -> violet -> transparent.
+        const k = r;
+        const half = 16 * k;
+        const al = prog < 0.1 ? prog / 0.1 : Math.pow(Math.max(0, 1 - (prog - 0.1) / 0.9), 1.2);
         const g = c.createLinearGradient(-half, 0, half, 0);
-        g.addColorStop(0, rvRgba(Sx, 0)); g.addColorStop(0.35, `rgb(${Sx})`); g.addColorStop(0.65, `rgb(${P})`); g.addColorStop(1, rvRgba(P, 0));
+        g.addColorStop(0, rvRgba(Sx, 0));
+        g.addColorStop(0.35, `rgb(${Sx})`);
+        g.addColorStop(0.65, `rgb(${P})`);
+        g.addColorStop(1, rvRgba(P, 0));
         c.lineCap = "round"; c.strokeStyle = g;
-        c.globalAlpha = a * al * 0.3; c.lineWidth = 6; c.beginPath(); c.moveTo(-half, 0); c.lineTo(half, 0); c.stroke();
-        c.globalAlpha = a * al; c.lineWidth = 1.3; c.beginPath(); c.moveTo(-half, 0); c.lineTo(half, 0); c.stroke();
+        c.globalAlpha = a * al * 0.22; c.lineWidth = 7 * k;
+        c.beginPath(); c.moveTo(-half, 0); c.lineTo(half, 0); c.stroke();
+        c.globalAlpha = a * al; c.lineWidth = Math.max(1, 1 * k);
+        c.beginPath(); c.moveTo(-half, 0); c.lineTo(half, 0); c.stroke();
       }
       break;
     }

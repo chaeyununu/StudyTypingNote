@@ -109,7 +109,7 @@
     <link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/maru-buri.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/webfontworld/ridi/RIDIBatang.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/webfontworld/gmarket/GmarketSans.css">
-    <link rel="stylesheet" href="styles.css?v=20261008-3">
+    <link rel="stylesheet" href="styles.css?v=20261020-1">
   </head>
   <body data-effect="soft-spark">
     <!-- Upload screen -->
@@ -224,15 +224,26 @@
           <input id="fontSizeRange" type="range" min="4" max="36" step="1">
           <output id="fontSizeReadout">18 px</output>
         </label>
-        <div class="field">
+        <div class="field field-color">
           <span>Color</span>
           <span class="swatch-row" id="inkColorRow">
             <button class="swatch" type="button" data-color="#2c2420" style="--c:#2c2420" aria-label="Dark ink"></button>
+            <button class="swatch" type="button" data-color="#000000" style="--c:#000000" aria-label="Black"></button>
+            <button class="swatch" type="button" data-color="#5a5a5a" style="--c:#5a5a5a" aria-label="Gray"></button>
             <button class="swatch" type="button" data-color="#1f3a8f" style="--c:#1f3a8f" aria-label="Blue ink"></button>
-            <button class="swatch" type="button" data-color="#b32b2b" style="--c:#b32b2b" aria-label="Red ink"></button>
+            <button class="swatch" type="button" data-color="#2f6fe0" style="--c:#2f6fe0" aria-label="Bright blue"></button>
+            <button class="swatch" type="button" data-color="#0e8a9a" style="--c:#0e8a9a" aria-label="Teal"></button>
             <button class="swatch" type="button" data-color="#1f6e4a" style="--c:#1f6e4a" aria-label="Green ink"></button>
+            <button class="swatch" type="button" data-color="#6b8e23" style="--c:#6b8e23" aria-label="Olive"></button>
+            <button class="swatch" type="button" data-color="#b32b2b" style="--c:#b32b2b" aria-label="Red ink"></button>
+            <button class="swatch" type="button" data-color="#e0562b" style="--c:#e0562b" aria-label="Orange"></button>
+            <button class="swatch" type="button" data-color="#d9a21b" style="--c:#d9a21b" aria-label="Mustard"></button>
+            <button class="swatch" type="button" data-color="#d6457f" style="--c:#d6457f" aria-label="Pink"></button>
+            <button class="swatch" type="button" data-color="#8b4a2b" style="--c:#8b4a2b" aria-label="Brown"></button>
             <button class="swatch" type="button" data-color="#6a3fb0" style="--c:#6a3fb0" aria-label="Violet ink"></button>
+            <button class="swatch" type="button" data-color="#a35cd6" style="--c:#a35cd6" aria-label="Lavender"></button>
             <button class="swatch" type="button" data-color="#ffffff" style="--c:#ffffff" aria-label="White ink"></button>
+            <input type="color" id="inkColorCustom" class="swatch-custom" value="#2c2420" aria-label="Custom color" title="Custom color">
           </span>
         </div>
       </section>
@@ -260,6 +271,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="app.js?v=20261008-3"></script>
+    <script src="app.js?v=20261020-1"></script>
   </body>
 </html>

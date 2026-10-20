@@ -1126,7 +1126,7 @@ const state = {
   prefs: loadPrefs(),
   settings: {},          // engine-facing values derived from prefs
   doc: null, pages: [], notes: [], noteKey: "", fileName: "",
-  fit: 1, zoom: 1, typeTool: false, activeNote: null, currentPage: 1
+  fit: 1, zoom: 1, typeTool: false, activeNote: null, colorTarget: null, currentPage: 1
 };
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
 const reducedMotionQuery = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
@@ -1309,8 +1309,9 @@ function syncControls() {
   refs.effectModeSelect.value = p.effectMode;
   refs.soundPackSelect.value = p.soundPack;
   refs.inkColorRow.querySelectorAll(".swatch").forEach((swatch) => {
-    swatch.setAttribute("aria-pressed", String(swatch.dataset.color === p.color));
+    swatch.setAttribute("aria-pressed", String(swatch.dataset.color === (state.colorTarget ? state.colorTarget.note.color : p.color)));
   });
+  { const cc = document.getElementById("inkColorCustom"); if (cc) cc.value = (state.colorTarget ? state.colorTarget.note.color : p.color); }
   refs.moodGrid.querySelectorAll(".mood").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.mood === p.mood));
   });
@@ -1402,6 +1403,7 @@ function spawnGhostGlyph(glyph, rect, isSpecial) {
   const style = getComputedStyle(root);
   ghost.style.fontFamily = style.fontFamily;
   ghost.style.fontSize = style.fontSize;
+  if (!isSpecial) ghost.style.color = style.color;
   ghost.style.left = `${rect.left - (parseFloat(style.fontSize) || 18) * 0.55}px`;
   ghost.style.top = `${rect.top}px`;
   ghost.style.height = `${rect.height}px`;
@@ -4540,7 +4542,7 @@ function noteText(el) {
 }
 
 function createNoteAt(entry, x, y) {
-  const note = { id: `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, page: entry.index, x, y, text: "" };
+  const note = { id: `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, page: entry.index, x, y, text: "", color: state.prefs.color };
   state.notes.push(note);
   const wrap = renderNote(note);
   wrap.querySelector(".ink-note").focus();
@@ -4560,12 +4562,14 @@ function renderNote(note) {
   const el = document.createElement("div");
   el.className = "ink-note";
   el.textContent = note.text;
+  if (!note.color) note.color = state.prefs.color; // older notes get locked to a color once
+  applyNoteColor(note, wrap, el);
   makeEditable(el);
   wrap.append(handle, el);
   entry.layer.append(wrap);
 
   attachTyping(el, { onInput: () => { note.text = noteText(el); scheduleSave(); } });
-  el.addEventListener("focus", () => { state.activeNote = el; wrap.classList.add("is-editing"); refs.placeHint.hidden = true; });
+  el.addEventListener("focus", () => { state.activeNote = el; state.colorTarget = { note, wrap, el }; syncControls(); wrap.classList.add("is-editing"); refs.placeHint.hidden = true; });
   el.addEventListener("blur", () => {
     wrap.classList.remove("is-editing");
     if (state.activeNote === el) state.activeNote = null;
@@ -4578,7 +4582,26 @@ function renderNote(note) {
   return wrap;
 }
 
+function applyNoteColor(note, wrap, el) {
+  el.style.color = note.color;
+  el.style.caretColor = note.color;
+  const hx = String(note.color).replace("#", ""), n = parseInt(hx.length === 3 ? hx.split("").map((ch) => ch + ch).join("") : hx, 16) || 0;
+  wrap.dataset.ink = ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114 > 170 ? "light" : "dark";
+}
+
+// Color picked in Studio: applies only to the box last edited (if any), and becomes the default for new boxes.
+function setInkColor(color) {
+  const t = state.colorTarget;
+  if (t && t.wrap.isConnected) {
+    t.note.color = color;
+    applyNoteColor(t.note, t.wrap, t.el);
+    scheduleSave();
+  }
+  setPrefs({ color });
+}
+
 function removeNote(note, wrap) {
+  if (state.colorTarget && state.colorTarget.note === note) state.colorTarget = null;
   state.notes = state.notes.filter((n) => n !== note);
   wrap.remove();
   scheduleSave();
@@ -7194,8 +7217,9 @@ function bindEvents() {
   refs.soundPackSelect.addEventListener("change", () => { setPrefs({ soundPack: refs.soundPackSelect.value }); soundEngine.play("normal"); });
   refs.inkColorRow.addEventListener("click", (event) => {
     const swatch = event.target.closest(".swatch");
-    if (swatch) setPrefs({ color: swatch.dataset.color });
+    if (swatch) setInkColor(swatch.dataset.color);
   });
+  { const cc = document.getElementById("inkColorCustom"); if (cc) cc.addEventListener("input", () => setInkColor(cc.value)); }
 
   attachTyping(refs.tryNote);
   refs.tryNote.addEventListener("focus", () => { state.activeNote = refs.tryNote; });

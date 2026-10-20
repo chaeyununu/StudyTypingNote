@@ -241,7 +241,7 @@ select {
 .swatch[data-color="#ffffff"][aria-pressed="true"] { box-shadow: 0 0 0 2px var(--chrome-ink); }
 body[data-ink="light"] .try-note { background: #2b2d33; border-color: rgba(255,255,255,.28); }
 body[data-ink="light"] .try-note:empty::before { color: #8f9199; }
-body[data-ink="light"] .note-wrap.is-editing .ink-note { background: rgba(28,30,36,.62); }
+.note-wrap[data-ink="light"].is-editing .ink-note { background: rgba(28,30,36,.62); }
 
 /* Prevent the REVIEW dock from flashing during the first paint before app.js injects REVIEW_CSS. */
 .review-dock {
@@ -251,3 +251,10 @@ body[data-ink="light"] .note-wrap.is-editing .ink-note { background: rgba(28,30,
 }
 body.review-mode .review-dock { pointer-events: auto; }
 
+
+/* per-box ink color: more swatches + custom picker */
+.field-color .swatch-row { grid-column: 1 / -1; justify-self: start; flex-wrap: wrap; }
+.swatch-custom { width: 26px; height: 26px; padding: 0; border: 2px solid #f6f4f0; border-radius: 50%; background: none; cursor: pointer; box-shadow: 0 0 0 1px var(--line); }
+.swatch-custom::-webkit-color-swatch-wrapper { padding: 0; }
+.swatch-custom::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.swatch-custom::-moz-color-swatch { border: 0; border-radius: 50%; }

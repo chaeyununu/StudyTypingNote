@@ -167,7 +167,7 @@ input[type="checkbox"]:checked::after { transform: translateX(12px); }
 select {
   width: 100%; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff;
 }
-.swatch-row { display: inline-flex; gap: 8px; justify-self: end; }
+.swatch-row { display: inline-flex; flex-wrap: wrap; gap: 8px; justify-self: end; justify-content: flex-end; max-width: 244px; }
 .swatch { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid #f6f4f0; background: var(--c); box-shadow: 0 0 0 1px var(--line); transition: transform .15s var(--ease); }
 .swatch:hover { transform: scale(1.1); }
 .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--chrome-ink); }
@@ -241,7 +241,7 @@ select {
 .swatch[data-color="#ffffff"][aria-pressed="true"] { box-shadow: 0 0 0 2px var(--chrome-ink); }
 body[data-ink="light"] .try-note { background: #2b2d33; border-color: rgba(255,255,255,.28); }
 body[data-ink="light"] .try-note:empty::before { color: #8f9199; }
-body[data-ink="light"] .note-wrap.is-editing .ink-note { background: rgba(28,30,36,.62); }
+.note-wrap[data-ink="light"].is-editing .ink-note { background: rgba(28,30,36,.62); }
 
 /* Prevent the REVIEW dock from flashing during the first paint before app.js injects REVIEW_CSS. */
 .review-dock {
@@ -251,3 +251,8 @@ body[data-ink="light"] .note-wrap.is-editing .ink-note { background: rgba(28,30,
 }
 body.review-mode .review-dock { pointer-events: auto; }
 
+
+/* custom ink color picker */
+.swatch-custom { position: relative; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #f6f4f0; overflow: hidden; cursor: pointer;
+  background: conic-gradient(#e0559b, #e6b800, #6b8e23, #2f80ed, #6a3fb0, #e0559b); box-shadow: 0 0 0 1px var(--line); }
+.swatch-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }

@@ -1,2 +1,5 @@
-T Crystal app icon replacement
-Unzip this archive. Upload the image files into the same folder as the existing icon files in your Vercel project (usually public/). Replace matching filenames, then redeploy. If your manifest or HTML uses different names, update those references. This does not replace the entire application.
+T GEM ZOOM ICON ASSETS
+These are icon images only, not the full app.
+Upload/replace matching filenames in your existing project public folder.
+Do NOT deploy this ZIP alone as a replacement for your working app.
+Check that index.html and manifest reference these names.

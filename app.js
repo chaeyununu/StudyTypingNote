@@ -4846,6 +4846,7 @@ const REVIEW_CSS = `
 body, .pdf-stage { transition: background-color .7s ease; }
 body.review-mode .pdf-page { cursor: default; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 28px 64px -18px rgba(0,0,0,.72); }
 body.review-mode .toast { top: 208px; }
+body.review-mode .pdf-scroll { touch-action: none; }
 
 /* dock: shelves + lens + tune / look thumbnails / tune panel */
 .review-dock { position: fixed; z-index: 19; top: 68px; left: 50%; transform: translate(-50%, -8px); display: flex; flex-direction: column;
@@ -5184,7 +5185,9 @@ function setReview(on) {
 function reviewBrush() { return REVIEW.brushes[state.prefs.reviewBrush] || REVIEW.brushes.laser; }
 
 function onReviewMove(event) {
-  if (!review.on || event.pointerType === "touch") return;
+  if (!review.on) return;
+  // 애플펜슬 호버(화면에 닿지 않고 가까이만 있는 상태)는 무시 → 닿은 곳에서만 그려짐
+  if (event.pointerType === "pen" && event.buttons === 0) return;
   const now = performance.now();
   const overPage = !!(event.target.closest && event.target.closest(".pdf-page"));
   if (overPage) {
@@ -5212,7 +5215,7 @@ function onReviewMove(event) {
 
 // press = a "ping" ring + a held pen stroke (lingers ~3 s); release returns to the short hover beam
 function onReviewDown(event) {
-  if (!review.on || event.button !== 0 || event.pointerType === "touch") return;
+  if (!review.on || event.button !== 0) return;
   if (!(event.target.closest && event.target.closest(".pdf-page"))) return;
   const now = performance.now();
   review.down = true; review.breakNext = true; review.hasFilter = false;

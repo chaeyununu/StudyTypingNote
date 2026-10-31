@@ -4650,8 +4650,6 @@ function onLayerPointerDown(event, entry) {
 // click pings a spot. Everything is temporary and never stored. The room dims around a lens (spotlight or reading
 // ruler), the desk takes a faint tint of the beam, and the beam is *made of something*: laser light, a comet, glitter,
 // cut gemstones, lip oil, whipped cream, cookie crumb, jelly... A Look sets material + colour + accent in one tap.
-const IS_TOUCH_DEVICE = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
-
 const REVIEW = {
   sizes: { s: 0.74, m: 1, l: 1.45 },
   lens: {
@@ -5355,7 +5353,7 @@ function drawLens(now) {
   const t = review.tint, dim = L.dim[mode] || 0.1;
   const col = (a) => `rgba(${t[0]},${t[1]},${t[2]},${a.toFixed(4)})`;
   const sm = (x) => x * x * (3 - 2 * x);
-  const pulse = IS_TOUCH_DEVICE ? 0 : Math.max(0, 1 - (now - review.lensPulseT) / 520);
+  const pulse = Math.max(0, 1 - (now - review.lensPulseT) / 520);
   const mult = (1 + 0.22 * pulse * pulse) * (1 + 0.08 * review.lensSpeed);
   c.clearRect(0, 0, review.lw, review.lh);
   let g;
@@ -6407,7 +6405,7 @@ function emitAlongLine(now) {
   }
   review.emitT = lastT;
   // when the pointer comes to rest, the accent gives one small flourish at the head: it marks the spot being pointed at
-  if (!IS_TOUCH_DEVICE && st.rest && !review.restFired && review.hasFilter && pts.length > 3 && now - review.lastMoveT > 150) {
+  if (st.rest && !review.restFired && review.hasFilter && pts.length > 3 && now - review.lastMoveT > 150) {
     review.restFired = true;
     const head = pts[pts.length - 1];
     for (let i = 0; i < st.rest.count; i++) spawnReviewParticle(st.rest, st, head.x, head.y, now, 0, 0, 0, true);
@@ -7142,7 +7140,6 @@ function drawTrail(now) {
   if (st) drawReviewParticles(c, st, now, sz);
 
   // pings: a click is answered in the material's own language
-  if (IS_TOUCH_DEVICE) review.pings.length = 0;   // 아이패드: 핑 완전 제거
   for (let i = review.pings.length - 1; i >= 0; i--) {
     const p = review.pings[i];
     if (now - p.t0 > REVIEW.pingLife) { review.pings.splice(i, 1); continue; }

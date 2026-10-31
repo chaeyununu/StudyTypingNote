@@ -4949,6 +4949,14 @@ function initReview() {
   stage.addEventListener("pointermove", onReviewMove, { passive: true });
   stage.addEventListener("pointerdown", onReviewDown, { passive: true });
   stage.addEventListener("pointerleave", onReviewLeave, { passive: true });
+  // 애플펜슬(stylus)로 그을 때만 화면 스크롤을 막음. 손가락은 그대로 스크롤/핀치/메뉴 동작
+  const blockPenScroll = (e) => {
+    if (!review.on) return;
+    const t = e.touches && e.touches[0];
+    if (t && t.touchType === "stylus" && e.cancelable) e.preventDefault();
+  };
+  stage.addEventListener("touchstart", blockPenScroll, { passive: false });
+  stage.addEventListener("touchmove", blockPenScroll, { passive: false });
   window.addEventListener("pointerup", onReviewUp);
   window.addEventListener("pointercancel", onReviewUp);
   window.addEventListener("blur", () => { onReviewLeave(); onReviewUp(); });
@@ -5185,7 +5193,7 @@ function reviewBrush() { return REVIEW.brushes[state.prefs.reviewBrush] || REVIE
 
 function onReviewMove(event) {
   if (!review.on || event.pointerType === "touch") return;
-  // 애플펜슬 호버(화면에 닿지 않고 가까이만 있는 상태)는 무시 → 닿은 곳에서만 그려짐
+  // 펜 호버(닿지 않고 가까이만 있는 상태)는 무시
   if (event.pointerType === "pen" && event.buttons === 0) return;
   const now = performance.now();
   const overPage = !!(event.target.closest && event.target.closest(".pdf-page"));

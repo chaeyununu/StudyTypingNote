@@ -1005,17 +1005,6 @@ const FONTS = {
   bagel: fontDef("디스플레이", "베이글팻원 Bagel Fat One", "Bagel Fat One", { css: G }),
   gasoek: fontDef("디스플레이", "가속 Gasoek One", "Gasoek One", { css: G }),
   grandiflora: fontDef("디스플레이", "그랜디플로라 Grandiflora One", "Grandiflora One", { css: G, fallback: KR_SERIF }),
-  // 2026-10 추가: 귀엽고 예쁜 한글 폰트
-  yeonSung: fontDef("부드러운·귀여운", "연성체 Yeon Sung", "Yeon Sung", { css: "family=Yeon+Sung" }),
-  kirang: fontDef("부드러운·귀여운", "기랑해랑 Kirang Haerang", "Kirang Haerang", { css: "family=Kirang+Haerang", adjust: 1.05 }),
-  sunflower: fontDef("부드러운·귀여운", "해바라기 Sunflower", "Sunflower", { css: "family=Sunflower" }),
-  bwPicture: fontDef("손글씨", "흑백사진 Black And White Picture", "Black And White Picture", { css: "family=Black+And+White+Picture" }),
-  dokdo: fontDef("손글씨", "독도 Dokdo", "Dokdo", { css: "family=Dokdo", adjust: 1.2 }),
-  eastSea: fontDef("손글씨", "동해독도 East Sea Dokdo", "East Sea Dokdo", { css: "family=East+Sea+Dokdo", adjust: 1.35 }),
-  doHyeon: fontDef("디스플레이", "도현 Do Hyeon", "Do Hyeon", { css: "family=Do+Hyeon" }),
-  gugi: fontDef("디스플레이", "구기 Gugi", "Gugi", { css: "family=Gugi" }),
-  stylish: fontDef("디스플레이", "스타일리시 Stylish", "Stylish", { css: "family=Stylish" }),
-  lotteria: fontDef("디스플레이", "롯데리아 촵땡겨체", "LOTTERIACHAB"),
   // 코드
   mono: fontDef("코드", "JetBrains Mono", "JetBrains Mono", { css: G, fallback: KR_MONO }),
 };
@@ -1095,7 +1084,10 @@ function pruneMissingFonts() {
     const link = document.querySelector(`link[href*="${font.css}"]`);
     if (!link || !link.sheet) dropFont(key, false);
   });
-  if (refs.fontSelect) refs.fontSelect.value = state.prefs.font;
+  if (refs.fontSelect) {
+    const active = state.colorTarget && state.colorTarget.wrap.isConnected ? state.colorTarget.note : null;
+    refs.fontSelect.value = active && FONTS[active.font] ? active.font : state.prefs.font;
+  }
   ensureFontReady(state.prefs.font);
 }
 
@@ -1314,9 +1306,13 @@ function syncControls() {
   refs.intensityReadout.textContent = `${Math.round(p.intensity * 100)}%`;
   refs.volumeRange.value = String(Math.round(p.volume * 100));
   refs.volumeReadout.textContent = `${Math.round(p.volume * 100)}%`;
-  refs.fontSelect.value = p.font;
-  refs.fontSizeRange.value = String(p.fontSize);
-  refs.fontSizeReadout.textContent = `${p.fontSize} px`;
+  const targetNote = state.colorTarget && state.colorTarget.wrap.isConnected ? state.colorTarget.note : null;
+  const displayFont = targetNote && FONTS[targetNote.font] ? targetNote.font : p.font;
+  const displaySize = targetNote && Number.isFinite(Number(targetNote.fontSize))
+    ? clamp(Number(targetNote.fontSize), 4, 36) : p.fontSize;
+  refs.fontSelect.value = displayFont;
+  refs.fontSizeRange.value = String(displaySize);
+  refs.fontSizeReadout.textContent = `${displaySize} px`;
   refs.effectModeSelect.value = p.effectMode;
   refs.soundPackSelect.value = p.soundPack;
   refs.inkColorRow.querySelectorAll(".swatch").forEach((swatch) => {
@@ -4348,6 +4344,8 @@ async function openPdf(file) {
     const doc = await pdfjsLib.getDocument({ data }).promise;
 
     flushNotes();
+    state.colorTarget = null; // selection belongs to the previous PDF, not the newly opened document
+    state.activeNote = null;
     state.doc = doc;
     state.fileName = file.name;
     state.noteKey = `${NOTES_PREFIX}${file.name}:${file.size}:${doc.numPages}`;
@@ -4403,7 +4401,7 @@ async function buildPages() {
     el.__entry = entry;
     state.pages.push(entry);
     state.observer.observe(el);
-    layer.addEventListener(IS_IPAD ? "click" : "pointerdown", (event) => onLayerPointerDown(event, entry));
+    layer.addEventListener("pointerdown", (event) => onLayerPointerDown(event, entry));
     // Stop the browser's follow-up mousedown from stealing focus from the note we just created.
     layer.addEventListener("mousedown", (event) => { if (state.typeTool && !event.target.closest(".note-wrap")) event.preventDefault(); });
   });
@@ -4512,7 +4510,22 @@ function goToPage(index) {
 function loadNotes() {
   try {
     const list = JSON.parse(localStorage.getItem(state.noteKey) || "[]");
-    return Array.isArray(list) ? list.filter((n) => n && typeof n.text === "string") : [];
+    const notes = Array.isArray(list) ? list.filter((n) => n && typeof n.text === "string") : [];
+    // Older notes had only global typography. Freeze their font and size once on first load.
+    let migrated = false;
+    notes.forEach((note) => {
+      if (!FONTS[note.font]) { note.font = state.prefs.font; migrated = true; }
+      const oldSize = Number(note.fontSize);
+      if (!Number.isFinite(oldSize) || oldSize < 4 || oldSize > 36) {
+        note.fontSize = state.prefs.fontSize;
+        migrated = true;
+      }
+    });
+    if (migrated) {
+      try { localStorage.setItem(state.noteKey, JSON.stringify(notes)); }
+      catch (error) { /* continue with migrated notes in memory if storage is unavailable */ }
+    }
+    return notes;
   } catch (error) {
     return [];
   }
@@ -4553,7 +4566,7 @@ function noteText(el) {
 }
 
 function createNoteAt(entry, x, y) {
-  const note = { id: `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, page: entry.index, x, y, text: "", color: state.prefs.color };
+  const note = { id: `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, page: entry.index, x, y, text: "", color: state.prefs.color, font: state.prefs.font, fontSize: state.prefs.fontSize };
   state.notes.push(note);
   const wrap = renderNote(note);
   wrap.querySelector(".ink-note").focus();
@@ -4574,7 +4587,11 @@ function renderNote(note) {
   el.className = "ink-note";
   el.textContent = note.text;
   if (!note.color) note.color = state.prefs.color; // older notes get locked to a color once
+  if (!FONTS[note.font]) note.font = state.prefs.font;
+  if (!Number.isFinite(Number(note.fontSize)) || Number(note.fontSize) < 4 || Number(note.fontSize) > 36) note.fontSize = state.prefs.fontSize;
   applyNoteColor(note, wrap, el);
+  applyNoteFont(note, el);
+  applyNoteFontSize(note, el);
   makeEditable(el);
   wrap.append(handle, el);
   entry.layer.append(wrap);
@@ -4591,6 +4608,44 @@ function renderNote(note) {
   el.addEventListener("keydown", (event) => { if (event.key === "Escape") el.blur(); });
   handle.addEventListener("pointerdown", (event) => dragNote(event, note, wrap, entry));
   return wrap;
+}
+
+// Note typography is stored on the note, not inherited from a changing global preset.
+function applyNoteFont(note, el) {
+  const requested = FONTS[note.font] ? note.font : defaultPrefs.font;
+  const key = FONTS[requested].missing ? defaultPrefs.font : requested;
+  const face = FONTS[key];
+  ensureFontReady(key);
+  el.style.setProperty("--note-font", face.stack);
+  el.style.setProperty("--font-adjust", String(face.adjust || 1));
+}
+
+function applyNoteFontSize(note, el) {
+  const size = clamp(Number(note.fontSize), 4, 36);
+  el.style.setProperty("--note-size", `${size}px`);
+}
+
+// Only the last-edited note changes. The selection is also the default for new notes.
+function setInkFont(key) {
+  if (!FONTS[key]) return;
+  const target = state.colorTarget;
+  if (target && target.wrap.isConnected) {
+    target.note.font = key;
+    applyNoteFont(target.note, target.el);
+    scheduleSave();
+  }
+  setPrefs({ font: key });
+}
+
+function setInkFontSize(size) {
+  size = clamp(Number(size), 4, 36);
+  const target = state.colorTarget;
+  if (target && target.wrap.isConnected) {
+    target.note.fontSize = size;
+    applyNoteFontSize(target.note, target.el);
+    scheduleSave();
+  }
+  setPrefs({ fontSize: size }, { keepMood: true });
 }
 
 function applyNoteColor(note, wrap, el) {
@@ -4618,7 +4673,7 @@ function removeNote(note, wrap) {
   scheduleSave();
 }
 
-function layoutNotes() { /* note size follows --note-size and --k in CSS */ }
+function layoutNotes() { /* each note owns --note-size; PDF-page zoom continues to use --k */ }
 
 function dragNote(event, note, wrap, entry) {
   event.preventDefault();
@@ -4659,7 +4714,6 @@ function onLayerPointerDown(event, entry) {
 // ================================================================== REVIEW 3.0
 // On touch-capable devices (including iPadOS), disable tap/pulse/stop flourishes,
 // even if Safari synthesizes a mouse pointer for the Apple Pencil.
-const IS_IPAD = /iPad/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const REVIEW_TOUCH_DEVICE = navigator.maxTouchPoints > 0 ||
   !!(window.matchMedia && window.matchMedia("(any-pointer: coarse)").matches);
 // A reading light with real material. Hover leaves a short beam, press-and-drag circles something (it lingers ~3 s),
@@ -4848,7 +4902,8 @@ const review = {
   sprites: new Map(), tiles: new Map(), gems: new Map(), dollops: new Map(), styles: new Map()
 };
 
-// ---- 획 스타일 스냅샷: 획이 시작될 때의 소재/색/크기/액센트를 저장해 두고, 그 획이 사라질 때까지 그 모양으로 그린다.
+// Capture brush, palette, effect and size when a stroke begins.
+// Subsequent preference changes must not repaint existing strokes.
 function rvCurrentStyle() {
   const p = state.prefs;
   const key = [p.reviewBrush, p.reviewColor, p.reviewFx, p.reviewSize].join("|");
@@ -4862,28 +4917,6 @@ function rvCurrentStyle() {
     };
   }
   return review.curSty;
-}
-
-// ---- iPad / Apple Pencil: 필압(부드럽게 보정) + 예측 포인트(지연 감소)
-function rvSetPressure(e) {
-  if (e.pointerType !== "pen") { review.pr = 1; return; }
-  const raw = Math.min(1, Math.max(0.05, e.pressure || 0.4));
-  review.pr = review.pr > 0 && review.pr <= 1 ? review.pr * 0.55 + raw * 0.45 : raw;
-}
-
-function rvAppendPredicted(now) {
-  const pr = review.predPts;
-  if (!IS_IPAD || !review.down || !pr || !pr.length || !review.hasFilter || review.breakNext) return 0;
-  const pts = review.pts, last = pts[pts.length - 1];
-  if (!last || !last.pen) return 0;
-  let n = 0, px = last.x, py = last.y;
-  for (let i = 0; i < pr.length; i++) {
-    const x = last.x + (pr[i].x - last.x) * 0.8, y = last.y + (pr[i].y - last.y) * 0.8;
-    if (Math.hypot(x - px, y - py) < 0.4) continue;
-    pts.push({ x, y, t: last.t + (i + 1) * 5, b: false, l: last.l, pen: true, sty: last.sty, p: last.p });
-    px = x; py = y; n++;
-  }
-  return n;
 }
 
 const REVIEW_CSS = `
@@ -5257,14 +5290,10 @@ function onReviewMove(event) {
       const e = evs[i];
       let t = e.timeStamp || now;
       if (t > now || now - t > 120) t = now;
-      rvSetPressure(e); feedTrail(e.clientX, e.clientY, t);
+      feedTrail(e.clientX, e.clientY, t);
     }
     if (review.pts.length > 900) { review.pts.splice(0, review.pts.length - 900); review.pts[0].b = true; }
     review.lastMoveT = now; review.restFired = false;
-    review.predPts = [];
-    if (IS_IPAD && review.down && event.pointerType === "pen" && event.getPredictedEvents) {
-      try { review.predPts = event.getPredictedEvents().slice(0, 2).map((pe) => ({ x: pe.clientX, y: pe.clientY })); } catch (err) { review.predPts = []; }
-    }
   } else {
     review.breakNext = true; review.hasFilter = false;   // never join a stroke across the desk / gaps between pages
   }
@@ -5283,7 +5312,6 @@ function onReviewDown(event) {
   if (!(event.target.closest && event.target.closest(".pdf-page"))) return;
   const now = performance.now();
   review.down = true; review.breakNext = true; review.hasFilter = false;
-  review.pr = 0; rvSetPressure(event);
   feedTrail(event.clientX, event.clientY, now);
   review.mx = event.clientX; review.my = event.clientY;
   if (!review.inside) { review.inside = true; review.lensReady = false; if (state.prefs.reviewLens !== "off") refs.reviewLens.classList.add("on"); }
@@ -5294,16 +5322,13 @@ function onReviewDown(event) {
   review.lastMoveT = now; review.restFired = true;
   const st = reviewStyle(state.prefs.reviewFx);
   if (!REVIEW_TOUCH_DEVICE && st && st.rest && !reducedMotionQuery.matches) {
-    review.colPal = rvCurrentStyle().pal;
     for (let i = 0; i < st.rest.count; i++) spawnReviewParticle(st.rest, st, event.clientX, event.clientY, now, 0, 0, 0, true);
-    review.colPal = null;
   }
   scheduleReview();
 }
 
 function onReviewUp() {
   if (!review.down) return;
-  review.predPts = []; review.pr = 0;
   review.down = false; review.breakNext = true; review.hasFilter = false;
 }
 
@@ -5315,7 +5340,7 @@ function feedTrail(x, y, t) {
     review.curPen = review.down;
     review.strokeSty = sty;
     review.curL = reducedMotionQuery.matches ? 700 : review.down ? REVIEW.penLife : sty.brush.life;
-    review.pts.push({ x, y, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty, p: review.pr || 1 });
+    review.pts.push({ x, y, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty });
     return;
   }
   stepTrailFilter(x, y, t);
@@ -5324,13 +5349,13 @@ function feedTrail(x, y, t) {
 function stepTrailFilter(x, y, t) {
   const dt = Math.min(80, Math.max(0.5, t - review.st));
   const speed = Math.hypot(x - review.prx, y - review.pry) / dt;       // px per ms
-  const tau = (IS_IPAD && review.curPen) ? 6 + 24 * Math.exp(-speed * 1.4) : 14 + 52 * Math.exp(-speed * 1.3);                         // ms: ~66 when crawling, ~15 when fast
+  const tau = 14 + 52 * Math.exp(-speed * 1.3);                         // ms: ~66 when crawling, ~15 when fast
   const a = 1 - Math.exp(-dt / tau);
   review.sx += (x - review.sx) * a; review.sy += (y - review.sy) * a;
   review.st = t; review.prx = review.rx = x; review.pry = review.ry = y;
   const last = review.pts[review.pts.length - 1];
-  if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty: review.strokeSty, p: review.pr || 1 }); return; }
-  if (Math.hypot(review.sx - last.x, review.sy - last.y) >= (IS_IPAD && review.curPen ? 0.45 : 0.7)) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen, sty: review.strokeSty, p: review.pr || 1 });
+  if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty: review.strokeSty }); return; }
+  if (Math.hypot(review.sx - last.x, review.sy - last.y) >= 0.7) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen });
 }
 
 // each stroke fades from its tail; strokes with different lifetimes (hover vs pen) expire independently
@@ -5344,8 +5369,8 @@ function pruneTrail(now) {
     while (j < e && now - pts[j].t > pts[j].l) j++;
     let removed = 0;                                   // arc length of the expired tail: keeps arc-anchored materials from sliding
     for (let k = i; k < j && k + 1 < e; k++) removed += Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
-    const baseArc = (pts[i].arc || 0) + removed, sid = pts[i].sid;
-    for (let k = j; k < e; k++) { const p = pts[k]; if (k === j && j > i) { p.b = true; p.arc = baseArc; p.sid = sid; } pts[w++] = p; }
+    const baseArc = (pts[i].arc || 0) + removed, sid = pts[i].sid, sty = pts[i].sty;
+    for (let k = j; k < e; k++) { const p = pts[k]; if (k === j && j > i) { p.b = true; p.arc = baseArc; p.sid = sid; p.sty = sty; } pts[w++] = p; }
     i = e;
   }
   pts.length = w;
@@ -5395,7 +5420,7 @@ function reviewFrame(now) {
       Math.hypot(review.rx - review.sx, review.ry - review.sy) > 0.35) {
     stepTrailFilter(review.rx, review.ry, now);
   }
-  const lampTarget = (!REVIEW_TOUCH_DEVICE || (IS_IPAD && review.down)) && review.hasFilter ? 1 : 0;
+  const lampTarget = !REVIEW_TOUCH_DEVICE && review.hasFilter ? 1 : 0;
   review.lampA += (lampTarget - review.lampA) * (1 - Math.exp(-dt / 110));
   if (review.hasFilter) { review.lampX = review.sx; review.lampY = review.sy; }
   if (Math.abs(lampTarget - review.lampA) < 0.01) review.lampA = lampTarget;
@@ -5749,8 +5774,6 @@ function rvFlame(rgb) {
 // keeps it stable while the tail expires) and the normal (vnx, vny).
 function buildPath(pts, i0, i1, spacing, arcBase) {
   const vx = review.vx, vy = review.vy, vt = review.vt, vl = review.vl, vs = review.vs, va = review.va, vnx = review.vnx, vny = review.vny;
-  const vp = review.vp || (review.vp = []);
-  vp.length = 0;
   vx.length = vy.length = vt.length = vl.length = vs.length = va.length = vnx.length = vny.length = 0;
   const n = i1 - i0;
   let sp = [];
@@ -5771,13 +5794,6 @@ function buildPath(pts, i0, i1, spacing, arcBase) {
     for (let k = 1; k < n - 1; k++) nv[k] = pv[k - 1] * 0.25 + pv[k] * 0.5 + pv[k + 1] * 0.25;
     for (let k = 0; k < n; k++) pv[k] = nv[k];
   }
-  const pp = [];
-  for (let k = 0; k < n; k++) { const q = pts[i0 + k].p; pp.push(q == null ? 1 : q); }
-  for (let pass = 0; pass < 2 && n > 2; pass++) {
-    const nv = pp.slice();
-    for (let k = 1; k < n - 1; k++) nv[k] = pp[k - 1] * 0.25 + pp[k] * 0.5 + pp[k + 1] * 0.25;
-    for (let k = 0; k < n; k++) pp[k] = nv[k];
-  }
   const L = pts[i0].l;
   const at = (k) => sp[k];
   for (let k = 0; k < n - 1; k++) {
@@ -5786,7 +5802,7 @@ function buildPath(pts, i0, i1, spacing, arcBase) {
     const p3 = k < n - 2 ? at(k + 2) : { x: 2 * p2.x - p1.x, y: 2 * p2.y - p1.y };
     const d12 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const steps = Math.max(1, Math.min(300, Math.ceil(d12 / spacing)));
-    if (k === 0) { vx.push(p1.x); vy.push(p1.y); vt.push(p1.t); vl.push(L); vs.push(pv[0]); vp.push(pp[0]); }
+    if (k === 0) { vx.push(p1.x); vy.push(p1.y); vt.push(p1.t); vl.push(L); vs.push(pv[0]); }
     const t0 = 0;
     const t1 = t0 + Math.sqrt(Math.max(1e-3, Math.hypot(p1.x - p0.x, p1.y - p0.y)));
     const t2 = t1 + Math.sqrt(Math.max(1e-3, d12));
@@ -5803,7 +5819,6 @@ function buildPath(pts, i0, i1, spacing, arcBase) {
       vt.push(p1.t + (p2.t - p1.t) * f);
       vl.push(L);
       vs.push(pv[k] + (pv[k + 1] - pv[k]) * f);
-      vp.push(pp[k] + (pp[k + 1] - pp[k]) * f);
     }
   }
   const m = vx.length;
@@ -6036,7 +6051,7 @@ function rvPick(shape, u) {
 
 // colour of one particle: the accent's own palette if it has one, else the beam's colour (or Auto palette)
 function rvColor(st, t, seed) {
-  const pal = review.colPal || review.pal;
+  const pal = review.pal;
   let c;
   if (st.own) { c = st.own[Math.floor(rvHash(seed) * st.own.length)]; if (st.tintBeam) c = rvMix(c, pal.base, st.tintBeam); return c; }
   if (pal.auto) c = rvHash(seed) > 0.45 ? pal.p1 : pal.p2;
@@ -6441,21 +6456,17 @@ function spawnReviewParticle(spec, st, x, y, t, travelAng, tvx, tvy, burst) {
   if (review.parts.length >= 170) review.parts.splice(0, review.parts.length - 169);
   const seed = R() * 1000;
   review.parts.push({
+    sz: Math.pow(REVIEW.sizes[state.prefs.reviewSize] || 1, 0.6) * 1.45,
     x, y, t0: t, life: (spec.life[0] + (spec.life[1] - spec.life[0]) * R()) * (burst ? 0.92 : 1),
     vx: Math.cos(ang) * sp + (spec.nodrag ? 0 : tvx * 0.12), vy: Math.sin(ang) * sp + (spec.nodrag ? 0 : tvy * 0.12), ay: (spec.grav || 0) + (spec.lift || 0),
     drag: spec.nodrag ? 0 : 2.4, size: spec.size[0] + (spec.size[1] - spec.size[0]) * R(), shape: rvPick(spec.shape, R()), rot: R() * 6.283,
-    spin: (spec.spin || 0) * (R() - 0.5) * 2, seed, alpha: spec.alpha || 1, flicker: !!spec.flicker, snap: spec.snap || 0, raw: !!spec.raw, rgb: rvColor(st, t, seed), psz: Math.pow(REVIEW.sizes[state.prefs.reviewSize] || 1, 0.6) * 1.45
+    spin: (spec.spin || 0) * (R() - 0.5) * 2, seed, alpha: spec.alpha || 1, flicker: !!spec.flicker, snap: spec.snap || 0, raw: !!spec.raw, rgb: rvColor(st, t, seed)
   });
 }
 
 function emitAlongLine(now) {
-  const h0 = review.pts.length ? review.pts[review.pts.length - 1].sty : null;
-  review.colPal = h0 ? h0.pal : null;
-  try { emitAlongLineCore(now, h0); } finally { review.colPal = null; }
-}
-function emitAlongLineCore(now, headSty) {
   const pts = review.pts;
-  const st = headSty ? headSty.st : reviewStyle(state.prefs.reviewFx);
+  const st = reviewStyle(state.prefs.reviewFx);
   if (!pts.length) return;
   const lastT = pts[pts.length - 1].t;
   if (!st || reducedMotionQuery.matches) { review.emitT = lastT; return; }
@@ -6504,7 +6515,7 @@ function drawReviewParticles(c, st, now, sz) {
     let a = p.raw ? p.alpha : env.a * p.alpha;            // raw shapes run their own timeline (the typing Electric's keyframes)
     if (p.flicker) a *= 0.75 + 0.25 * Math.sin(ageMs * 0.03 + p.seed);
     if (p.shape === "ripple") a = Math.min(1, a * 1.4);
-    const r = p.size * (p.psz || sz) * (p.raw ? 1 : env.s);
+    const r = p.size * (p.sz || sz) * (p.raw ? 1 : env.s);
     const rot = p.shape === "streak" || p.shape === "rain" ? Math.atan2(p.vy * e + p.ay * s, p.vx * e) : p.rot + p.spin * s;
     drawGlyph(c, p.shape, x, y, r, rot, p.rgb, a, u, p.seed);
     rvAdd(x, y, r * 3.4 + (p.shape === "rain" ? r * 2.4 : 0) + (p.shape === "ripple" ? r * 3 : 0));
@@ -6974,10 +6985,6 @@ function paintChrome(S) {
 }
 
 function paintStrokes(c, pts, now, o) {
-  
-  
-  
-  
   let totalLen = 0;
   for (let i = 1; i < pts.length; i++) if (!pts[i].b) totalLen += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
   const spacing = Math.max(1.4, totalLen / 1800);                        // keeps very long, fast strokes affordable
@@ -6986,6 +6993,7 @@ function paintStrokes(c, pts, now, o) {
     let e = s + 1;
     while (e < pts.length && !pts[e].b) e++;
     if (e - s >= 2) {
+      // Use the captured style for this stroke. Preview strokes have no snapshot.
       const sty = pts[s].sty || o;
       const brush = sty.brush, kind = brush.kind || "stamp", pal = sty.pal, sizeMul = sty.sizeMul, st = sty.st;
       const sz = Math.pow(sizeMul, 0.6) * 1.45;
@@ -6993,7 +7001,6 @@ function paintStrokes(c, pts, now, o) {
         : (st && st.line && st.line.flicker ? (rvHash(Math.floor(now / 70)) < 0.07 ? 0.4 : 1) * (0.94 + 0.06 * Math.sin(now * 0.05)) : 1);
       const nl = brush.layers.length, lg = st ? st.line : { halo: 1, core: 1 };
       const gain = brush.layers.map((_, i) => (i === 0 ? lg.halo || 1 : i === nl - 1 && nl > 1 ? lg.core || 1 : 1));
-      review.colPal = pal;
       const penK = pts[s].pen ? 1.18 : 1;                                  // a held pen stroke is a touch bolder
       buildPath(pts, s, e, spacing, pts[s].arc || 0);
       const n = review.vx.length, vi = review.vi, vc = review.vc, vw = review.vw, vt = review.vt, vl = review.vl, vs = review.vs, va = review.va;
@@ -7004,7 +7011,6 @@ function paintStrokes(c, pts, now, o) {
         vc.push(I < 0.015 ? null : rvAt(pal, vt[i]));
         let wf = 1 + brush.speedW * (0.5 - Math.min(1, vs[i] / 1.6));      // slow = fuller, fast = finer
         if (kind === "jelly") wf *= 1 + 0.07 * Math.sin(va[i] * 0.32 - now * 0.0045);
-        if (IS_IPAD && pts[s].pen && review.vp && review.vp.length === n) wf *= 0.62 + 0.62 * Math.pow(review.vp[i], 0.85);   // Apple Pencil 필압
         vw.push(wf < 0.35 ? 0.35 : wf);
       }
       const S = { c, now, n, vx: review.vx, vy: review.vy, vt, vl, vs, va, vnx: review.vnx, vny: review.vny, vi, vc, vw, brush, kind, sizeMul, penK, sz, pal, st, flick, gain, seed: pts[s].sid || 0 };
@@ -7053,7 +7059,6 @@ function paintStrokes(c, pts, now, o) {
       for (let i = 0; i < n; i += 4) rvAdd(review.vx[i], review.vy[i], m);
       rvAdd(review.vx[n - 1], review.vy[n - 1], m);
       if (st) drawShimmer(c, st, now, review.vx, review.vy, vt, vl, n, sz);
-      review.colPal = null;
     }
     s = e;
   }
@@ -7213,7 +7218,6 @@ function drawTrail(now) {
   pruneTrail(now);
   const pts = review.pts;
   const st = reviewStyle(state.prefs.reviewFx);
-  
   const lampOn = review.lampA > 0.02;
   if (!pts.length && !review.parts.length && !review.pings.length && !lampOn) { review.box = null; return; }
 
@@ -7223,11 +7227,9 @@ function drawTrail(now) {
   const sizeMul = REVIEW.sizes[state.prefs.reviewSize] || 1, sz = Math.pow(sizeMul, 0.6) * 1.45;
   const flick = st && st.line && st.line.flicker ? (rvHash(Math.floor(now / 70)) < 0.07 ? 0.4 : 1) * (0.94 + 0.06 * Math.sin(now * 0.05)) : 1;   // a faulty neon tube
 
-  const predN = rvAppendPredicted(now);
   paintStrokes(c, pts, now, { brush, pal, st, sizeMul, flick });
-  if (predN) pts.length -= predN;
-  if (lampOn && (!REVIEW_TOUCH_DEVICE || IS_IPAD)) paintLamp(c, { brush, pal, sizeMul, st }, review.lampX, review.lampY, review.lampA, now);
-  drawReviewParticles(c, st, now, sz);
+  if (lampOn && !REVIEW_TOUCH_DEVICE) paintLamp(c, { brush, pal, sizeMul, st }, review.lampX, review.lampY, review.lampA, now);
+  if (review.parts.length) drawReviewParticles(c, st, now, sz);
 
   // pings: a click is answered in the material's own language (desktop mouse only)
   if (REVIEW_TOUCH_DEVICE) review.pings.length = 0;
@@ -7314,8 +7316,8 @@ function bindEvents() {
   refs.soundEnabled.addEventListener("change", () => setPrefs({ soundEnabled: refs.soundEnabled.checked }, { keepMood: true }));
   refs.intensityRange.addEventListener("input", () => setPrefs({ intensity: Number(refs.intensityRange.value) / 100 }, { keepMood: true }));
   refs.volumeRange.addEventListener("input", () => setPrefs({ volume: Number(refs.volumeRange.value) / 100 }, { keepMood: true }));
-  refs.fontSelect.addEventListener("change", () => setPrefs({ font: refs.fontSelect.value }));
-  refs.fontSizeRange.addEventListener("input", () => setPrefs({ fontSize: Number(refs.fontSizeRange.value) }, { keepMood: true }));
+  refs.fontSelect.addEventListener("change", () => setInkFont(refs.fontSelect.value));
+  refs.fontSizeRange.addEventListener("input", () => setInkFontSize(Number(refs.fontSizeRange.value)));
   refs.effectModeSelect.addEventListener("change", () => setPrefs({ effectMode: refs.effectModeSelect.value }));
   refs.soundPackSelect.addEventListener("change", () => { setPrefs({ soundPack: refs.soundPackSelect.value }); soundEngine.play("normal"); });
   refs.inkColorRow.addEventListener("click", (event) => {
@@ -7362,9 +7364,8 @@ function handleGlobalKeys(event) {
 function init() {
   cacheRefs();
   ensurePdfWorkspaceGuard();
-  window.__STUDY_TYPING_NOTE_BUILD__ = "ipad-pencil-20261031-1";
-  document.body.classList.toggle("is-ipad", IS_IPAD);
-  console.info("StudyTypingNote build: ipad-pencil-20261031-1");
+  window.__STUDY_TYPING_NOTE_BUILD__ = "pdf-ui-fix-20261008-2";
+  console.info("StudyTypingNote build: pdf-ui-fix-20261008-2");
   if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
   fillSelect(refs.effectModeSelect, EFFECT_PRESETS, (d) => d.label);
   fillSelect(refs.soundPackSelect, SOUND_PACKS, (d) => d.label);
@@ -7379,25 +7380,3 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
-
-// ---- 2026-10-31: Standalone app.js resources (works without editing index.html/styles.css).
-(function installIpadAndFontResources() {
-  const install = () => {
-    if (!document.querySelector('[data-t-ipad-font-patch]')) {
-      const style = document.createElement('style');
-      style.setAttribute('data-t-ipad-font-patch', '');
-      style.textContent = "\n\n/* ===== 2026-10-31 ===== */\n@font-face { font-family: \"LOTTERIACHAB\"; font-display: swap;\n  src: url(\"https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2302@1.0/LOTTERIACHAB.woff2\") format(\"woff2\"); }\n\n/* ===== iPad 전용 (Apple Pencil + 손가락 터치) ===== */\nbody.is-ipad .pdf-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }\nbody.is-ipad.review-mode .pdf-scroll,\nbody.is-ipad.review-mode .pdf-page {\n  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;\n}\n/* 터치 타깃을 손가락/펜으로 누르기 좋게 키움 */\nbody.is-ipad .round-icon { width: 40px; height: 40px; }\nbody.is-ipad .switch-row, body.is-ipad .tool-pill { height: 40px; }\nbody.is-ipad .rv-seg button { height: 34px; min-width: 38px; }\nbody.is-ipad .rv-tune { height: 36px; padding: 0 16px; }\nbody.is-ipad .dock-swatch { width: 30px; height: 30px; }\nbody.is-ipad .swatch, body.is-ipad .swatch-custom { width: 32px; height: 32px; }\n/* 호버가 없으니 노트 이동 핸들을 항상 보이게 하고, 손가락이 닿는 면적을 넓힘 */\nbody.is-ipad .note-handle { opacity: .55; width: 22px; height: 22px; left: -30px; top: 0; }\nbody.is-ipad .note-handle::after { content: \"\"; position: absolute; inset: -12px; }\nbody.is-ipad .ink-note { min-height: 2em; padding: 4px 7px; -webkit-tap-highlight-color: transparent; }\n";
-      document.head.appendChild(style);
-    }
-    if (!document.querySelector('[data-t-extra-korean-fonts]')) {
-      const link = document.createElement('link');
-      link.setAttribute('data-t-extra-korean-fonts', '');
-      link.rel = 'stylesheet';
-      link.href = "https://fonts.googleapis.com/css2?family=Yeon+Sung&family=Kirang+Haerang&family=Sunflower:wght@300;500;700&family=Black+And+White+Picture&family=Dokdo&family=East+Sea+Dokdo&family=Do+Hyeon&family=Gugi&family=Stylish&display=swap";
-      document.head.appendChild(link);
-    }
-    document.body.classList.toggle('is-ipad', IS_IPAD);
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
-  else install();
-})();

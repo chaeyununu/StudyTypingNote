@@ -5229,8 +5229,10 @@ function onReviewDown(event) {
   feedTrail(event.clientX, event.clientY, now);
   review.mx = event.clientX; review.my = event.clientY;
   if (!review.inside) { review.inside = true; review.lensReady = false; if (state.prefs.reviewLens !== "off") refs.reviewLens.classList.add("on"); }
-  review.pings.push({ x: event.clientX, y: event.clientY, t0: now, seed: Math.random() * 100 });
-  review.lensPulseT = now;
+  if (event.pointerType === "mouse") {   // 핑은 마우스(컴퓨터)에서만. 아이패드 손가락/펜은 제외
+    review.pings.push({ x: event.clientX, y: event.clientY, t0: now, seed: Math.random() * 100 });
+    review.lensPulseT = now;
+  }
   review.lastMoveT = now; review.restFired = true;
   const st = reviewStyle(state.prefs.reviewFx);
   if (st && st.rest && !reducedMotionQuery.matches) {

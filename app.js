@@ -4646,6 +4646,10 @@ function onLayerPointerDown(event, entry) {
 // touches the note DOM or storage (only the 3 look settings are remembered), so a trail is never saved and
 // typing / notes / zoom behave exactly as before.
 // ================================================================== REVIEW 3.0
+// On touch-capable devices (including iPadOS), disable tap/pulse/stop flourishes,
+// even if Safari synthesizes a mouse pointer for the Apple Pencil.
+const REVIEW_TOUCH_DEVICE = navigator.maxTouchPoints > 0 ||
+  !!(window.matchMedia && window.matchMedia("(any-pointer: coarse)").matches);
 // A reading light with real material. Hover leaves a short beam, press-and-drag circles something (it lingers ~3 s),
 // click pings a spot. Everything is temporary and never stored. The room dims around a lens (spotlight or reading
 // ruler), the desk takes a faint tint of the beam, and the beam is *made of something*: laser light, a comet, glitter,
@@ -5229,13 +5233,13 @@ function onReviewDown(event) {
   feedTrail(event.clientX, event.clientY, now);
   review.mx = event.clientX; review.my = event.clientY;
   if (!review.inside) { review.inside = true; review.lensReady = false; if (state.prefs.reviewLens !== "off") refs.reviewLens.classList.add("on"); }
-  if (event.pointerType === "mouse") {   // 핑은 마우스(컴퓨터)에서만. 아이패드 손가락/펜은 제외
+  if (!REVIEW_TOUCH_DEVICE && event.pointerType === "mouse") {   // 터치 기기에는 가상 mouse 이벤트가 와도 핑 금지
     review.pings.push({ x: event.clientX, y: event.clientY, t0: now, seed: Math.random() * 100 });
     review.lensPulseT = now;
   }
   review.lastMoveT = now; review.restFired = true;
   const st = reviewStyle(state.prefs.reviewFx);
-  if (st && st.rest && !reducedMotionQuery.matches) {
+  if (!REVIEW_TOUCH_DEVICE && st && st.rest && !reducedMotionQuery.matches) {
     for (let i = 0; i < st.rest.count; i++) spawnReviewParticle(st.rest, st, event.clientX, event.clientY, now, 0, 0, 0, true);
   }
   scheduleReview();
@@ -5332,7 +5336,7 @@ function reviewFrame(now) {
       Math.hypot(review.rx - review.sx, review.ry - review.sy) > 0.35) {
     stepTrailFilter(review.rx, review.ry, now);
   }
-  const lampTarget = review.hasFilter ? 1 : 0;
+  const lampTarget = !REVIEW_TOUCH_DEVICE && review.hasFilter ? 1 : 0;
   review.lampA += (lampTarget - review.lampA) * (1 - Math.exp(-dt / 110));
   if (review.hasFilter) { review.lampX = review.sx; review.lampY = review.sy; }
   if (Math.abs(lampTarget - review.lampA) < 0.01) review.lampA = lampTarget;
@@ -5353,7 +5357,7 @@ function drawLens(now) {
   const t = review.tint, dim = L.dim[mode] || 0.1;
   const col = (a) => `rgba(${t[0]},${t[1]},${t[2]},${a.toFixed(4)})`;
   const sm = (x) => x * x * (3 - 2 * x);
-  const pulse = Math.max(0, 1 - (now - review.lensPulseT) / 520);
+  const pulse = REVIEW_TOUCH_DEVICE ? 0 : Math.max(0, 1 - (now - review.lensPulseT) / 520);
   const mult = (1 + 0.22 * pulse * pulse) * (1 + 0.08 * review.lensSpeed);
   c.clearRect(0, 0, review.lw, review.lh);
   let g;
@@ -6405,7 +6409,7 @@ function emitAlongLine(now) {
   }
   review.emitT = lastT;
   // when the pointer comes to rest, the accent gives one small flourish at the head: it marks the spot being pointed at
-  if (st.rest && !review.restFired && review.hasFilter && pts.length > 3 && now - review.lastMoveT > 150) {
+  if (!REVIEW_TOUCH_DEVICE && st.rest && !review.restFired && review.hasFilter && pts.length > 3 && now - review.lastMoveT > 150) {
     review.restFired = true;
     const head = pts[pts.length - 1];
     for (let i = 0; i < st.rest.count; i++) spawnReviewParticle(st.rest, st, head.x, head.y, now, 0, 0, 0, true);
@@ -7136,10 +7140,11 @@ function drawTrail(now) {
   const flick = st && st.line && st.line.flicker ? (rvHash(Math.floor(now / 70)) < 0.07 ? 0.4 : 1) * (0.94 + 0.06 * Math.sin(now * 0.05)) : 1;   // a faulty neon tube
 
   paintStrokes(c, pts, now, { brush, pal, st, sizeMul, flick });
-  if (lampOn) paintLamp(c, { brush, pal, sizeMul, st }, review.lampX, review.lampY, review.lampA, now);
+  if (lampOn && !REVIEW_TOUCH_DEVICE) paintLamp(c, { brush, pal, sizeMul, st }, review.lampX, review.lampY, review.lampA, now);
   if (st) drawReviewParticles(c, st, now, sz);
 
-  // pings: a click is answered in the material's own language
+  // pings: a click is answered in the material's own language (desktop mouse only)
+  if (REVIEW_TOUCH_DEVICE) review.pings.length = 0;
   for (let i = review.pings.length - 1; i >= 0; i--) {
     const p = review.pings[i];
     if (now - p.t0 > REVIEW.pingLife) { review.pings.splice(i, 1); continue; }

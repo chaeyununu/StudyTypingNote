@@ -1,5 +1,2 @@
-T app icon replacement assets
-
-Replace the corresponding icon files in your existing project (normally public/).
-Do NOT delete the existing app source files or upload this ZIP as a full replacement website.
-Ensure index.html / manifest references the file names used here, then redeploy.
+T Crystal app icon replacement
+Unzip this archive. Upload the image files into the same folder as the existing icon files in your Vercel project (usually public/). Replace matching filenames, then redeploy. If your manifest or HTML uses different names, update those references. This does not replace the entire application.

@@ -4882,19 +4882,12 @@ const REVIEW = {
 };
 Object.entries(REVIEW.brushes).forEach(([id, b]) => { b.id = id; b.layers.forEach((L, i) => { L.id = `${id}${i}`; }); });
 
-// ---- Apple Pencil: 소재마다 필압(p) / 기울기(t, 눕힐수록 넓게) 반응이 다르다. 표에 없는 소재는 일정한 굵기.
+// ---- Apple Pencil: Light 선반 소재만 필압(p) / 기울기(t, 눕힐수록 넓게) / 농도(a, 가볍게 쓰면 옅게)에 반응한다. 표에 없는 소재는 필압 무관.
 const RV_PEN = {
-  ribbon:  { p: 1.0,  t: 0.9 },   // 캘리그라피 펜처럼: 세게 누르면 굵고, 눕히면 넓게
-  veil:    { p: 0.5,  t: 0.6 },   // 베일: 부드럽게 번짐
-  comet:   { p: 0.4,  t: 0 },     // 혜성: 꼬리 굵기만 살짝
-  gloss:   { p: 0.9,  t: 0.5 },   // 립오일: 바르는 압력/각도
-  glossy:  { p: 0.65, t: 0.3 },
-  jelly:   { p: 0.85, t: 0.2 },
-  cream:   { p: 0.8,  t: 0 },     // 짤주머니: 세게 짤수록 굵게
-  ganache: { p: 0.8,  t: 0.2 },
-  matcha:  { p: 0.55, t: 0.3 },
-  magma:   { p: 0.6,  t: 0 },
-  chrome:  { p: 0.75, t: 0.2 }
+  laser:  { p: 0.7, t: 0,   a: 0 },      // 레이저: 누르는 만큼 또렷하게 굵어짐 (농도는 일정)
+  ribbon: { p: 1.0, t: 0.9, a: 0.35 },   // 리본(캘리그라피): 필압 + 기울기 모두 강하게
+  veil:   { p: 0.5, t: 0.6, a: 0.5 },    // 베일: 부드럽게 번짐
+  comet:  { p: 0.4, t: 0,   a: 0.35 }    // 혜성: 꼬리 굵기만 살짝
 };
 function rvPenWidth(cfg, p, tl) {
   const pr = Math.pow(Math.min(1, Math.max(0, p)), 0.8);
@@ -4914,6 +4907,19 @@ function rvReadPen(e) {
   review.penP = fresh ? raw : review.penP * 0.6 + raw * 0.4;
   review.penT = fresh ? tilt : review.penT * 0.75 + tilt * 0.25;
 }
+// 펜 끝보다 한두 프레임 앞(브라우저가 예측한 점)을 임시로 이어 그려서 지연을 줄인다. 그린 뒤 바로 제거되므로 저장/획 데이터에 남지 않는다.
+function rvPredictTail() {
+  const pr = review.predPts, pts = review.pts, last = pts[pts.length - 1];
+  if (!review.isPen || !review.down || !pr || !pr.length || !review.hasFilter || review.breakNext || !last || !last.pn) return 0;
+  let n = 0, px = last.x, py = last.y;
+  for (let i = 0; i < pr.length; i++) {
+    const x = last.x + (pr[i].x - last.x) * 0.8, y = last.y + (pr[i].y - last.y) * 0.8;
+    if (Math.hypot(x - px, y - py) < 0.4) continue;
+    pts.push({ x, y, t: last.t + (i + 1) * 5, b: false, l: last.l, pen: true, pn: true, pr: last.pr, tl: last.tl });
+    px = x; py = y; n++;
+  }
+  return n;
+}
 const RV_SOFT = { id: "soft", R: 10, stops: [[0, 0.85], [0.5, 0.5], [1, 0]], white: 0 };
 const RV_SPEC = { id: "spec", R: 3, stops: [[0, 0.95], [0.45, 0.6], [1, 0]], white: 1 };
 const RV_DARK = { id: "dark", R: 10, stops: [[0, 0.5], [0.55, 0.25], [1, 0]], white: 0, mix: [[40, 20, 30], 0.9] };
@@ -4924,7 +4930,7 @@ const IRIS = Array.from({ length: 24 }, (_, i) => {   // 24 hue buckets (HSL s=.
 });
 const review = {
   on: false, hinted: false, raf: 0, lastFrame: 0, inside: false,
-  pts: [], breakNext: true, hasFilter: false, down: false, curL: 1050, curPen: false, isPen: false, penP: 0, penT: 0,
+  pts: [], breakNext: true, hasFilter: false, down: false, curL: 1050, curPen: false, isPen: false, penP: 0, penT: 0, predPts: [],
   sx: 0, sy: 0, st: 0, rx: 0, ry: 0, prx: 0, pry: 0,        // low-pass filter state + last raw pointer
   mx: 0, my: 0, pmx: 0, pmy: 0, lx: 0, ly: 0, lensReady: false, lensSpeed: 0, lensPulseT: -9999,
   lampA: 0, lampX: 0, lampY: 0, lastMoveT: 0, restFired: true, emitT: 0, emitAcc: 0, gap: 24,
@@ -5269,7 +5275,7 @@ function applyReviewAtmosphere() {
 }
 
 function reviewResize() {
-  review.w = window.innerWidth; review.h = window.innerHeight;
+  review.w = document.documentElement.clientWidth || window.innerWidth; review.h = document.documentElement.clientHeight || window.innerHeight;
   review.dpr = Math.min(window.devicePixelRatio || 1, 2);
   const t = refs.reviewTrail;
   t.width = Math.round(review.w * review.dpr); t.height = Math.round(review.h * review.dpr);
@@ -5328,6 +5334,10 @@ function onReviewMove(event) {
     }
     if (review.pts.length > 900) { review.pts.splice(0, review.pts.length - 900); review.pts[0].b = true; }
     review.lastMoveT = now; review.restFired = false;
+    review.predPts = [];
+    if (review.isPen && review.down && event.getPredictedEvents) {
+      try { review.predPts = event.getPredictedEvents().slice(0, 2).map((pe) => ({ x: pe.clientX, y: pe.clientY })); } catch (err) { review.predPts = []; }
+    }
   } else {
     review.breakNext = true; review.hasFilter = false;   // never join a stroke across the desk / gaps between pages
   }
@@ -5365,6 +5375,7 @@ function onReviewDown(event) {
 
 function onReviewUp() {
   if (!review.down) return;
+  review.predPts = [];
   review.down = false; review.breakNext = true; review.hasFilter = false;
 }
 
@@ -5385,13 +5396,13 @@ function feedTrail(x, y, t) {
 function stepTrailFilter(x, y, t) {
   const dt = Math.min(80, Math.max(0.5, t - review.st));
   const speed = Math.hypot(x - review.prx, y - review.pry) / dt;       // px per ms
-  const tau = 14 + 52 * Math.exp(-speed * 1.3);                         // ms: ~66 when crawling, ~15 when fast
+  const tau = review.isPen ? 5 + 22 * Math.exp(-speed * 1.4) : 14 + 52 * Math.exp(-speed * 1.3);                         // ms: ~66 when crawling, ~15 when fast
   const a = 1 - Math.exp(-dt / tau);
   review.sx += (x - review.sx) * a; review.sy += (y - review.sy) * a;
   review.st = t; review.prx = review.rx = x; review.pry = review.ry = y;
   const last = review.pts[review.pts.length - 1];
   if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty: review.strokeSty, pn: review.isPen, pr: review.penP, tl: review.penT }); return; }
-  if (Math.hypot(review.sx - last.x, review.sy - last.y) >= 0.7) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen, pn: review.isPen, pr: review.penP, tl: review.penT });
+  if (Math.hypot(review.sx - last.x, review.sy - last.y) >= (review.isPen ? 0.4 : 0.7)) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen, pn: review.isPen, pr: review.penP, tl: review.penT });
 }
 
 // each stroke fades from its tail; strokes with different lifetimes (hover vs pen) expire independently
@@ -6795,13 +6806,13 @@ function paintJelly(S) {
 }
 
 function paintCream(S) {                               // piped whipped cream: lit rosettes with spiral flutes, a stacked "kiss" now and then
-  const { c, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK } = S;
+  const { c, vx, vy, vnx, vny, vi, vc, sizeMul, penK } = S;
   paintShadow(S, 7.8, 0.14, 1.0, 2.8);
   stampLayers(S);                                       // a smooth underlay, so the rope never shows gaps between rosettes
   rvWalk(S, 4.3 * sizeMul * penK, (j, k) => {
     const I = vi[j];
     if (I < 0.03) return;
-    const sc = (0.58 + 0.42 * Math.pow(I, 0.5)) * sizeMul * penK * vw[j], peak = rvHash(k * 3.1) > 0.9;
+    const sc = (0.58 + 0.42 * Math.pow(I, 0.5)) * sizeMul * penK, peak = rvHash(k * 3.1) > 0.9;
     const rad = (5.8 + 4 * Math.pow(rvHash(k * 1.7 + 2), 1.3)) * (peak ? 1.45 : 1) * sc;
     const off = (rvHash(k * 2.9 + 5) - 0.5) * 2 * 2.6 * sc, x = vx[j] + vnx[j] * off, y = vy[j] + vny[j] * off;
     const ball = rvCreamBall(vc[j]), w = rad * 2 * (28 / 24), al = Math.min(1, Math.pow(I, 0.7));
@@ -7056,17 +7067,21 @@ function paintStrokes(c, pts, now, o) {
       const n = review.vx.length, vi = review.vi, vc = review.vc, vw = review.vw, vt = review.vt, vl = review.vl, vs = review.vs, va = review.va;
       vi.length = vc.length = vw.length = 0;
       const penCfg = pts[s].pn && review.vp.length === n ? RV_PEN[brush.id] : null;
-      const vp = review.vp, vq = review.vq;
+      const vp = review.vp, vq = review.vq, penCov = [];
       for (let i = 0; i < n; i++) {
         const I = rvIntensity(vt[i], vl[i]);
         vi.push(I);
         vc.push(I < 0.015 ? null : rvAt(pal, vt[i]));
         let wf = 1 + brush.speedW * (0.5 - Math.min(1, vs[i] / 1.6));      // slow = fuller, fast = finer
         if (kind === "jelly") wf *= 1 + 0.07 * Math.sin(va[i] * 0.32 - now * 0.0045);
-        if (penCfg) wf *= rvPenWidth(penCfg, vp[i], vq[i]);
+        if (penCfg) {
+          wf *= rvPenWidth(penCfg, vp[i], vq[i]);
+          if (penCfg.a > 0) penCov.push(1 - penCfg.a * 0.6 * (1 - Math.min(1, Math.max(0, (Math.pow(vp[i], 0.8) - 0.15) / 0.7))));
+        }
         vw.push(wf < 0.35 ? 0.35 : wf);
       }
       const S = { c, now, n, vx: review.vx, vy: review.vy, vt, vl, vs, va, vnx: review.vnx, vny: review.vny, vi, vc, vw, brush, kind, sizeMul, penK, sz, pal, st, flick, gain, seed: pts[s].sid || 0 };
+      if (penCfg && penCov.length === n) S.cov = penCov;
       if (st && st.line) {                               // neon: a coloured haze around the tube and its wet-street reflection, drawn beneath
         const { rim, reflect } = st.line;
         if (rim) {
@@ -7280,7 +7295,9 @@ function drawTrail(now) {
   const sizeMul = REVIEW.sizes[state.prefs.reviewSize] || 1, sz = Math.pow(sizeMul, 0.6) * 1.45;
   const flick = st && st.line && st.line.flicker ? (rvHash(Math.floor(now / 70)) < 0.07 ? 0.4 : 1) * (0.94 + 0.06 * Math.sin(now * 0.05)) : 1;   // a faulty neon tube
 
+  const predN = rvPredictTail();
   paintStrokes(c, pts, now, { brush, pal, st, sizeMul, flick });
+  if (predN) pts.length -= predN;
   if (lampOn && !REVIEW_TOUCH_DEVICE) paintLamp(c, { brush, pal, sizeMul, st }, review.lampX, review.lampY, review.lampA, now);
   if (review.parts.length) drawReviewParticles(c, st, now, sz);
 
@@ -7297,6 +7314,78 @@ function drawTrail(now) {
   if (b.x0 === Infinity) { review.box = null; return; }
   const x0 = Math.max(0, b.x0 - 4), y0 = Math.max(0, b.y0 - 4);
   review.box = { x: x0, y: y0, w: Math.min(review.w, b.x1 + 4) - x0, h: Math.min(review.h, b.y1 + 4) - y0 };
+}
+
+// ---- 확대 지원
+// (1) 확대하면 페이지가 화면보다 넓어지는데, 가운데 정렬(align-items:center) 때문에 왼쪽이 잘려 스크롤로도 못 가는 문제 -> auto margin 으로 교체
+// (2) 터치 기기: 두 손가락 핀치를 브라우저 확대 대신 앱 확대로 처리(툴바/REVIEW 좌표가 어긋나지 않고, 손을 떼면 선명하게 다시 렌더)
+function ensureZoomSupport() {
+  if (document.getElementById("zoomCss")) return;
+  const style = document.createElement("style");
+  style.id = "zoomCss";
+  style.textContent = `
+.pdf-scroll { align-items: flex-start; overscroll-behavior: contain; }
+.pdf-page { margin-left: auto; margin-right: auto; }
+body.is-touch .pdf-scroll { touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; }
+body.is-touch.review-mode .pdf-scroll, body.is-touch.review-mode .pdf-page { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+`;
+  document.head.append(style);
+  if (navigator.maxTouchPoints > 0) document.body.classList.add("is-touch");
+}
+
+// 핀치 중에는 페이지 크기만 바꿔 손가락을 따라가게 하고(비트맵은 잠시 늘어남), 손을 떼면 layoutPages()로 선명하게 다시 그린다.
+function previewZoomLayout() {
+  const scale = state.fit * state.zoom;
+  state.pages.forEach((entry) => {
+    const width = entry.base.width * scale;
+    const height = entry.base.height * scale;
+    entry.el.style.width = `${width}px`;
+    entry.el.style.height = `${height}px`;
+    entry.el.style.setProperty("--k", (width / 800).toFixed(4));
+  });
+  refs.zoomReadout.textContent = `${Math.round(state.zoom * 100)}%`;
+}
+
+function initPinchZoom() {
+  const el = refs.pdfScroll;
+  if (!el || !(navigator.maxTouchPoints > 0)) return;
+  let pinch = null;
+  const fingers = (e) => Array.prototype.filter.call(e.touches, (t) => t.touchType !== "stylus");
+  const spread = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  el.addEventListener("touchstart", (event) => {
+    const f = fingers(event);
+    if (f.length !== 2 || event.touches.length !== 2 || !state.pages.length) return;
+    const cx = (f[0].clientX + f[1].clientX) / 2, cy = (f[0].clientY + f[1].clientY) / 2;
+    let best = state.pages[0], bestGap = Infinity;
+    state.pages.forEach((p) => {
+      const r = p.el.getBoundingClientRect();
+      const gap = cy < r.top ? r.top - cy : cy > r.bottom ? cy - r.bottom : 0;
+      if (gap < bestGap) { bestGap = gap; best = p; }
+    });
+    const r = best.el.getBoundingClientRect();
+    pinch = { d0: Math.max(1, spread(f[0], f[1])), z0: state.zoom, entry: best, fx: (cx - r.left) / Math.max(1, r.width), fy: (cy - r.top) / Math.max(1, r.height) };
+  }, { passive: true });
+  el.addEventListener("touchmove", (event) => {
+    if (!pinch) return;
+    const f = fingers(event);
+    if (f.length !== 2 || event.touches.length !== 2) return;
+    if (event.cancelable) event.preventDefault();
+    const cx = (f[0].clientX + f[1].clientX) / 2, cy = (f[0].clientY + f[1].clientY) / 2;
+    state.zoom = clamp(pinch.z0 * spread(f[0], f[1]) / pinch.d0, ZOOM_STEPS[0], ZOOM_STEPS[ZOOM_STEPS.length - 1]);
+    previewZoomLayout();
+    const r = pinch.entry.el.getBoundingClientRect();         // 손가락 아래의 같은 지점이 계속 손가락 아래에 오도록 스크롤 보정
+    el.scrollLeft += (r.left + pinch.fx * r.width) - cx;
+    el.scrollTop += (r.top + pinch.fy * r.height) - cy;
+  }, { passive: false });
+  const finish = () => {
+    if (!pinch) return;
+    pinch = null;
+    layoutPages();
+    updatePageReadout();
+  };
+  el.addEventListener("touchend", (event) => { if (pinch && event.touches.length < 2) finish(); }, { passive: true });
+  el.addEventListener("touchcancel", finish, { passive: true });
+  document.addEventListener("gesturestart", (event) => event.preventDefault());   // Safari 기본 핀치 확대 차단
 }
 
 function setTypeTool(on) {
@@ -7417,6 +7506,7 @@ function handleGlobalKeys(event) {
 function init() {
   cacheRefs();
   ensurePdfWorkspaceGuard();
+  ensureZoomSupport();
   window.__STUDY_TYPING_NOTE_BUILD__ = "pdf-ui-fix-20261008-2";
   console.info("StudyTypingNote build: pdf-ui-fix-20261008-2");
   if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
@@ -7426,6 +7516,7 @@ function init() {
   buildMoodGrid();
   initFxCanvas();
   bindEvents();
+  initPinchZoom();
   try { initReview(); } catch (error) { console.error("Review init failed", error); }
   applyPrefs();
   if (document.readyState === "complete") pruneMissingFonts();

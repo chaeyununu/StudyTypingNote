@@ -4880,7 +4880,40 @@ const REVIEW = {
   ],
   penLife: 3200, pingLife: 760
 };
-Object.entries(REVIEW.brushes).forEach(([id, b]) => b.layers.forEach((L, i) => { L.id = `${id}${i}`; }));
+Object.entries(REVIEW.brushes).forEach(([id, b]) => { b.id = id; b.layers.forEach((L, i) => { L.id = `${id}${i}`; }); });
+
+// ---- Apple Pencil: 소재마다 필압(p) / 기울기(t, 눕힐수록 넓게) 반응이 다르다. 표에 없는 소재는 일정한 굵기.
+const RV_PEN = {
+  ribbon:  { p: 1.0,  t: 0.9 },   // 캘리그라피 펜처럼: 세게 누르면 굵고, 눕히면 넓게
+  veil:    { p: 0.5,  t: 0.6 },   // 베일: 부드럽게 번짐
+  comet:   { p: 0.4,  t: 0 },     // 혜성: 꼬리 굵기만 살짝
+  gloss:   { p: 0.9,  t: 0.5 },   // 립오일: 바르는 압력/각도
+  glossy:  { p: 0.65, t: 0.3 },
+  jelly:   { p: 0.85, t: 0.2 },
+  cream:   { p: 0.8,  t: 0 },     // 짤주머니: 세게 짤수록 굵게
+  ganache: { p: 0.8,  t: 0.2 },
+  matcha:  { p: 0.55, t: 0.3 },
+  magma:   { p: 0.6,  t: 0 },
+  chrome:  { p: 0.75, t: 0.2 }
+};
+function rvPenWidth(cfg, p, tl) {
+  const pr = Math.pow(Math.min(1, Math.max(0, p)), 0.8);
+  let f = 1 + cfg.p * 1.25 * (pr - 0.45);   // 보통 힘(0.45)에서 원래 굵기
+  f *= 1 + cfg.t * 0.9 * (tl || 0);          // 펜을 눕힐수록 넓게
+  return Math.min(1.9, Math.max(0.42, f));
+}
+// 포인터 이벤트에서 펜의 실제 pressure / tiltX / tiltY 를 읽어 부드럽게 보정해 review.penP / review.penT 에 둔다.
+function rvReadPen(e) {
+  review.isPen = e.pointerType === "pen";
+  if (!review.isPen) { review.penP = 0; review.penT = 0; return; }
+  const raw = Math.min(1, Math.max(0.05, e.pressure || 0.4));
+  let tilt = Math.hypot(e.tiltX || 0, e.tiltY || 0) / 75;
+  if (!tilt && typeof e.altitudeAngle === "number") tilt = (Math.PI / 2 - e.altitudeAngle) / (Math.PI / 2);
+  tilt = Math.min(1, Math.max(0, tilt));
+  const fresh = !(review.penP > 0);
+  review.penP = fresh ? raw : review.penP * 0.6 + raw * 0.4;
+  review.penT = fresh ? tilt : review.penT * 0.75 + tilt * 0.25;
+}
 const RV_SOFT = { id: "soft", R: 10, stops: [[0, 0.85], [0.5, 0.5], [1, 0]], white: 0 };
 const RV_SPEC = { id: "spec", R: 3, stops: [[0, 0.95], [0.45, 0.6], [1, 0]], white: 1 };
 const RV_DARK = { id: "dark", R: 10, stops: [[0, 0.5], [0.55, 0.25], [1, 0]], white: 0, mix: [[40, 20, 30], 0.9] };
@@ -4891,14 +4924,14 @@ const IRIS = Array.from({ length: 24 }, (_, i) => {   // 24 hue buckets (HSL s=.
 });
 const review = {
   on: false, hinted: false, raf: 0, lastFrame: 0, inside: false,
-  pts: [], breakNext: true, hasFilter: false, down: false, curL: 1050, curPen: false,
+  pts: [], breakNext: true, hasFilter: false, down: false, curL: 1050, curPen: false, isPen: false, penP: 0, penT: 0,
   sx: 0, sy: 0, st: 0, rx: 0, ry: 0, prx: 0, pry: 0,        // low-pass filter state + last raw pointer
   mx: 0, my: 0, pmx: 0, pmy: 0, lx: 0, ly: 0, lensReady: false, lensSpeed: 0, lensPulseT: -9999,
   lampA: 0, lampX: 0, lampY: 0, lastMoveT: 0, restFired: true, emitT: 0, emitAcc: 0, gap: 24,
   parts: [], pings: [], pal: null, tint: [16, 18, 24], bb: null, now: 0, panelOpen: false,
   tab: "light", lastLook: null, dockTimer: 0, dockHover: false, matKey: "", lookTabs: {},
   lensCtx: null, trailCtx: null, dpr: 1, w: 0, h: 0, lw: 0, lh: 0, box: null,
-  vx: [], vy: [], vt: [], vl: [], vs: [], va: [], vnx: [], vny: [], vi: [], vc: [], vw: [],
+  vx: [], vy: [], vt: [], vl: [], vs: [], va: [], vnx: [], vny: [], vi: [], vc: [], vw: [], vp: [], vq: [],
   sprites: new Map(), tiles: new Map(), gems: new Map(), dollops: new Map(), styles: new Map()
 };
 
@@ -5290,6 +5323,7 @@ function onReviewMove(event) {
       const e = evs[i];
       let t = e.timeStamp || now;
       if (t > now || now - t > 120) t = now;
+      rvReadPen(e);
       feedTrail(e.clientX, e.clientY, t);
     }
     if (review.pts.length > 900) { review.pts.splice(0, review.pts.length - 900); review.pts[0].b = true; }
@@ -5312,6 +5346,8 @@ function onReviewDown(event) {
   if (!(event.target.closest && event.target.closest(".pdf-page"))) return;
   const now = performance.now();
   review.down = true; review.breakNext = true; review.hasFilter = false;
+  review.penP = 0; review.penT = 0;
+  rvReadPen(event);
   feedTrail(event.clientX, event.clientY, now);
   review.mx = event.clientX; review.my = event.clientY;
   if (!review.inside) { review.inside = true; review.lensReady = false; if (state.prefs.reviewLens !== "off") refs.reviewLens.classList.add("on"); }
@@ -5340,7 +5376,7 @@ function feedTrail(x, y, t) {
     review.curPen = review.down;
     review.strokeSty = sty;
     review.curL = reducedMotionQuery.matches ? 700 : review.down ? REVIEW.penLife : sty.brush.life;
-    review.pts.push({ x, y, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty });
+    review.pts.push({ x, y, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty, pn: review.isPen, pr: review.penP, tl: review.penT });
     return;
   }
   stepTrailFilter(x, y, t);
@@ -5354,8 +5390,8 @@ function stepTrailFilter(x, y, t) {
   review.sx += (x - review.sx) * a; review.sy += (y - review.sy) * a;
   review.st = t; review.prx = review.rx = x; review.pry = review.ry = y;
   const last = review.pts[review.pts.length - 1];
-  if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty: review.strokeSty }); return; }
-  if (Math.hypot(review.sx - last.x, review.sy - last.y) >= 0.7) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen });
+  if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty: review.strokeSty, pn: review.isPen, pr: review.penP, tl: review.penT }); return; }
+  if (Math.hypot(review.sx - last.x, review.sy - last.y) >= 0.7) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen, pn: review.isPen, pr: review.penP, tl: review.penT });
 }
 
 // each stroke fades from its tail; strokes with different lifetimes (hover vs pen) expire independently
@@ -5775,6 +5811,8 @@ function rvFlame(rgb) {
 function buildPath(pts, i0, i1, spacing, arcBase) {
   const vx = review.vx, vy = review.vy, vt = review.vt, vl = review.vl, vs = review.vs, va = review.va, vnx = review.vnx, vny = review.vny;
   vx.length = vy.length = vt.length = vl.length = vs.length = va.length = vnx.length = vny.length = 0;
+  const vp = review.vp, vq = review.vq;
+  vp.length = vq.length = 0;
   const n = i1 - i0;
   let sp = [];
   for (let k = 0; k < n; k++) sp.push({ x: pts[i0 + k].x, y: pts[i0 + k].y, t: pts[i0 + k].t });
@@ -5794,6 +5832,16 @@ function buildPath(pts, i0, i1, spacing, arcBase) {
     for (let k = 1; k < n - 1; k++) nv[k] = pv[k - 1] * 0.25 + pv[k] * 0.5 + pv[k + 1] * 0.25;
     for (let k = 0; k < n; k++) pv[k] = nv[k];
   }
+  const pp = [], pt = [];
+  for (let k = 0; k < n; k++) { const q = pts[i0 + k]; pp.push(q.pr > 0 ? q.pr : 0.45); pt.push(q.tl || 0); }
+  for (let pass = 0; pass < 2 && n > 2; pass++) {
+    const np = pp.slice(), nt = pt.slice();
+    for (let k = 1; k < n - 1; k++) {
+      np[k] = pp[k - 1] * 0.25 + pp[k] * 0.5 + pp[k + 1] * 0.25;
+      nt[k] = pt[k - 1] * 0.25 + pt[k] * 0.5 + pt[k + 1] * 0.25;
+    }
+    for (let k = 0; k < n; k++) { pp[k] = np[k]; pt[k] = nt[k]; }
+  }
   const L = pts[i0].l;
   const at = (k) => sp[k];
   for (let k = 0; k < n - 1; k++) {
@@ -5802,7 +5850,7 @@ function buildPath(pts, i0, i1, spacing, arcBase) {
     const p3 = k < n - 2 ? at(k + 2) : { x: 2 * p2.x - p1.x, y: 2 * p2.y - p1.y };
     const d12 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const steps = Math.max(1, Math.min(300, Math.ceil(d12 / spacing)));
-    if (k === 0) { vx.push(p1.x); vy.push(p1.y); vt.push(p1.t); vl.push(L); vs.push(pv[0]); }
+    if (k === 0) { vx.push(p1.x); vy.push(p1.y); vt.push(p1.t); vl.push(L); vs.push(pv[0]); vp.push(pp[0]); vq.push(pt[0]); }
     const t0 = 0;
     const t1 = t0 + Math.sqrt(Math.max(1e-3, Math.hypot(p1.x - p0.x, p1.y - p0.y)));
     const t2 = t1 + Math.sqrt(Math.max(1e-3, d12));
@@ -5819,6 +5867,8 @@ function buildPath(pts, i0, i1, spacing, arcBase) {
       vt.push(p1.t + (p2.t - p1.t) * f);
       vl.push(L);
       vs.push(pv[k] + (pv[k + 1] - pv[k]) * f);
+      vp.push(pp[k] + (pp[k + 1] - pp[k]) * f);
+      vq.push(pt[k] + (pt[k + 1] - pt[k]) * f);
     }
   }
   const m = vx.length;
@@ -6745,13 +6795,13 @@ function paintJelly(S) {
 }
 
 function paintCream(S) {                               // piped whipped cream: lit rosettes with spiral flutes, a stacked "kiss" now and then
-  const { c, vx, vy, vnx, vny, vi, vc, sizeMul, penK } = S;
+  const { c, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK } = S;
   paintShadow(S, 7.8, 0.14, 1.0, 2.8);
   stampLayers(S);                                       // a smooth underlay, so the rope never shows gaps between rosettes
   rvWalk(S, 4.3 * sizeMul * penK, (j, k) => {
     const I = vi[j];
     if (I < 0.03) return;
-    const sc = (0.58 + 0.42 * Math.pow(I, 0.5)) * sizeMul * penK, peak = rvHash(k * 3.1) > 0.9;
+    const sc = (0.58 + 0.42 * Math.pow(I, 0.5)) * sizeMul * penK * vw[j], peak = rvHash(k * 3.1) > 0.9;
     const rad = (5.8 + 4 * Math.pow(rvHash(k * 1.7 + 2), 1.3)) * (peak ? 1.45 : 1) * sc;
     const off = (rvHash(k * 2.9 + 5) - 0.5) * 2 * 2.6 * sc, x = vx[j] + vnx[j] * off, y = vy[j] + vny[j] * off;
     const ball = rvCreamBall(vc[j]), w = rad * 2 * (28 / 24), al = Math.min(1, Math.pow(I, 0.7));
@@ -7005,12 +7055,15 @@ function paintStrokes(c, pts, now, o) {
       buildPath(pts, s, e, spacing, pts[s].arc || 0);
       const n = review.vx.length, vi = review.vi, vc = review.vc, vw = review.vw, vt = review.vt, vl = review.vl, vs = review.vs, va = review.va;
       vi.length = vc.length = vw.length = 0;
+      const penCfg = pts[s].pn && review.vp.length === n ? RV_PEN[brush.id] : null;
+      const vp = review.vp, vq = review.vq;
       for (let i = 0; i < n; i++) {
         const I = rvIntensity(vt[i], vl[i]);
         vi.push(I);
         vc.push(I < 0.015 ? null : rvAt(pal, vt[i]));
         let wf = 1 + brush.speedW * (0.5 - Math.min(1, vs[i] / 1.6));      // slow = fuller, fast = finer
         if (kind === "jelly") wf *= 1 + 0.07 * Math.sin(va[i] * 0.32 - now * 0.0045);
+        if (penCfg) wf *= rvPenWidth(penCfg, vp[i], vq[i]);
         vw.push(wf < 0.35 ? 0.35 : wf);
       }
       const S = { c, now, n, vx: review.vx, vy: review.vy, vt, vl, vs, va, vnx: review.vnx, vny: review.vny, vi, vc, vw, brush, kind, sizeMul, penK, sz, pal, st, flick, gain, seed: pts[s].sid || 0 };
@@ -7055,7 +7108,7 @@ function paintStrokes(c, pts, now, o) {
         default: stampLayers(S);
       }
       c.globalAlpha = 1;
-      const m = Math.max(nl ? brush.layers[0].R : 14, 24) * sizeMul * penK * 1.3;
+      const m = Math.max(nl ? brush.layers[0].R : 14, 24) * sizeMul * penK * 1.3 * (penCfg ? 2.2 : 1);
       for (let i = 0; i < n; i += 4) rvAdd(review.vx[i], review.vy[i], m);
       rvAdd(review.vx[n - 1], review.vy[n - 1], m);
       if (st) drawShimmer(c, st, now, review.vx, review.vy, vt, vl, n, sz);

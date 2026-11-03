@@ -1168,11 +1168,11 @@ function loadPrefs() {
     if (typeof prefs.reviewLook !== "string") prefs.reviewLook = "laser";
     if (typeof prefs.reviewColor !== "string") prefs.reviewColor = defaultPrefs.reviewColor;
     if (typeof prefs.reviewFx !== "string") prefs.reviewFx = "none";
-    if (!["laser", "comet", "veil", "ribbon", "glitter", "sparkle", "dazzle", "gloss", "glossy", "jelly", "cream", "crumb", "puff", "ganache", "matcha", "aura", "slash", "magma", "chrome", "biscuit", "neon", "caramel", "glaze", "macaron"].includes(prefs.reviewBrush)) prefs.reviewBrush = "laser";
+    if (!["laser", "comet", "veil", "ribbon", "glitter", "sparkle", "dazzle", "gloss", "glossy", "jelly", "cream", "crumb", "puff", "ganache", "matcha", "aura", "slash", "magma", "chrome", "biscuit", "neon", "caramel", "glaze", "macaron", "pearl", "lightning"].includes(prefs.reviewBrush)) prefs.reviewBrush = "laser";
     if (!["s", "m", "l"].includes(prefs.reviewSize)) prefs.reviewSize = "m";
     if (!["spot", "ruler", "off"].includes(prefs.reviewLens)) prefs.reviewLens = "spot";
     if (!["s", "m", "l"].includes(prefs.reviewLensSize)) prefs.reviewLensSize = "m";
-    { const w = Number(prefs.reviewWidth); prefs.reviewWidth = Number.isFinite(w) && w > 0 ? Math.min(4, Math.max(0.4, w)) : ({ s: 0.74, m: 1, l: 1.45 })[prefs.reviewSize] || 1; }
+    { const w = Number(prefs.reviewWidth); prefs.reviewWidth = Number.isFinite(w) && w > 0 ? Math.min(2.2, Math.max(0.5, w)) : ({ s: 0.74, m: 1, l: 1.45 })[prefs.reviewSize] || 1; }
     { const a = Number(prefs.reviewAlpha); prefs.reviewAlpha = Number.isFinite(a) && a > 0 ? Math.min(1, Math.max(0.15, a)) : 1; }
     return prefs;
   } catch (error) {
@@ -4751,9 +4751,9 @@ const REVIEW = {
     { id: "marsh",    group: "sweet",   label: "Marshmallow", rgb: [250, 232, 220] },
     { id: "ganache",  group: "sweet",   label: "Ganache",   rgb: [72, 42, 32] },
     { id: "matcha",   group: "sweet",   label: "Matcha",    rgb: [156, 184, 114] },
-    { id: "caramel", group: "sweet", label: "Caramel",     rgb: [206, 124, 42] },
-    { id: "glaze",   group: "sweet", label: "Pink glaze",  rgb: [250, 150, 192] },
-    { id: "macaron", group: "sweet", label: "Macaron pink", rgb: [255, 176, 198] },
+    { id: "caramel", group: "sweet", label: "Caramel",      rgb: [206, 124, 42] },
+    { id: "glaze",   group: "sweet", label: "Pink glaze",   rgb: [250, 150, 192] },
+    { id: "macaron", group: "sweet", label: "Macaron mix",  period: 1500, grad: [[255, 158, 188], [148, 222, 196], [182, 158, 246], [255, 212, 118], [255, 158, 188]] },
     { id: "glam",     group: "shine",   label: "Glam pink", rgb: [232, 84, 158] },
     { id: "rosegold", group: "shine",   label: "Rose gold", rgb: [226, 146, 134] },
     { id: "champagne",group: "shine",   label: "Champagne", rgb: [232, 190, 104] },
@@ -4762,6 +4762,7 @@ const REVIEW = {
     { id: "lava",     group: "game",    label: "Lava",      rgb: [255, 104, 28] },
     { id: "steel",    group: "game",    label: "Steel",     rgb: [184, 196, 214] },
     { id: "ice",      group: "game",    label: "Ice blade", rgb: [132, 210, 255] },
+    { id: "storm", group: "game", label: "Storm", rgb: [138, 126, 255] },
     { id: "iris",  group: "flow", label: "Iris",  period: 4000, grad: [[255, 138, 138], [255, 211, 106], [147, 224, 143], [111, 202, 255], [182, 144, 255], [255, 138, 138]] },
     { id: "holo",  group: "flow", label: "Holo",  period: 5200, grad: [[255, 168, 214], [190, 170, 255], [140, 214, 255], [160, 240, 214], [255, 230, 160], [255, 168, 214]] },
     { id: "gems",  group: "flow", label: "Gemstones", period: 6000, scatter: true, grad: [[222, 38, 70], [236, 58, 160], [244, 168, 30], [150, 208, 50], [30, 168, 110], [30, 188, 220], [50, 100, 230], [140, 70, 210], [222, 38, 70]] },
@@ -4863,7 +4864,7 @@ const REVIEW = {
     { id: "aurora", group: "light", label: "Aurora", title: "Aurora",         color: "iris",     fx: "aurora-veil",  brush: "veil",    size: "m" },
     { id: "origami",group: "light", label: "Origami",title: "Origami paper",  color: "rose",     fx: "petal-bloom",  brush: "ribbon",  size: "m" },
     { id: "ink",    group: "light", label: "Ink",    title: "Ink brush",      color: "graphite", fx: "ink",          brush: "ribbon",  size: "m" },
-    { id: "neon", group: "light", label: "Neon", title: "Neon tube", color: "neon", fx: "neon-bokeh", brush: "neon", size: "m" },
+    { id: "neon", group: "light", label: "Neon", title: "Neon tube", color: "neon", fx: "none", brush: "neon", size: "m" },
     { id: "pixel",  group: "light", label: "Pixel",  title: "Pixel",          color: "violet",   fx: "pixel",        brush: "laser",   size: "m" },
     { id: "soap",   group: "light", label: "Bubble", title: "Soap bubbles",   color: "sky",      fx: "bubble",       brush: "veil",    size: "m" },
     { id: "glitter",  group: "shine", label: "Glitter",  title: "Glitter",       color: "glam",      fx: "none", brush: "glitter", size: "m" },
@@ -4871,21 +4872,21 @@ const REVIEW = {
     { id: "dazzle",   group: "shine", label: "Dazzling", title: "Dazzling gemstones", color: "gems",   fx: "crystal-glass", brush: "dazzle", size: "m" },
     { id: "diamond",  group: "shine", label: "Diamond",  title: "Diamond crystals",  color: "silver",    fx: "star-dust",  brush: "dazzle",  size: "m" },
     { id: "lipoil",   group: "shine", label: "Lip Oil",  title: "Lip oil",       color: "nude",      fx: "none",    brush: "gloss",   size: "m" },
-    { id: "pearl",    group: "shine", label: "Pearl",    title: "Pearl gloss",   color: "pearl",     fx: "moon-pearl",  brush: "glossy",   size: "m" },
+    { id: "pearl", group: "shine", label: "Pearl", title: "Pearl strand", color: "pearl", fx: "none", brush: "pearl", size: "m" },
     { id: "cream",  group: "sweet", label: "Cream",  title: "Strawberry cream", color: "scream",  fx: "sw-berry",  brush: "cream", size: "m" },
     { id: "cookie", group: "sweet", label: "Cookie", title: "Choc-chip cookie", color: "biscuit", fx: "sw-crumbs", brush: "crumb", size: "m" },
     { id: "jelly",  group: "sweet", label: "Jelly",  title: "Grape jelly",      color: "grape",   fx: "none",  brush: "jelly", size: "m" },
     { id: "mallow", group: "sweet", label: "Mallow", title: "Marshmallow / meringue", color: "marsh", fx: "none", brush: "puff", size: "m" },
     { id: "ganache",group: "sweet", label: "Ganache",title: "Chocolate ganache", color: "ganache", fx: "none",  brush: "ganache", size: "m" },
     { id: "matcha", group: "sweet", label: "Matcha", title: "Matcha latte cream", color: "matcha", fx: "none", brush: "matcha", size: "m" },
-    { id: "caramel", group: "sweet", label: "Caramel", title: "Salted caramel drizzle", color: "caramel", fx: "none", brush: "caramel", size: "m" },
+    { id: "caramel", group: "sweet", label: "Caramel", title: "Salted caramel", color: "caramel", fx: "none", brush: "caramel", size: "m" },
     { id: "donut",   group: "sweet", label: "Donut",   title: "Glazed donut with sprinkles", color: "glaze", fx: "none", brush: "glaze", size: "m" },
-    { id: "macaron", group: "sweet", label: "Macaron", title: "Macaron parade", color: "macaron", fx: "none", brush: "macaron", size: "m" },
+    { id: "macaron", group: "sweet", label: "Macaron", title: "Macaron", color: "macaron", fx: "none", brush: "macaron", size: "m" },
     { id: "aura",   group: "game", label: "Aura",   title: "Energy aura",   color: "ki",     fx: "firefly-glow", brush: "aura",   size: "m" },
     { id: "slash",  group: "game", label: "Slash",  title: "Blade slash",   color: "ice",    fx: "none",         brush: "slash",  size: "m" },
     { id: "magma",  group: "game", label: "Magma",  title: "Molten magma",  color: "lava",   fx: "ember-glow",   brush: "magma",  size: "m" },
     { id: "chrome", group: "game", label: "Chrome", title: "Liquid metal",  color: "steel",  fx: "none",         brush: "chrome", size: "m" },
-    { id: "storm",  group: "game", label: "Storm",  title: "Thunder",       color: "violet", fx: "electric",     brush: "comet",  size: "m" }
+    { id: "storm", group: "game", label: "Storm", title: "Lightning", color: "storm", fx: "none", brush: "lightning", size: "m" }
   ],
   penLife: 3200, pingLife: 760
 };
@@ -4930,28 +4931,32 @@ function rvPredictTail() {
   }
   return n;
 }
-// ===== 새 소재: Neon(재디자인), Caramel, Donut, Macaron =====
+// ===== 새 소재: Neon(재디자인) / Caramel / Donut / Macaron / Pearl / Lightning =====
 const RV_NEW_BRUSHES = {
   neon: { label: "Neon", kind: "neon", life: 1700, taper: [0.55, 0.45], speedW: 0, alphaPow: 0.55, layers: [
     { R: 32,  stops: [[0, 0.075], [0.35, 0.05], [0.75, 0.014], [1, 0]], stride: 3, white: 0, fade: 0.9 },
-    { R: 13,  stops: [[0, 0.34], [0.5, 0.2], [1, 0]],                     stride: 2, white: 0, fade: 0.8 },
-    { R: 4.6, stops: [[0, 1], [0.7, 0.97], [0.9, 0.55], [1, 0]],          stride: 1, white: 0, mix: [[52, 0, 64], 0.14] },
-    { R: 3.4, stops: [[0, 1], [0.78, 0.92], [1, 0]],                      stride: 1, white: 0.42 },
-    { R: 1.5, stops: [[0, 1], [0.7, 0.96], [1, 0]],                       stride: 1, white: 0.92 }
+    { R: 13,  stops: [[0, 0.34], [0.5, 0.2], [1, 0]],                    stride: 2, white: 0, fade: 0.8 },
+    { R: 4.6, stops: [[0, 1], [0.7, 0.97], [0.9, 0.55], [1, 0]],         stride: 1, white: 0, mix: [[52, 0, 64], 0.14] },
+    { R: 3.4, stops: [[0, 1], [0.78, 0.92], [1, 0]],                     stride: 1, white: 0.42 },
+    { R: 1.5, stops: [[0, 1], [0.7, 0.96], [1, 0]],                      stride: 1, white: 0.92 }
   ] },
-  caramel: { label: "Caramel", kind: "caramel", life: 2600, taper: [0.5, 0.5], speedW: 0.15, layers: [
-    { R: 8.8, stops: [[0, 0], [0.5, 0], [0.76, 0.55], [0.93, 0.74], [1, 0]],     stride: 1, white: 0, mix: [[96, 38, 8], 0.5] },
-    { R: 7.4, stops: [[0, 0.97], [0.84, 0.95], [0.97, 0.5], [1, 0]],             stride: 1, white: 0 },
-    { R: 5.4, stops: [[0, 0.85], [0.6, 0.5], [1, 0]],                            stride: 1, white: 0.12, mix: [[255, 214, 110], 0.5] }
+  caramel: { label: "Caramel", kind: "caramel", life: 3000, taper: [0.5, 0.5], speedW: 0.12, layers: [
+    { R: 10.4, stops: [[0, 0], [0.5, 0], [0.78, 0.5], [0.94, 0.78], [1, 0]],  stride: 1, white: 0, mix: [[92, 36, 8], 0.55] },
+    { R: 9,    stops: [[0, 0.97], [0.86, 0.95], [0.97, 0.45], [1, 0]],         stride: 1, white: 0 },
+    { R: 6.2,  stops: [[0, 0.9], [0.55, 0.55], [1, 0]],                         stride: 1, white: 0.1, mix: [[255, 206, 96], 0.5] }
   ] },
   glaze: { label: "Donut", kind: "glaze", life: 2500, taper: [0.5, 0.5], speedW: 0.12, layers: [
-    { R: 9.2, stops: [[0, 0], [0.5, 0], [0.76, 0.58], [0.93, 0.78], [1, 0]],     stride: 1, white: 0, mix: [[150, 40, 86], 0.5] },
-    { R: 7.8, stops: [[0, 0.98], [0.84, 0.96], [0.97, 0.55], [1, 0]],            stride: 1, white: 0.04 },
-    { R: 5.4, stops: [[0, 0.5], [0.7, 0.22], [1, 0]],                            stride: 1, white: 0.5 }
+    { R: 9.2, stops: [[0, 0], [0.5, 0], [0.76, 0.58], [0.93, 0.78], [1, 0]], stride: 1, white: 0, mix: [[150, 40, 86], 0.5] },
+    { R: 7.8, stops: [[0, 0.98], [0.84, 0.96], [0.97, 0.55], [1, 0]],        stride: 1, white: 0.04 },
+    { R: 5.4, stops: [[0, 0.5], [0.7, 0.22], [1, 0]],                        stride: 1, white: 0.5 }
   ] },
-  macaron: { label: "Macaron", kind: "macaron", life: 2600, taper: [0.5, 0.5], speedW: 0, layers: [] }
+  macaron: { label: "Macaron", kind: "macaron", life: 2700, taper: [0.5, 0.5], speedW: 0, layers: [
+    { R: 3.3, stops: [[0, 1], [0.55, 0.96], [0.9, 0.7], [1, 0]], stride: 1, white: 0.1 },   // 껍데기(윗/아랫)
+    { R: 2.9, stops: [[0, 1], [0.7, 0.96], [1, 0]],              stride: 1, white: 0.6 }    // 크림
+  ] },
+  pearl: { label: "Pearl", kind: "pearl", life: 3000, taper: [0.5, 0.5], speedW: 0, layers: [] },
+  lightning: { label: "Lightning", kind: "bolt", life: 1500, taper: [0.5, 0.5], speedW: 0, layers: [] }
 };
-const RV_MAC_PASTEL = [[255, 168, 194], [168, 224, 200], [196, 178, 244], [255, 222, 140], [255, 190, 150], [156, 204, 250]];
 Object.entries(RV_NEW_BRUSHES).forEach(([id, b]) => { b.id = id; b.layers.forEach((L, i) => { L.id = `${id}${i}`; }); });
 Object.assign(REVIEW.brushes, RV_NEW_BRUSHES);
 
@@ -4980,14 +4985,14 @@ const review = {
 // Subsequent preference changes must not repaint existing strokes.
 function rvCurrentStyle() {
   const p = state.prefs;
-  const key = [p.reviewBrush, p.reviewColor, p.reviewFx, rvWidth()].join("|");
+  const key = [p.reviewBrush, p.reviewColor, p.reviewFx, p.reviewSize].join("|");
   if (!review.curSty || review.curSty.key !== key) {
     review.curSty = {
       key,
       brush: reviewBrush(),
       pal: rvPaletteFor(p.reviewColor, p.reviewFx),
       st: reviewStyle(p.reviewFx),
-      sizeMul: rvWidth()
+      sizeMul: REVIEW.sizes[p.reviewSize] || 1
     };
   }
   return review.curSty;
@@ -5170,7 +5175,7 @@ function buildReviewDock() {
     </div>
     <div class="rv-looks" role="group" aria-label="Looks">${looks}</div>
     <div class="rv-sliders">
-      <label class="rv-slider"><span>Thickness</span><input type="range" id="rvWidth" min="0.4" max="4" step="0.05" aria-label="Beam thickness"><output id="rvWidthOut">1.0×</output></label>
+      <label class="rv-slider"><span>Thickness</span><input type="range" id="rvWidth" min="0.5" max="2.2" step="0.05" aria-label="Beam thickness"><output id="rvWidthOut">1.0×</output></label>
       <label class="rv-slider"><span>Opacity</span><input type="range" id="rvAlpha" min="0.15" max="1" step="0.01" aria-label="Beam opacity"><output id="rvAlphaOut">100%</output></label>
     </div>
     <div class="rv-panel" id="rvPanel" inert>
@@ -5204,7 +5209,7 @@ function buildReviewDock() {
   });
   dock.querySelector("#rvFx").addEventListener("change", (event) => setPrefs({ reviewFx: event.target.value, reviewLook: "custom" }, { keepMood: true }));
   dock.querySelector("#rvWidth").addEventListener("input", (event) => {
-    const w = Math.min(4, Math.max(0.4, Number(event.target.value) || 1));
+    const w = Math.min(2.2, Math.max(0.5, Number(event.target.value) || 1));
     setPrefs({ reviewWidth: w, reviewSize: w < 0.87 ? "s" : w < 1.22 ? "m" : "l" }, { keepMood: true });
   });
   dock.querySelector("#rvAlpha").addEventListener("input", (event) => setPrefs({ reviewAlpha: Math.min(1, Math.max(0.15, Number(event.target.value) || 1)) }, { keepMood: true }));
@@ -5972,11 +5977,10 @@ const RV_META = {
   "sw-sugar":      { label: "Sugar Crystals",primary: "#ffffff", secondary: "#e9dcff" },
   "sw-honey":      { label: "Honey Drip",    primary: "#eea824", secondary: "#ffd98a" }
 };
-RV_META["neon-bokeh"] = { label: "Neon Bokeh", primary: "#ff72d2", secondary: "#54e5ff" };
 const RV_ACCENT_GROUPS = [
   ["Light & sparkle", ["soft-spark", "star-dust", "constellation", "moon-pearl", "crystal-glass", "firefly-glow", "ember-glow", "aurora-veil"]],
   ["Soft & playful", ["bubble", "candy-pop", "petal-bloom", "ink", "paper-fiber"]],
-  ["Pixel & neon", ["pixel", "cyber-pink", "electric", "neon-rain", "neon-bokeh", "laser-etch"]],
+  ["Pixel & neon", ["pixel", "cyber-pink", "electric", "neon-rain", "laser-etch"]],
   ["Shine", ["glitter-dust"]],
   ["Sweet", ["sw-crumbs", "sw-sprinkles", "sw-berry", "sw-sugar", "sw-honey"]]
 ];
@@ -6105,12 +6109,6 @@ const RV_FX = {
     shimmer: { shape: "tick", every: 34, prob: 0.8, size: [4, 7], life: 520 }, shed: null,
     rest: { count: 6, shape: "tick", size: [4, 7], speed: [30, 70], life: [300, 520] },
     line: { halo: 0.8, core: 1.35 }
-  },
-  "neon-bokeh": {    // 네온 불빛이 번지는 보케: 속이 비치는 빛망울이 천천히 떠오르고, 가끔 작게 반짝임
-    shimmer: { shape: "bokeh", every: 90, prob: 0.55, size: [6, 13], life: 1500, spread: 7 },
-    shed: { gap: 34, shape: "bokeh", size: [3, 7], speed: [6, 16], dir: "up", lift: -14, life: [1100, 1700] },
-    rest: { count: 4, shape: [["bokeh", 3], ["glint", 1]], size: [4, 9], speed: [10, 26], lift: -14, life: [900, 1400] },
-    line: { halo: 1.1, core: 1 }
   },
   "glitter-dust": {  // fine glitter confetti catching light
     shimmer: { shape: "glint", every: 40, prob: 0.7, size: [3, 7], life: 700 },
@@ -6252,13 +6250,6 @@ function drawGlyph(c, shape, x, y, r, rot, rgb, a, prog, seed) {
       for (let i = 0; i < 3; i++) { const h = IRIS[(Math.floor(seed * 7) + i * 8) % 24]; c.strokeStyle = `rgb(${h})`; c.globalAlpha = a * 0.5; c.beginPath(); c.arc(0, 0, r * (0.5 + i * 0.14), 0, 6.283); c.stroke(); }
       [[1.55, 5], [-1.9, 13], [2.5, 19]].forEach(([dx, hi]) => { const h = IRIS[(hi + Math.floor(seed * 5)) % 24]; c.globalAlpha = a * 0.55; c.fillStyle = `rgb(${h})`; c.beginPath(); c.arc(r * dx, 0, r * 0.1, 0, 6.283); c.fill(); });
       c.globalAlpha = a; c.fillStyle = "#fff"; c.beginPath(); c.arc(0, 0, Math.max(0.5, r * 0.2), 0, 6.283); c.fill();
-      break;
-    }
-    case "bokeh": {                                  // 초점 나간 불빛: 속은 투명하고 테두리가 살짝 진한 동그란 빛망울
-      const g = c.createRadialGradient(0, 0, r * 0.15, 0, 0, r);
-      g.addColorStop(0, rvRgba(rgb, 0.08)); g.addColorStop(0.72, rvRgba(rgb, 0.2));
-      g.addColorStop(0.9, rvRgba(rvMix(rgb, [255, 255, 255], 0.35), 0.72)); g.addColorStop(1, rvRgba(rgb, 0));
-      c.globalAlpha = a; c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, 6.283); c.fill();
       break;
     }
     case "dot": case "smoke": case "ember": {
@@ -7194,9 +7185,11 @@ function paintStrokes(c, pts, now, o) {
         case "magma": paintMagma(S); break;
         case "chrome": paintChrome(S); break;
         case "neon": paintNeon(S); break;
+        case "bolt": paintLightning(S); break;
         case "caramel": paintCaramel(S); break;
         case "glaze": paintGlaze(S); break;
         case "macaron": paintMacaron(S); break;
+        case "pearl": paintPearl(S); break;
         default: stampLayers(S);
       }
       c.globalAlpha = 1;
@@ -7262,9 +7255,11 @@ function paintLamp(c, o, x, y, a, now) {
       rvAdd(x, y, rb * 1.6);
       break;
     }
+    case "bolt": drawGlyph(c, "glint", x, y, 8 * sizeMul * (0.85 + 0.3 * breath), 0, rvMix(col, white, 0.4), a, 0.5, 1); rvAdd(x, y, 30 * sizeMul); break;
     case "caramel": drawGlyph(c, "bead", x, y, 6.4 * sizeMul * (0.96 + 0.06 * breath), 0, col, a, 0.5, 1); rvAdd(x, y, 16 * sizeMul); break;
     case "glaze": drawGlyph(c, "bead", x, y, 6 * sizeMul * (0.96 + 0.06 * breath), 0, col, a, 0.5, 2); rvAdd(x, y, 16 * sizeMul); break;
-    case "macaron": { const w = 26 * sizeMul; c.globalAlpha = a; c.drawImage(rvMacaron(rvMix(col, RV_MAC_PASTEL[0], 0.6), 0), x - w / 2, y - w * 0.4, w, w * 0.8); rvAdd(x, y, w); break; }
+    case "macaron": drawGlyph(c, "bead", x, y, 5.6 * sizeMul * (0.96 + 0.06 * breath), 0, rvMix(col, [255, 255, 255], 0.1), a, 0.5, 3); rvAdd(x, y, 16 * sizeMul); break;
+    case "pearl": { const w = 15.5 * sizeMul * (28 / 24); c.globalAlpha = a; c.drawImage(rvPearlBall(rvMix(col, [255, 255, 255], 0.74), 0), x - w / 2, y - w / 2, w, w); rvAdd(x, y, w); break; }
     case "cream": { const rc2 = 6.2 * sizeMul, wc = rc2 * 2 * (28 / 24); c.globalAlpha = a; c.drawImage(rvCreamBall(col), x - wc / 2, y - wc / 2, wc, wc); rvAdd(x, y, 12 * sizeMul); break; }
     case "crumb": drawGlyph(c, "crumb", x, y, 3.6 * sizeMul, 0.4, col, a, 0.5, 2); rvAdd(x, y, 12 * sizeMul); break;
     default: {
@@ -7479,63 +7474,93 @@ function initPinchZoom() {
 function paintNeon(S) {
   const hum = reducedMotionQuery.matches ? 1 : 0.97 + 0.03 * Math.sin(S.now * 0.021);
   S.flick = S.flick * hum;
-  const L = S.brush.layers;                              // 번짐(앞 2겹)은 굵기에 덜 민감하게, 튜브(뒤 3겹)는 굵기 그대로
+  const L = S.brush.layers;
   stampLayers({ ...S, brush: { ...S.brush, layers: L.slice(0, 2) }, gain: S.gain.slice(0, 2), sizeMul: Math.pow(S.sizeMul, 0.62) });
   stampLayers({ ...S, brush: { ...S.brush, layers: L.slice(2) }, gain: S.gain.slice(2) });
 }
 
-// 카라멜: 두껍고 반투명한 호박색 시럽. 어두운 가장자리 -> 황금빛 속살, 윤기 하이라이트, 가로로 그으면 아래로 천천히 흘러내리는 방울
-function paintCaramel(S) {
-  const { c, now, n, va, vt, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK, seed } = S;
-  const wid = [];
-  for (let i = 0; i < n; i++) wid.push(0.92 + 0.18 * rvNoise(va[i] / 26, seed + 1.7) + 0.05 * Math.sin(va[i] * 0.07));
-  S.wid = wid;
-  const warm = reviewSprite(RV_SOFT, [96, 46, 12]);
-  for (let i = 0; i < n; i += 2) {
-    const I = vi[i];
-    if (I < 0.03) continue;
-    const r = 8.6 * sizeMul * penK * (0.5 + 0.5 * Math.pow(I, 0.6)) * vw[i] * wid[i];
-    c.globalAlpha = 0.24 * Math.pow(I, 0.8);
-    c.drawImage(warm, vx[i] + 1.2 * sizeMul - r, vy[i] + 3.4 * sizeMul - r * 0.85, r * 2, r * 1.7);
+// ---- 번개: 획을 따라 지그재그로 갈라지는 번개. 모양은 획의 호장(arc)에 고정돼 흔들리지 않고, 밝기만 번쩍인다.
+function paintLightning(S) {
+  const { c, now, n, va, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK, seed } = S;
+  if (n < 2) return;
+  const k = sizeMul * penK, step = 14 * Math.pow(k, 0.55), amp = 13 * Math.pow(k, 0.8);
+  const surge = reducedMotionQuery.matches ? 1 : (0.86 + 0.14 * rvNoise(now / 52, seed)) * (rvHash(Math.floor(now / 90) + seed) > 0.93 ? 1.16 : 1);
+  const main = [{ x: vx[0], y: vy[0], j: 0, ai: -1 }];
+  let j = 0;
+  let ai = 0;
+  for (let a = va[0] + step * 0.5; a <= va[n - 1]; ai++) {
+    while (j < n - 1 && va[j] < a) j++;
+    const sgn = rvHash(ai * 3.7 + seed * 1.3) > 0.5 ? 1 : -1;
+    const d = sgn * amp * (0.2 + 1.15 * Math.pow(rvHash(ai * 1.9 + seed), 2.0));
+    a += step * (0.55 + 0.95 * rvHash(ai * 2.3 + seed * 0.4));
+    main.push({ x: vx[j] + vnx[j] * d, y: vy[j] + vny[j] * d, j, ai });
   }
-  c.globalAlpha = 1;
-  const R = 7.4 * sizeMul * penK;
-  rvWalk(S, 40 * sizeMul, (j, k) => {                    // 흘러내리는 방울
-    const I = vi[j];
-    if (I < 0.12 || rvHash(k * 2.7 + 1) > 0.58 || Math.abs(vny[j]) < 0.45) return;
-    const age = Math.max(0, now - vt[j]), grow = 1 - Math.exp(-age / 520);
-    const len = (14 + 30 * rvHash(k * 3.9 + 2)) * grow * sizeMul, w = (2.8 + 1.3 * rvHash(k * 1.3)) * sizeMul * vw[j];
-    if (len < 1.2) return;
-    const x = vx[j] + (rvHash(k * 5.1) - 0.5) * 3 * sizeMul, y0 = vy[j] + R * 0.55 * vw[j] * wid[j], yb = y0 + len, br = w * 1.18;
-    const col = vc[j], dark = rvMix(col, [74, 30, 6], 0.5), gold = rvMix(col, [255, 224, 140], 0.45);
-    const g = c.createLinearGradient(0, y0, 0, yb + br);
-    g.addColorStop(0, rvRgba(col, 1)); g.addColorStop(0.7, rvRgba(rvMix(col, gold, 0.5), 1)); g.addColorStop(1, rvRgba(gold, 1));
-    c.globalAlpha = Math.pow(I, 0.8);
-    c.fillStyle = g;
-    c.beginPath();
-    c.moveTo(x - w * 1.6, y0 - R * 0.6);
-    c.bezierCurveTo(x - w * 1.0, y0 + 0.5, x - w * 0.55, y0 + len * 0.3, x - w * 0.5, yb - br * 1.2);
-    c.bezierCurveTo(x - w * 0.5, yb - br * 0.5, x - br * 0.98, yb - br * 0.5, x - br * 0.98, yb);
-    c.arc(x, yb, br * 0.98, Math.PI, 0, true);
-    c.bezierCurveTo(x + br * 0.98, yb - br * 0.5, x + w * 0.5, yb - br * 0.5, x + w * 0.5, yb - br * 1.2);
-    c.bezierCurveTo(x + w * 0.55, y0 + len * 0.3, x + w * 1.0, y0 + 0.5, x + w * 1.6, y0 - R * 0.6);
-    c.closePath(); c.fill();
-    c.lineWidth = 0.7; c.strokeStyle = rvRgba(dark, 0.4); c.stroke();
-    c.globalAlpha = 0.9 * Math.pow(I, 0.8); c.fillStyle = "#fff";
-    c.beginPath(); c.ellipse(x - br * 0.34, yb - br * 0.28, br * 0.3, br * 0.2, -0.6, 0, 6.283); c.fill();
-    c.globalAlpha = 0.45 * Math.pow(I, 0.8); c.fillRect(x - w * 0.52, y0 + 1, Math.max(0.6, w * 0.2), Math.max(0, len * 0.55));
-    rvAdd(x, yb, 16 * sizeMul);
-  });
-  c.globalAlpha = 1;
-  stampLayers(S);
-  for (let i = 0; i < n; i += 2) {                       // 빛이 시럽을 통과해 아래쪽 가장자리에 모이는 주황빛
-    const I = vi[i];
-    if (I < 0.05) continue;
-    const dot = vnx[i] * -0.62 + vny[i] * -0.78, off = -dot * R * 0.5 * vw[i] * wid[i], r = R * 0.5 * vw[i] * wid[i];
-    c.globalAlpha = 0.42 * Math.abs(dot) * Math.pow(I, 0.8);
-    c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [255, 170, 60], 0.5)), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+  main.push({ x: vx[n - 1], y: vy[n - 1], j: n - 1, ai: 99999 });
+  const jag = (P) => {                                    // 마디마다 한 번 더 꺾어 프랙탈처럼
+    const out = [];
+    for (let i = 0; i < P.length - 1; i++) {
+      const p = P[i], q = P[i + 1], dx = q.x - p.x, dy = q.y - p.y, len = Math.hypot(dx, dy) || 1, m = (rvHash(p.ai * 7.1 + seed * 2.2 + i) * 2 - 1) * len * 0.16;
+      out.push(p, { x: (p.x + q.x) / 2 - dy / len * m, y: (p.y + q.y) / 2 + dx / len * m, j: p.j, ai: p.ai });
+    }
+    out.push(P[P.length - 1]);
+    return out;
+  };
+  const bolts = [{ P: jag(main), w: 1, a: 1 }];
+  for (const m of main) {                                 // 가지
+    if (m.ai < 0 || m.ai > 90000 || vi[m.j] < 0.25 || rvHash(m.ai * 5.3 + seed * 0.7) > 0.1) continue;
+    const t = Math.atan2(vnx[m.j], vny[m.j]) * 1 + 0, side = rvHash(m.ai * 2.9) > 0.5 ? 1 : -1;
+    let ang = Math.atan2(-vnx[m.j], vny[m.j]) + side * (0.5 + 0.7 * rvHash(m.ai * 4.1)), x = m.x, y = m.y;
+    const segs = 3 + Math.floor(rvHash(m.ai * 6.3) * 3), P = [{ x, y, j: m.j, ai: m.ai }];
+    for (let s = 0; s < segs; s++) {
+      ang += (rvHash(m.ai * 9.1 + s * 3.3) - 0.5) * 0.8;
+      const L = (9 + 4 * rvHash(m.ai + s)) * k;
+      x += Math.cos(ang) * L; y += Math.sin(ang) * L;
+      P.push({ x, y, j: m.j, ai: m.ai + s * 0.01 });
+    }
+    bolts.push({ P, w: 0.5, a: 0.8 });
   }
-  paintHighlights(S, { bodyR: 8.2, specR: 1.5, specA: 0.9, softK: 3.4, softA: 0.14, backA: 0.3 });
+  const glow = reviewSprite(RV_SOFT, [255, 255, 255]);
+  for (const b of bolts) {                                // 번짐
+    const P = b.P;
+    for (let i = 1; i < P.length; i++) {
+      const p = P[i - 1], q = P[i], I = vi[q.j], len = Math.hypot(q.x - p.x, q.y - p.y), cnt = Math.max(1, Math.ceil(len / 4));
+      if (I < 0.03 || !vc[q.j]) continue;
+      const sp = reviewSprite(RV_SOFT, vc[q.j]);
+      for (let s = 0; s < cnt; s++) {
+        const f = s / cnt, x = p.x + (q.x - p.x) * f, y = p.y + (q.y - p.y) * f;
+        const R1 = 30 * k * b.w * (0.5 + 0.5 * Math.pow(I, 0.6)), R2 = 11 * k * b.w * (0.5 + 0.5 * Math.pow(I, 0.6));
+        c.globalAlpha = 0.05 * b.a * Math.pow(I, 0.9) * surge; c.drawImage(sp, x - R1, y - R1, R1 * 2, R1 * 2);
+        c.globalAlpha = 0.17 * b.a * Math.pow(I, 0.9) * surge; c.drawImage(sp, x - R2, y - R2, R2 * 2, R2 * 2);
+        const R3 = 8 * k * b.w; c.globalAlpha = 0.7 * b.a * Math.pow(I, 0.9) * surge; c.drawImage(glow, x - R3, y - R3, R3 * 2, R3 * 2);
+      }
+      rvAdd(q.x, q.y, 34 * k);
+    }
+  }
+  c.lineCap = "round"; c.lineJoin = "round";
+  const stroke = (P, width, mixW, alpha, wf) => {         // 밝기 구간별로 이어서 한 번에 그림
+    let i = 1;
+    while (i < P.length) {
+      const q0 = Math.round(vi[P[i].j] * 5);
+      let e = i;
+      while (e + 1 < P.length && Math.round(vi[P[e + 1].j] * 5) === q0) e++;
+      const jj = P[i].j, I = vi[jj];
+      if (I >= 0.03 && vc[jj]) {
+        c.beginPath(); c.moveTo(P[i - 1].x, P[i - 1].y);
+        for (let s = i; s <= e; s++) c.lineTo(P[s].x, P[s].y);
+        c.strokeStyle = `rgb(${mixW < 0 ? rvMix(vc[jj], [28, 12, 120], -mixW) : rvMix(vc[jj], [255, 255, 255], mixW)})`;
+        c.lineWidth = Math.max(0.5, width * (0.4 + 0.6 * Math.pow(I, 0.5)) * vw[jj] * wf);
+        c.globalAlpha = Math.min(1, alpha * Math.pow(I, 0.55) * surge);
+        c.stroke();
+      }
+      i = e + 1;
+    }
+  };
+  for (const b of bolts) {
+    stroke(b.P, 8 * k, -0.2, 0.42, b.w);                  // 진한 외곽(흰 종이 위에서도 보이게)
+    stroke(b.P, 4.2 * k, 0.1, 0.95, b.w);
+    stroke(b.P, 2.8 * k, 0.78, 1, b.w);
+    stroke(b.P, 1.3 * k, 1, 1, b.w);                     // 흰 열기 코어
+  }
   c.globalAlpha = 1;
 }
 
@@ -7572,74 +7597,172 @@ function paintGlaze(S) {
   c.globalAlpha = 1;
 }
 
-// 마카롱: 윗껍데기 / 주름(피에) / 크림 / 주름 / 아랫껍데기를 한 번만 구워 두고, 획을 따라 파스텔 마카롱을 줄지어 놓는다
-function rvMacaron(rgb, cream) {
-  const q = (v) => (v & 0xf0) | 8, col = [q(rgb[0]), q(rgb[1]), q(rgb[2])], key = `mac:${col}:${cream}:${review.dpr}`;
+// ---- 카라멜: 두껍게 흐르는 윤기 나는 호박색 시럽. 낮은 곳에 고이고, 아래로 늘어지는 방울(목 → 볼록한 끝)이 시간이 지나며 천천히 길어진다.
+function paintCaramel(S) {
+  const { c, now, n, va, vt, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK, seed } = S;
+  const wid = [];
+  for (let i = 0; i < n; i++) wid.push(0.94 + 0.16 * rvNoise(va[i] / 30, seed + 1.7));
+  let lo = -1;                                             // 화면에서 가장 낮은 곳(지역 최대 y)마다 시럽이 고이도록 살짝 부풀림
+  for (let i = 0; i < n; i++) {
+    let isLow = true;
+    for (let q = Math.max(0, i - 22); q <= Math.min(n - 1, i + 22); q++) if (vy[q] > vy[i]) { isLow = false; break; }
+    if (isLow && i - lo > 18 && i > 6 && i < n - 6) { lo = i; for (let q = Math.max(0, i - 20); q <= Math.min(n - 1, i + 20); q++) wid[q] *= 1 + 0.34 * Math.exp(-Math.pow((q - i) / 11, 2)); }
+  }
+  S.wid = wid;
+  const R = 9 * sizeMul * penK;
+  const warm = reviewSprite(RV_SOFT, [96, 46, 12]);
+  for (let i = 0; i < n; i += 2) {
+    const I = vi[i];
+    if (I < 0.03) continue;
+    const r = 10.4 * sizeMul * penK * (0.5 + 0.5 * Math.pow(I, 0.6)) * vw[i] * wid[i];
+    c.globalAlpha = 0.26 * Math.pow(I, 0.8);
+    c.drawImage(warm, vx[i] + 1.3 * sizeMul - r, vy[i] + 3.8 * sizeMul - r * 0.85, r * 2, r * 1.7);
+  }
+  c.globalAlpha = 1;
+  rvWalk(S, 34 * sizeMul, (j, k) => {                      // 흘러내리는 방울 (몸통 아래에 먼저 그려 윗부분이 자연스럽게 묻힘)
+    const I = vi[j];
+    if (I < 0.12 || rvHash(k * 2.7 + 1) > 0.66 || Math.abs(vny[j]) < 0.4) return;
+    const age = Math.max(0, now - vt[j]), grow = 1 - Math.exp(-age / 900), g2 = Math.pow(grow, 0.8);
+    const maxLen = (18 + 40 * rvHash(k * 3.9 + 2)) * sizeMul, len = maxLen * g2, w = (2.6 + 1.2 * rvHash(k * 1.3)) * sizeMul * vw[j];
+    if (len < 1.2) return;
+    const x = vx[j] + (rvHash(k * 5.1) - 0.5) * 4 * sizeMul, y0 = vy[j] + R * 0.5 * vw[j] * wid[j], yb = y0 + len;
+    const br = w * (1.15 + 0.5 * g2), neck = w * (0.72 - 0.16 * g2), col = vc[j];
+    const dark = rvMix(col, [80, 30, 6], 0.55), gold = rvMix(col, [255, 222, 130], 0.5), mid = rvMix(col, gold, 0.35);
+    const g = c.createLinearGradient(x - br, 0, x + br, 0);
+    g.addColorStop(0, rvRgba(dark, 1)); g.addColorStop(0.28, rvRgba(mid, 1)); g.addColorStop(0.5, rvRgba(gold, 1)); g.addColorStop(0.78, rvRgba(col, 1)); g.addColorStop(1, rvRgba(dark, 1));
+    c.globalAlpha = Math.pow(I, 0.8);
+    c.fillStyle = g;
+    c.beginPath();                                         // 몸통에서 부드럽게 모였다가(메니스커스) 가는 목 → 볼록한 끝
+    c.moveTo(x - w * 2.4, y0 - R * 0.7);
+    c.bezierCurveTo(x - w * 1.2, y0 - 1, x - neck * 1.05, y0 + len * 0.18, x - neck, y0 + len * 0.42);
+    c.bezierCurveTo(x - neck * 0.9, yb - br * 2.1, x - br * 1.02, yb - br * 1.1, x - br, yb - br * 0.15);
+    c.bezierCurveTo(x - br, yb + br * 0.8, x - br * 0.5, yb + br * 1.28, x, yb + br * 1.3);
+    c.bezierCurveTo(x + br * 0.5, yb + br * 1.28, x + br, yb + br * 0.8, x + br, yb - br * 0.15);
+    c.bezierCurveTo(x + br * 1.02, yb - br * 1.1, x + neck * 0.9, yb - br * 2.1, x + neck, y0 + len * 0.42);
+    c.bezierCurveTo(x + neck * 1.05, y0 + len * 0.18, x + w * 1.2, y0 - 1, x + w * 2.4, y0 - R * 0.7);
+    c.closePath(); c.fill();
+    c.lineWidth = 0.8; c.strokeStyle = rvRgba(dark, 0.45); c.stroke();
+    c.globalAlpha = 0.5 * Math.pow(I, 0.8); c.fillStyle = "#fff";                               // 목을 따라 흐르는 가는 하이라이트
+    c.beginPath(); c.moveTo(x - neck * 0.55, y0 + len * 0.16); c.quadraticCurveTo(x - neck * 0.5, y0 + len * 0.5, x - br * 0.62, yb - br * 0.4); c.lineTo(x - br * 0.34, yb - br * 0.5); c.quadraticCurveTo(x - neck * 0.2, y0 + len * 0.5, x - neck * 0.25, y0 + len * 0.16); c.closePath(); c.fill();
+    c.globalAlpha = 0.95 * Math.pow(I, 0.8);                                                    // 끝방울 반사
+    c.beginPath(); c.ellipse(x - br * 0.36, yb - br * 0.2, br * 0.26, br * 0.42, 0.15, 0, 6.283); c.fill();
+    c.globalAlpha = 0.5 * Math.pow(I, 0.8); c.fillStyle = rvRgba(gold, 1);
+    c.beginPath(); c.ellipse(x + br * 0.28, yb + br * 0.62, br * 0.34, br * 0.2, 0, 0, 6.283); c.fill();   // 빛이 투과해 아래쪽이 환함
+    rvAdd(x, yb, br * 3 + 8 * sizeMul);
+  });
+  c.globalAlpha = 1;
+  stampLayers(S);
+  for (let i = 0; i < n; i += 2) {                         // 빛이 시럽을 통과해 아래쪽 가장자리에 모이는 주황빛
+    const I = vi[i];
+    if (I < 0.05) continue;
+    const dot = vnx[i] * -0.62 + vny[i] * -0.78, off = -dot * R * 0.5 * vw[i] * wid[i], r = R * 0.55 * vw[i] * wid[i];
+    c.globalAlpha = 0.46 * Math.abs(dot) * Math.pow(I, 0.8);
+    c.drawImage(reviewSprite(RV_SOFT, rvMix(vc[i], [255, 160, 50], 0.55)), vx[i] + vnx[i] * off - r, vy[i] + vny[i] * off - r, r * 2, r * 2);
+  }
+  paintHighlights(S, { bodyR: 9, specR: 1.5, specA: 0.9, softK: 3.4, softA: 0.14, backA: 0.12 });
+  rvWalk(S, 31 * sizeMul, (j, k) => {                      // 창문 모양 반사(두꺼운 액체 특유의 긴 반사)
+    const I = vi[j];
+    if (I < 0.08) return;
+    const dot = vnx[j] * -0.62 + vny[j] * -0.78, off = dot * R * 0.46 * vw[j] * wid[j], tx = vny[j], ty = -vnx[j];
+    const half = (5 + 4 * rvHash(k * 1.3)) * sizeMul * vw[j], cx = vx[j] + vnx[j] * off, cy = vy[j] + vny[j] * off;
+    c.lineCap = "round";
+    c.globalAlpha = 0.9 * Math.pow(I, 0.8) * (0.5 + 0.5 * Math.abs(dot)); c.strokeStyle = "#fff"; c.lineWidth = 2.2 * sizeMul;
+    c.beginPath(); c.moveTo(cx - tx * half, cy - ty * half); c.lineTo(cx + tx * half, cy + ty * half); c.stroke();
+    c.globalAlpha *= 0.7; c.lineWidth = 0.9 * sizeMul;
+    c.beginPath(); c.moveTo(cx + tx * (half + 3.4 * sizeMul), cy + ty * (half + 3.4 * sizeMul)); c.lineTo(cx + tx * (half + 5 * sizeMul), cy + ty * (half + 5 * sizeMul)); c.stroke();
+  });
+  c.globalAlpha = 1;
+}
+// ---- 마카롱: 획 자체가 길게 늘어난 마카롱 단면. 파스텔 껍데기 / 주름(피에) / 하얀 크림 / 주름 / 파스텔 껍데기가 획을 따라 흐르고, 껍데기 맛(색)이 흐르듯 바뀐다.
+function paintMacaron(S) {
+  const { c, n, va, vx, vy, vnx, vny, vi, vc, vw, sizeMul, penK, seed } = S;
+  const k = sizeMul * penK, shellL = S.brush.layers[0], creamL = S.brush.layers[1];
+  const cw = [];
+  for (let i = 0; i < n; i++) cw.push(1 + 0.2 * rvNoise(va[i] / 17, seed + 2.3));        // 크림이 살짝 삐져나온 듯한 불규칙
+  paintShadow(S, 9.4, 0.16, 1, 3);
+  const soft = reviewSprite(RV_SOFT, [255, 255, 255]), shade = reviewSprite(RV_SOFT, [120, 50, 80]);
+  for (let side = -1; side <= 1; side += 2) {                                        // 껍데기(윗/아랫): 돔 — 빛 쪽은 밝게, 반대쪽은 어둡게
+    for (let i = 0; i < n; i++) {
+      const I = vi[i];
+      if (I < 0.015 || !vc[i]) continue;
+      const m = (0.45 + 0.55 * Math.pow(I, 0.5)) * vw[i], off = side * 5.7 * k * m, r = 3.8 * k * m;
+      const x = vx[i] + vnx[i] * off, y = vy[i] + vny[i] * off, a = Math.min(1, Math.pow(I, 0.7)), base = vc[i];
+      const dot = (vnx[i] * -0.62 + vny[i] * -0.78) * side, lo = dot * r * 0.5;
+      c.globalAlpha = a * 0.6; c.drawImage(reviewSprite({ ...shellL, id: "macrim", stops: [[0, 0], [0.6, 0], [0.8, 0.9], [1, 0]] }, rvMix(base, [140, 60, 90], 0.4)), x - r * 1.16, y - r * 1.16, r * 2.32, r * 2.32);
+      c.globalAlpha = a; c.drawImage(reviewSprite(shellL, base), x - r, y - r, r * 2, r * 2);
+      c.globalAlpha = a * 0.2 * (0.4 + 0.6 * Math.max(0, dot)); c.drawImage(shade, x - vnx[i] * lo * 0.9 - r * 0.9, y - vny[i] * lo * 0.9 - r * 0.9, r * 1.8, r * 1.8);
+      c.globalAlpha = a * 0.5 * Math.max(0, dot); c.drawImage(soft, x + vnx[i] * lo - r * 0.75, y + vny[i] * lo - r * 0.75, r * 1.5, r * 1.5);
+    }
+  }
+  for (let i = 0; i < n; i++) {                                                    // 크림
+    const I = vi[i];
+    if (I < 0.015 || !vc[i]) continue;
+    const m = (0.45 + 0.55 * Math.pow(I, 0.5)) * vw[i] * cw[i], r = 3.3 * k * m;
+    c.globalAlpha = Math.min(1, Math.pow(I, 0.7));
+    c.drawImage(reviewSprite(creamL, rvMix([255, 247, 238], vc[i], 0.14)), vx[i] - r, vy[i] - r, r * 2, r * 2);
+  }
+  c.lineCap = "round";
+  rvWalk(S, 1.55 * k, (j, q) => {                                                  // 주름(피에): 껍데기와 크림 사이의 잔주름
+    const I = vi[j];
+    if (I < 0.05 || !vc[j]) return;
+    const m = (0.45 + 0.55 * Math.pow(I, 0.5)) * vw[j], odd = q & 1, al = Math.pow(I, 0.8);
+    for (let side = -1; side <= 1; side += 2) {
+      const o0 = side * 2.3 * k * m, o1 = side * (4.1 + 0.6 * rvHash(q * 1.7 + side)) * k * m;
+      c.beginPath(); c.moveTo(vx[j] + vnx[j] * o0, vy[j] + vny[j] * o0); c.lineTo(vx[j] + vnx[j] * o1, vy[j] + vny[j] * o1);
+      c.strokeStyle = `rgb(${odd ? rvMix(vc[j], [255, 255, 255], 0.62) : rvMix(vc[j], [150, 70, 96], 0.32)})`;
+      c.lineWidth = 0.95 * k; c.globalAlpha = (odd ? 0.95 : 0.7) * al; c.stroke();
+    }
+  });
+  paintHighlights(S, { bodyR: 8.6, specR: 1.2, specA: 0.55, softK: 3.2, softA: 0.14, backA: 0.08 });
+  c.globalAlpha = 1;
+}
+// ---- 진주: 한 알 한 알 픽셀 단위로 빛을 계산해 구워 둔 진주(은은한 속빛 + 가장자리 무지갯빛 + 선명한 반사)를 줄에 꿴 진주 목걸이
+function rvPearlBall(rgb, hue) {
+  const q = (v) => (v & 0xf0) | 8, col = [q(rgb[0]), q(rgb[1]), q(rgb[2])], key = `pearl:${col}:${hue}:${review.dpr}`;
   let cv = review.dollops.get(key);
   if (cv) return cv;
-  const W = 40, H = 32, dpr = review.dpr;
-  cv = document.createElement("canvas");
-  cv.width = Math.ceil(W * dpr); cv.height = Math.ceil(H * dpr);
-  const c = cv.getContext("2d");
-  c.scale(dpr, dpr);
-  const light = rvMix(col, [255, 255, 255], 0.6), mid = rvMix(col, [255, 255, 255], 0.12), dark = rvMix(col, [150, 70, 96], 0.3), foot = rvMix(col, [255, 255, 255], 0.34), footDark = rvMix(col, [150, 70, 96], 0.2);
-  const rgbs = (a, al = 1) => `rgba(${a[0]},${a[1]},${a[2]},${al})`;
-  const creamC = cream ? [255, 232, 238] : [255, 248, 236];
-  const dome = (top, y0, y1) => {
-    const g = c.createRadialGradient(top ? 14 : 14, top ? 6.5 : y0 + 2, 1, 20, top ? 11 : y0 + 3, 21);
-    g.addColorStop(0, rgbs(light)); g.addColorStop(0.45, rgbs(mid)); g.addColorStop(1, rgbs(dark));
-    c.fillStyle = g; c.beginPath();
-    if (top) { c.moveTo(5, y1); c.bezierCurveTo(4.6, 6.2, 11.5, 2.6, 20, 2.6); c.bezierCurveTo(28.5, 2.6, 35.4, 6.2, 35, y1); }
-    else { c.moveTo(5, y0); c.bezierCurveTo(4.8, 28.6, 12, 31, 20, 31); c.bezierCurveTo(28, 31, 35.2, 28.6, 35, y0); }
-    c.closePath(); c.fill();
-  };
-  const ruffle = (y0, y1, scallopBottom) => {                  // 주름: 작은 스캘럽이 이어진 얇은 띠
-    const g = c.createLinearGradient(0, y0, 0, y1);
-    g.addColorStop(0, rgbs(scallopBottom ? foot : footDark)); g.addColorStop(1, rgbs(scallopBottom ? footDark : foot));
-    c.fillStyle = g; c.beginPath(); c.moveTo(4.6, y0);
-    c.lineTo(35.4, y0);
-    const n = 11, wv = 30.8 / n;
-    if (scallopBottom) { c.lineTo(35.4, y1 - 1); for (let i = 0; i < n; i++) c.quadraticCurveTo(35.4 - (i + 0.5) * wv, y1 + 1.5, 35.4 - (i + 1) * wv, y1 - 1); }
-    else { c.lineTo(35.4, y1); c.lineTo(4.6, y1); }
-    c.lineTo(4.6, y0); c.closePath(); c.fill();
-    c.strokeStyle = rgbs(footDark, 0.35); c.lineWidth = 0.35;
-    for (let i = 1; i < n; i++) { const x = 4.6 + i * wv; c.beginPath(); c.moveTo(x, y0 + 0.4); c.lineTo(x, y1 - (scallopBottom ? 0.6 : 0.2)); c.stroke(); }
-  };
-  // 아래쪽부터: 아랫껍데기 -> 아래 주름 -> 크림 -> 위 주름 -> 윗껍데기
-  dome(false, 23.6, 31);
-  ruffle(21.2, 24.2, false);
-  const cg = c.createLinearGradient(0, 16.6, 0, 21.6);
-  cg.addColorStop(0, rgbs(rvMix(creamC, [255, 255, 255], 0.5))); cg.addColorStop(0.6, rgbs(creamC)); cg.addColorStop(1, rgbs(rvMix(creamC, col, 0.28)));
-  c.fillStyle = cg; c.beginPath(); c.moveTo(6.6, 17.6); c.quadraticCurveTo(5.2, 19.4, 6.6, 21.8); c.lineTo(33.4, 21.8); c.quadraticCurveTo(34.8, 19.4, 33.4, 17.6); c.closePath(); c.fill();
-  c.strokeStyle = rgbs(rvMix(creamC, col, 0.5), 0.35); c.lineWidth = 0.4; c.stroke();
-  ruffle(14.2, 17.4, true);
-  dome(true, 14.2, 14.6);
-  c.fillStyle = "rgba(255,255,255,0.72)"; c.beginPath(); c.ellipse(13.6, 6.9, 4.4, 1.9, -0.5, 0, 6.283); c.fill();
-  c.fillStyle = "rgba(255,255,255,0.35)"; c.beginPath(); c.ellipse(26, 5.4, 2.2, 0.9, 0.4, 0, 6.283); c.fill();
+  const white = [255, 255, 255], body = rvMix(col, [255, 249, 242], 0.72), shadeC = rvMix(col, [166, 146, 160], 0.46), RN = 12 / 14;
+  cv = rvBake(28, (u, v) => {
+    const rn = Math.hypot(u, v) / RN;
+    if (rn >= 1.04) return [0, 0, 0, 0];
+    const edge = rvSmooth(1.0, 0.93, rn), nx = u / RN, ny = v / RN, nz = Math.sqrt(Math.max(0, 1 - Math.min(0.9999, rn * rn)));
+    const diff = Math.max(0, nx * RV_LV[0] + ny * RV_LV[1] + nz * RV_LV[2]), hv = Math.max(0, nx * RV_HV[0] + ny * RV_HV[1] + nz * RV_HV[2]), fres = Math.pow(1 - nz, 2.4);
+    const t = 0.42 + 0.58 * Math.pow(diff, 0.8);
+    let c = t < 0.78 ? rvMix(shadeC, body, (t - 0.42) / 0.36) : rvMix(body, white, ((t - 0.78) / 0.22) * 0.5);
+    const ang = Math.atan2(ny, nx) / 6.2832 + 0.5, ir = IRIS[Math.floor((((ang + nz * 0.7 + hue / 24) % 1) + 1) % 1 * 24) % 24];
+    c = rvMix(c, ir, 0.04 + 0.22 * fres * (0.35 + 0.65 * diff));                       // 얇은 막 간섭(무지갯빛)
+    c = rvMix(c, [255, 244, 236], 0.12 * nz * diff);                                  // 속에서 번지는 따뜻한 빛
+    c = rvMix(c, shadeC, 0.34 * fres * (1 - diff));                                   // 가장자리는 살짝 차갑고 어둡게
+    c = rvMix(c, [255, 236, 236], Math.exp(-(Math.pow(nx - 0.45, 2) + Math.pow(ny - 0.5, 2)) / 0.05) * 0.2);   // 아래쪽 반사광
+    const win = Math.exp(-(Math.pow((nx + 0.36) / 0.17, 2) + Math.pow((ny + 0.4) / 0.09, 2)));                  // 창문 반사
+    c = rvMix(c, white, Math.min(0.96, Math.pow(hv, 46) * 0.95 + Math.pow(hv, 9) * 0.14 + win * 0.55));
+    return [c[0], c[1], c[2], Math.round(255 * edge)];
+  });
   if (review.dollops.size > 260) review.dollops.clear();
   review.dollops.set(key, cv);
   return cv;
 }
-function paintMacaron(S) {
+function paintPearl(S) {
   const { c, vx, vy, vi, vc, vw, sizeMul, penK } = S;
-  const dark = reviewSprite(RV_SOFT, [90, 40, 60]);
-  rvWalk(S, 27 * sizeMul * penK, (j, k) => {
-    const I = vi[j];
-    if (I < 0.03 || !vc[j]) return;
-    const col = rvMix(vc[j], RV_MAC_PASTEL[Math.floor(rvHash(k * 1.7 + 3) * RV_MAC_PASTEL.length)], 0.66);
-    const sc = (0.55 + 0.45 * Math.pow(I, 0.5)) * vw[j], w = 35 * sizeMul * penK * sc, h = w * 0.8, al = Math.min(1, Math.pow(I, 0.7));
-    c.globalAlpha = 0.28 * al; c.drawImage(dark, vx[j] - w * 0.55, vy[j] + h * 0.22, w * 1.1, h * 0.46);
-    c.save(); c.translate(vx[j], vy[j]); c.rotate((rvHash(k * 4.3) - 0.5) * 0.34); c.globalAlpha = al;
-    c.drawImage(rvMacaron(col, rvHash(k * 2.1) > 0.55 ? 1 : 0), -w / 2, -h / 2, w, h);
-    c.restore();
-  });
+  const k = sizeMul * penK, d = 15.5 * k, beads = [];
+  rvWalk(S, d * 0.93, (j, q) => { if (vi[j] >= 0.03 && vc[j]) beads.push([j, q]); });
+  const dark = reviewSprite(RV_SOFT, [70, 50, 80]);
+  for (const [j, q] of beads) {                                  // 접촉 그림자
+    const I = vi[j], sc = (0.55 + 0.45 * Math.pow(I, 0.5)) * vw[j] * (0.96 + 0.08 * rvHash(q * 2.7)), dd = d * sc, al = Math.min(1, Math.pow(I, 0.7));
+    c.globalAlpha = 0.32 * al; c.drawImage(dark, vx[j] - dd * 0.55 + 0.6 * k, vy[j] + dd * 0.18, dd * 1.1, dd * 0.58);
+  }
+  for (const [j, q] of beads) {
+    const I = vi[j], sc = (0.55 + 0.45 * Math.pow(I, 0.5)) * vw[j] * (0.96 + 0.08 * rvHash(q * 2.7)), dd = d * sc, w = dd * (28 / 24), al = Math.min(1, Math.pow(I, 0.7));
+    c.globalAlpha = al;
+    c.drawImage(rvPearlBall(rvMix(vc[j], [255, 255, 255], 0.74), Math.floor(rvHash(q * 1.9) * 6) * 4), vx[j] - w / 2, vy[j] - w / 2, w, w);
+  }
   c.globalAlpha = 1;
 }
 
 // ---- 굵기 / 투명도 (연속값). 예전 S·M·L 값(reviewSize)만 저장돼 있으면 거기서 시작한다.
 function rvWidth() {
   const w = Number(state.prefs.reviewWidth);
-  return w > 0 ? Math.min(4, Math.max(0.4, w)) : (REVIEW.sizes[state.prefs.reviewSize] || 1);
+  return w > 0 ? Math.min(2.2, Math.max(0.5, w)) : (REVIEW.sizes[state.prefs.reviewSize] || 1);
 }
 function rvAlpha() {
   const a = Number(state.prefs.reviewAlpha);

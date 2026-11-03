@@ -5129,6 +5129,7 @@ function initReview() {
   };
   stage.addEventListener("touchstart", blockPenScroll, { passive: false });
   stage.addEventListener("touchmove", blockPenScroll, { passive: false });
+  refs.inkToolbar.addEventListener("pointerdown", () => { if (review.on) wakeDock(); });   // 상단 바를 정확히 눌렀을 때만 도크 호출
   window.addEventListener("pointerup", onReviewUp);
   window.addEventListener("pointercancel", onReviewUp);
   window.addEventListener("blur", () => { onReviewLeave(); onReviewUp(); });
@@ -5405,7 +5406,7 @@ function onReviewMove(event) {
   } else {
     review.breakNext = true; review.hasFilter = false;   // never join a stroke across the desk / gaps between pages
   }
-  if (event.clientY < 150) wakeDock();
+  // (위쪽 근처를 지나가기만 해도 도크가 내려오던 동작 제거: 상단 바를 정확히 누를 때만 내려옴)
   review.mx = event.clientX; review.my = event.clientY;
   if (!review.inside) {
     review.inside = true; review.lensReady = false; review.pmx = review.mx; review.pmy = review.my;

@@ -4352,7 +4352,6 @@ async function openPdf(file) {
     state.fileName = file.name;
     state.noteKey = `${NOTES_PREFIX}${file.name}:${file.size}:${doc.numPages}`;
     state.notes = loadNotes();
-    state.inkStrokes = loadInk();
     state.zoom = 1;
 
     // Switch away from the upload screen immediately after PDF.js has accepted the file.
@@ -4398,11 +4397,9 @@ async function buildPages() {
     const canvas = document.createElement("canvas");
     const layer = document.createElement("div");
     layer.className = "note-layer";
-    const ink = document.createElement("canvas");
-    ink.className = "ink-canvas";
-    el.append(canvas, ink, layer);
+    el.append(canvas, layer);
     refs.pdfScroll.append(el);
-    const entry = { index: index + 1, page, el, canvas, ink, layer, base: page.getViewport({ scale: 1 }), renderedKey: "", task: null, visible: false };
+    const entry = { index: index + 1, page, el, canvas, layer, base: page.getViewport({ scale: 1 }), renderedKey: "", task: null, visible: false };
     el.__entry = entry;
     state.pages.push(entry);
     state.observer.observe(el);
@@ -4448,7 +4445,6 @@ function onPageVisibility(changes) {
 function releasePage(entry) {
   if (entry.task) { try { entry.task.cancel(); } catch (error) { /* already finished */ } entry.task = null; }
   entry.canvas.width = entry.canvas.height = 0;
-  if (entry.ink) entry.ink.width = entry.ink.height = 0;
   entry.renderedKey = "";
 }
 
@@ -4472,7 +4468,6 @@ async function renderPage(entry) {
     entry.canvas.width = off.width;
     entry.canvas.height = off.height;
     entry.canvas.getContext("2d").drawImage(off, 0, 0);
-    renderInk(entry);
   } catch (error) {
     if (error && error.name === "RenderingCancelledException") return;
     entry.renderedKey = "";
@@ -5193,12 +5188,6 @@ function buildReviewDock() {
       <label class="rv-slider"><span>Thickness</span><input type="range" id="rvWidth" min="0.2" max="2.2" step="0.05" aria-label="Beam thickness"><output id="rvWidthOut">1.0×</output></label>
       <label class="rv-slider"><span>Opacity</span><input type="range" id="rvAlpha" min="0.15" max="1" step="0.01" aria-label="Beam opacity"><output id="rvAlphaOut">100%</output></label>
     </div>
-    <div class="rv-keep">
-      <label><input type="checkbox" id="rvKeep"><span>Keep ink</span></label>
-      <button type="button" id="rvUndo">Undo</button>
-      <button type="button" id="rvClear">Clear</button>
-      <span class="rv-hint">켜면 누른 채 그은 선이 PDF에 남아요</span>
-    </div>
     <div class="rv-panel" id="rvPanel" inert>
       <section><h4>Material</h4><div class="rv-mats" data-pref="reviewBrush">${mats}</div></section>
       <section><h4>Color</h4><div class="rv-colors">${swatches}</div></section>
@@ -5229,9 +5218,6 @@ function buildReviewDock() {
     setPrefs(patch, { keepMood: true });
   });
   dock.querySelector("#rvFx").addEventListener("change", (event) => setPrefs({ reviewFx: event.target.value, reviewLook: "custom" }, { keepMood: true }));
-  dock.querySelector("#rvKeep").addEventListener("change", (event) => setPrefs({ reviewKeep: event.target.checked }, { keepMood: true }));
-  dock.querySelector("#rvUndo").addEventListener("click", undoInk);
-  dock.querySelector("#rvClear").addEventListener("click", clearInk);
   dock.querySelector("#rvWidth").addEventListener("input", (event) => {
     const w = Math.min(2.2, Math.max(0.2, Number(event.target.value) || 1));
     setPrefs({ reviewWidth: w, reviewSize: w < 0.87 ? "s" : w < 1.22 ? "m" : "l" }, { keepMood: true });
@@ -5286,7 +5272,6 @@ function syncReviewDock() {
     else group.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(p[group.dataset.pref] === b.dataset.v)));
   });
   d.querySelector("#rvFx").value = p.reviewFx;
-  d.querySelector("#rvKeep").checked = !!p.reviewKeep;
   {                                                       // 굵기 / 투명도 슬라이더 + 궤적 캔버스 투명도
     const w = rvWidth(), al = rvAlpha();
     d.querySelector("#rvWidth").value = String(w);
@@ -5421,7 +5406,7 @@ function onReviewMove(event) {
       rvReadPen(e);
       feedTrail(e.clientX, e.clientY, t);
     }
-    { const cap = state.prefs.reviewKeep ? 6000 : 900; if (review.pts.length > cap) { review.pts.splice(0, review.pts.length - cap); review.pts[0].b = true; } }
+    if (review.pts.length > 900) { review.pts.splice(0, review.pts.length - 900); review.pts[0].b = true; }
     review.lastMoveT = now; review.restFired = false;
     review.predPts = [];
     if (review.isPen && review.down && event.getPredictedEvents) {
@@ -5464,8 +5449,6 @@ function onReviewDown(event) {
 
 function onReviewUp() {
   if (!review.down) return;
-  if (review.hasFilter && !review.breakNext && review.pts.length) { let tt = performance.now(); for (let q = 0; q < 8; q++) { tt += 16; stepTrailFilter(review.rx, review.ry, tt); } }
-  rvCommitInk();
   review.predPts = [];
   review.down = false; review.breakNext = true; review.hasFilter = false;
 }
@@ -5476,10 +5459,9 @@ function feedTrail(x, y, t) {
     review.sx = x; review.sy = y; review.st = t; review.rx = review.prx = x; review.ry = review.pry = y;
     review.hasFilter = true; review.breakNext = false;
     review.curPen = review.down;
-    review.curKeep = review.down && !!state.prefs.reviewKeep;
     review.strokeSty = sty;
-    review.curL = review.curKeep ? 1e9 : (reducedMotionQuery.matches ? 700 : review.down ? REVIEW.penLife : sty.brush.life);
-    review.pts.push({ x, y, t, b: true, l: review.curL, pen: review.curPen, kp: review.curKeep, sid: Math.random() * 997, sty, pn: review.isPen, pr: review.penP, tl: review.penT });
+    review.curL = reducedMotionQuery.matches ? 700 : review.down ? REVIEW.penLife : sty.brush.life;
+    review.pts.push({ x, y, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty, pn: review.isPen, pr: review.penP, tl: review.penT });
     return;
   }
   stepTrailFilter(x, y, t);
@@ -5493,8 +5475,8 @@ function stepTrailFilter(x, y, t) {
   review.sx += (x - review.sx) * a; review.sy += (y - review.sy) * a;
   review.st = t; review.prx = review.rx = x; review.pry = review.ry = y;
   const last = review.pts[review.pts.length - 1];
-  if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen, kp: review.curKeep, sid: Math.random() * 997, sty: review.strokeSty, pn: review.isPen, pr: review.penP, tl: review.penT }); return; }
-  if (Math.hypot(review.sx - last.x, review.sy - last.y) >= (review.isPen ? 0.4 : 0.7)) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen, kp: review.curKeep, pn: review.isPen, pr: review.penP, tl: review.penT });
+  if (!last) { review.pts.push({ x: review.sx, y: review.sy, t, b: true, l: review.curL, pen: review.curPen, sid: Math.random() * 997, sty: review.strokeSty, pn: review.isPen, pr: review.penP, tl: review.penT }); return; }
+  if (Math.hypot(review.sx - last.x, review.sy - last.y) >= (review.isPen ? 0.4 : 0.7)) review.pts.push({ x: review.sx, y: review.sy, t, b: false, l: review.curL, pen: review.curPen, pn: review.isPen, pr: review.penP, tl: review.penT });
 }
 
 // each stroke fades from its tail; strokes with different lifetimes (hover vs pen) expire independently
@@ -7930,145 +7912,6 @@ function rvAlpha() {
   return a > 0 ? Math.min(1, Math.max(0.15, a)) : 1;
 }
 
-// ===== 필기 남기기(Keep ink) =====
-// 켜면 '누른 채' 그은 선이 사라지지 않고 PDF 페이지 좌표로 저장된다(확대/축소/새로고침 후에도 유지). 선택한 소재/색/굵기/투명도 그대로 남는다.
-function ensureInkSupport() {
-  if (document.getElementById("inkCss")) return;
-  const style = document.createElement("style");
-  style.id = "inkCss";
-  style.textContent = `
-.ink-canvas { pointer-events: none; }
-.rv-keep { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }
-.rv-keep label { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 650; color: var(--chrome-ink); cursor: pointer; }
-.rv-keep button { height: 28px; padding: 0 12px; border: 0; border-radius: 9px; background: rgba(38,39,44,.07); font-size: 11.5px; font-weight: 650; }
-.rv-keep button:hover { background: rgba(38,39,44,.13); }
-.rv-keep .rv-hint { margin-left: auto; font-size: 10.5px; color: var(--chrome-soft); }
-@media (max-width: 760px) { .rv-keep .rv-hint { display: none; } }
-`;
-  document.head.append(style);
-}
-
-const INK_SUFFIX = ":ink";
-function loadInk() {
-  try {
-    const list = JSON.parse(localStorage.getItem(state.noteKey + INK_SUFFIX) || "[]");
-    return Array.isArray(list) ? list.filter((s) => s && s.p >= 1 && Array.isArray(s.pts) && s.pts.length > 1) : [];
-  } catch (error) {
-    return [];
-  }
-}
-function saveInk() {
-  if (!state.noteKey) return;
-  try {
-    if (state.inkStrokes && state.inkStrokes.length) localStorage.setItem(state.noteKey + INK_SUFFIX, JSON.stringify(state.inkStrokes));
-    else localStorage.removeItem(state.noteKey + INK_SUFFIX);
-  } catch (error) {
-    toast("필기를 이 브라우저에 저장하지 못했어요 (저장 공간 부족).");
-  }
-}
-function rvInkStyle() {
-  const p = state.prefs;
-  return {
-    brush: p.reviewBrush, color: p.reviewColor,
-    size: typeof rvWidth === "function" ? rvWidth() : (REVIEW.sizes[p.reviewSize] || 1),
-    alpha: typeof rvAlpha === "function" ? rvAlpha() : 1
-  };
-}
-
-// 방금 끝난 '남기기' 획들을 라이브 궤적에서 꺼내 페이지 좌표(0~1)로 저장한다.
-function rvCommitInk() {
-  const pts = review.pts;
-  if (!pts.length || !state.pages.length) return;
-  const rest = [];
-  let i = 0, changed = false;
-  while (i < pts.length) {
-    let e = i + 1;
-    while (e < pts.length && !pts[e].b) e++;
-    const seg = pts.slice(i, e);
-    if (seg[0].kp) { changed = true; if (seg.length >= 2) rvStoreInk(seg); }
-    else for (let q = 0; q < seg.length; q++) rest.push(seg[q]);
-    i = e;
-  }
-  if (!changed) return;
-  pts.length = 0;
-  for (let q = 0; q < rest.length; q++) pts.push(rest[q]);
-  saveInk();
-}
-function rvStoreInk(seg) {
-  const p0 = seg[0];
-  let entry = null, rect = null;
-  for (const pg of state.pages) {
-    const r = pg.el.getBoundingClientRect();
-    if (p0.x >= r.left && p0.x <= r.right && p0.y >= r.top && p0.y <= r.bottom) { entry = pg; rect = r; break; }
-  }
-  if (!entry || rect.width < 2 || rect.height < 2) return;
-  const st = rvInkStyle(), t0 = seg[0].t, r4 = (v) => Math.round(v * 10000) / 10000, r2 = (v) => Math.round(v * 100) / 100;
-  const stroke = {
-    p: entry.index, b: st.brush, c: st.color, s: st.size, a: st.alpha, w: Math.round(rect.width * 10) / 10,
-    sid: Math.round(seg[0].sid || 1), pn: !!seg[0].pn,
-    pts: seg.map((q) => [r4((q.x - rect.left) / rect.width), r4((q.y - rect.top) / rect.height), Math.round(q.t - t0), r2(q.pr || 0), r2(q.tl || 0)])
-  };
-  if (!state.inkStrokes) state.inkStrokes = [];
-  state.inkStrokes.push(stroke);
-  renderInk(entry, stroke);
-}
-
-// 페이지의 필기 캔버스를 그린다. only 를 주면 그 획만 위에 얹는다(새로 끝난 획).
-function renderInk(entry, only) {
-  if (!entry || !entry.ink) return;
-  const W = entry.el.clientWidth, H = entry.el.clientHeight;
-  if (!W || !H || !entry.visible) { if (!entry.visible) entry.ink.width = entry.ink.height = 0; return; }
-  const s = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(16e6 / (W * H)));
-  const cv = entry.ink;
-  if (!only || cv.width !== Math.round(W * s)) { cv.width = Math.round(W * s); cv.height = Math.round(H * s); only = null; }
-  const c = cv.getContext("2d");
-  const list = only ? [only] : (state.inkStrokes || []).filter((q) => q.p === entry.index);
-  list.forEach((stroke) => drawInkStroke(c, entry, stroke, s));
-}
-function drawInkStroke(c, entry, stroke, s) {
-  const brush = REVIEW.brushes[stroke.b];
-  if (!brush || !stroke.pts || stroke.pts.length < 2) return;
-  const W = entry.el.clientWidth, H = entry.el.clientHeight, sizeMul = (stroke.s || 1) * (W / (stroke.w || W));
-  const base = 1e6, now = base + stroke.pts[stroke.pts.length - 1][2] + 5000;     // 방울 등이 충분히 자란 정지 상태로
-  const pts = stroke.pts.map((q, i) => ({ x: q[0] * W, y: q[1] * H, t: base + q[2], b: i === 0, l: 1e12, pen: true, pn: !!stroke.pn, pr: q[3], tl: q[4], sid: stroke.sid }));
-  const saved = { dpr: review.dpr, now: review.now, bb: review.bb };
-  review.dpr = Math.min(3, Math.max(1, s));
-  review.now = now;
-  review.bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
-  try {
-    const o = { brush, pal: rvPaletteFor(stroke.c, "none"), st: null, sizeMul, flick: 1 };
-    if (!(stroke.a < 0.99)) {
-      c.save(); c.setTransform(s, 0, 0, s, 0, 0); paintStrokes(c, pts, now, o); c.restore();
-    } else {                                                                      // 투명도: 획 전체를 한 장으로 그린 뒤 한 번에 투명하게 합성
-      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      for (const q of pts) { if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x; if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y; }
-      const M = 150 * sizeMul;
-      x0 = Math.max(0, x0 - M); y0 = Math.max(0, y0 - M); x1 = Math.min(W, x1 + M); y1 = Math.min(H, y1 + M);
-      const off = document.createElement("canvas");
-      off.width = Math.max(1, Math.ceil((x1 - x0) * s)); off.height = Math.max(1, Math.ceil((y1 - y0) * s));
-      const oc = off.getContext("2d");
-      oc.setTransform(s, 0, 0, s, -x0 * s, -y0 * s);
-      paintStrokes(oc, pts, now, o);
-      c.save(); c.globalAlpha = stroke.a; c.setTransform(s, 0, 0, s, 0, 0); c.drawImage(off, x0, y0, x1 - x0, y1 - y0); c.restore();
-    }
-  } finally {
-    review.dpr = saved.dpr; review.now = saved.now; review.bb = saved.bb;
-  }
-}
-function undoInk() {
-  if (!state.inkStrokes || !state.inkStrokes.length) { toast("되돌릴 필기가 없어요."); return; }
-  const last = state.inkStrokes.pop();
-  saveInk();
-  renderInk(state.pages[last.p - 1]);
-}
-function clearInk() {
-  if (!state.inkStrokes || !state.inkStrokes.length) { toast("지울 필기가 없어요."); return; }
-  if (!window.confirm("이 PDF에 남긴 필기를 모두 지울까요?")) return;
-  state.inkStrokes = [];
-  saveInk();
-  state.pages.forEach((entry) => renderInk(entry));
-}
-
 function setTypeTool(on) {
   if (on && typeof review !== "undefined" && review.on) setReview(false);
   state.typeTool = on;
@@ -8180,7 +8023,6 @@ function handleGlobalKeys(event) {
     const sizes = ["s", "m", "l"], i = sizes.indexOf(state.prefs.reviewLensSize);
     setPrefs({ reviewLensSize: sizes[Math.max(0, Math.min(2, i + (event.key === "]" ? 1 : -1)))] }, { keepMood: true });
   }
-  else if (review.on && (event.key === "z" || event.key === "Z")) undoInk();
   else if (event.key === "+" || event.key === "=") stepZoom(1);
   else if (event.key === "-") stepZoom(-1);
 }
@@ -8189,7 +8031,6 @@ function init() {
   cacheRefs();
   ensurePdfWorkspaceGuard();
   ensureZoomSupport();
-  ensureInkSupport();
   window.__STUDY_TYPING_NOTE_BUILD__ = "pdf-ui-fix-20261008-2";
   console.info("StudyTypingNote build: pdf-ui-fix-20261008-2");
   if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
